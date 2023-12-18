@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<script type="text/javascript">
+
+    function getRandom(max) {
+        return Math.round(Math.random()*max);
+    }
+
+    function getRandom2(min,max) {
+        return Math.round(min + Math.random()*(max-min));
+    }
+
+    function get_random_height() {
+       let a = getRandom(4);
+       switch (a) {
+           case 0:
+               return 24;
+               break;
+           case 1:
+               return 33;
+               break;
+           case 2:
+               return 40;
+               break;
+           case 3:
+               return 48;
+               break;
+           case 4:
+               return 60;
+               break;
+       }
+    }
+
+    let min_size_of_roll = 1175;
+    let max_size_of_roll = 1195;
+
+
+    // массив входящих данных
+    var arr = [];
+
+    // наполняем массив случайными данными
+    for (let x=0; x<100; x++){
+        var o = {};
+        o.name="16"+getRandom2(10,50);
+        o.width=getRandom2(100,300);
+        o.height=get_random_height();
+        arr.push(o);
+        o.clear;
+    }
+
+    // сортируем массив по высоте шторы
+    arr.sort(function (a,b) {
+        if (a.height > b.height){
+            return 1;
+        }
+        if (a.height < b.height){
+            return -1;
+        }
+
+            return 0;
+})
+    let is_done = false;
+    let temp_array_width = 0;
+    let temp_array = [];
+    let pos = 0;
+    let critical_count = 0;
+
+    while (arr.length > 0){
+
+        //предохранитель
+        critical_count++;
+        if (critical_count > 1000){break};
+
+        let a=temp_array[pos];
+        console.log(a);
+
+        //если текущая позиция по ширине помещается в остаток рулона_темп
+        if(temp_array[pos] > (max_size_of_roll - temp_array_width)){
+            temp_array.push(arr[pos]);
+            arr.splice(pos,1);
+            pos ++;
+        } else {
+            //не влазит позиция в остаток рулона переходим к другой позиции
+            pos++;
+        }
+
+        if ( (temp_array_width < max_size_of_roll)&&(temp_array_width > min_size_of_roll)){
+            //бухта собрана
+        }
+    }
+
+    console.log(arr);
+</script>
+</body>
+</html>
