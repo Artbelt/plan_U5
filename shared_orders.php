@@ -19,9 +19,7 @@ echo '<table height="30%" width="100%"><tr><td bgcolor="#6495ed" style="border-c
 $mysqli = new mysqli($mysql_host, $mysql_user, $mysql_user_pass, $mysql_database);
 if ($mysqli->connect_errno) {
     /** Если не получилось подключиться */
-    echo 'Возникла проблема на сайте'
-        . "Номер ошибки: " . $mysqli->connect_errno . "\n"
-        . "Ошибка: " . $mysqli->connect_error . "\n";
+    echo 'Возникла проблема на сайте'. "Номер ошибки: " . $mysqli->connect_errno . "\n". "Ошибка: " . $mysqli->connect_error . "\n";
     exit;
 }
 
