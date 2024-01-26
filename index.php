@@ -9,7 +9,7 @@
 <body>
 <div class="center">
 <?php
-echo '<form action="enter.php" method="post">';
+echo '<form action="enter.php" method="get">';
 echo '<input  type="text" name="user_name" width="140" placeholder="user_name"/>';
 echo '<input  type="password" name="user_pass" width="140" placeholder="user_pass"/>';
 echo '<select name="workshop">';

@@ -6,6 +6,7 @@ require_once('tools/tools.php') ;
 
 $workshop = 'U5';
 
+global $mysql_host, $mysql_user, $mysql_user_pass, $mysql_database;
 
 /** ---------------------------------------------------------------------------------------------------------------- */
 /**                                                 Раздел ЗАЯВКИ                                                    */

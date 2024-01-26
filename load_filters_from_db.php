@@ -24,7 +24,7 @@ if(isset($_GET['filter'])){
 
 
 
-    echo "<select id='select_filter' size=".$result->num_rows.">";
+    echo "<select id='select_filter' size=".$result->num_rows." style='width: 270'>";
     while ($row = $result->fetch_assoc()) {
         echo "<option>".$row['filter']."</option><br>";
     }

@@ -9,7 +9,7 @@
    <!--<link rel="stylesheet" href="sheets.css">-->
     <style type="text/css">
         div {
-            width: 400px; /* Ширина элемента в пикселах */
+            width: 500px; /* Ширина элемента в пикселах */
             padding: 10px; /* Поля вокруг текста */
             margin: auto; /* Выравниваем по центру */
            <!-- background: #4b91ad;--> /* Цвет фона */
@@ -151,7 +151,7 @@
 <table border="0" width="400px">
     <tr>
         <td height="25" align="center" bgcolor="#1e90ff">Продукт<br>
-            <input type="text" id="text" size="10" maxlength="15" value="" onkeyup="loadDoc_1()" onFocus="this.select()" />
+            <input type="text" id="text" size="10" maxlength="15" value="" onkeyup="loadDoc_1()" onFocus="this.select()" /><!-- Поле ввода названия -->
         </td>
         <td rowspan="2" align="center" bgcolor="#1e90ff">
             <p>Дата производства<p>
@@ -167,9 +167,9 @@
     <tr>
         <td align="center" bgcolor="#1e90ff">
             <p id="demo">
-                <select id="select_filter" size="1"></select>
+                <select id="select_filter" size="1"></select> <!-- Выпаадающий список с фильтрами -->
             </p>
-            Кол-во  <input type="text" id="count" size="10" maxlength="15" value="" onFocus="this.select()"/>
+            Кол-во  <input type="text" id="count" size="10" maxlength="25" value="" onFocus="this.select()"/>
         <td></td>
     </tr>
     <tr>
