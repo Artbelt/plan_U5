@@ -35,7 +35,7 @@ function show_weekly_production(){
 }
 
 /** Создание <SELECT> списка с перечнем заявок */
-function load_orders(){
+function load_orders($list){
 
     global $mysql_host,$mysql_user,$mysql_user_pass,$mysql_database;
 
@@ -50,13 +50,25 @@ function load_orders(){
         exit;
     }
 
-    /** Разбор массива значений  */
-    echo "<select id='selected_order'>";
-    while ($orders_data = $result->fetch_assoc()){
-            echo "<option name='order_number' value=".$orders_data['order_number'].">".$orders_data['order_number']."</option>";
-    }
-    echo "</select>";
+    if ($list == '0') {
 
+        /** Разбор массива значений для выпадающего списка */
+        echo "<select id='selected_order'>";
+        while ($orders_data = $result->fetch_assoc()) {
+            echo "<option name='order_number' value=" . $orders_data['order_number'] . ">" . $orders_data['order_number'] . "</option>";
+        }
+        echo "</select>";
+    } else {
+        echo 'Перечень заявок';
+        /** Разбор массива значений для списка чекбоксов */
+        echo "<form action='orders_editor.php' method='post'>";
+        while ($orders_data = $result->fetch_assoc()) {
+            echo "<input type='checkbox' name='order_name[]'value=".$orders_data['order_number']." <label>".$orders_data['order_number'] ."</label><br>";
+        }
+        echo "<button type='submit'>Объединить для расчета</button>";
+        echo "</form>";
+
+    }
     /** Закрываем соединение */
     $result->close();
     $mysqli->close();

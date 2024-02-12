@@ -167,10 +167,10 @@ class Planned_order
             echo "<td style=' border: 1px solid black'>".$this->initial_order[$x][0]."</td>";
             echo "<td style=' border: 1px solid black'>".$this->initial_order[$x][1]."</td>";
             echo "<td style=' border: 1px solid black'>".$this->initial_order[$x][2]."</td>";
-            echo "<td style=' border: 1px solid black'>".$this->initial_order[$x][3]."</td>";
+            echo "<td style=' border: 1px solid black'>".str_replace(".",",",$this->initial_order[$x][3])."</td>";
             echo "<td style=' border: 1px solid black'>".$this->initial_order[$x][4]."</td>";
-            echo "<td style=' border: 1px solid black'>".($this->initial_order[$x][5]/1000)."</td>";
-            echo "<td style=' border: 1px solid black'>".($this->initial_order[$x][6]/1000)."</td>";
+            echo "<td style=' border: 1px solid black'>".str_replace(".",",",$this->initial_order[$x][5]/1000)."</td>";
+            echo "<td style=' border: 1px solid black'>".str_replace(".",",",$this->initial_order[$x][6]/1000)."</td>";
             echo "<td style=' border: 1px solid black'>".$this->initial_order[$x][7]."</td>";
             echo "</tr>";
         }

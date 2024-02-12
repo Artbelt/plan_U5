@@ -9,7 +9,7 @@
 </div>
 
 <br>Заявка №
-<?php load_orders(); ?><button onclick="load_order(document.getElementById('selected_order'))">Сформировать раскрои</button>
+<?php load_orders(0); ?><button onclick="load_order(document.getElementById('selected_order'))">Сформировать раскрои</button>
 <br>
 
 <script>

@@ -241,7 +241,9 @@ echo "Распланированные заявки";
 echo "<form action='planning_manager.php' method='post'>"
     ."<input type='submit' value='Менеджер планирования' style='height: 20px; width: 220px'>"
     ."</form>";
-
+echo "<form action='combine_orders.php' method='post'>"
+    ."<input type='submit' value='Объединение заявок' style='height: 20px; width: 220px'>"
+    ."</form>";
 
 /** Блок загрузки заявок */
 echo "</td></tr><tr><td height='20%'>"

@@ -162,7 +162,7 @@
                 </select>
                 <br>
                 по заявке № <br>
-               <?php load_orders() ?>
+               <?php load_orders(0) ?>
         </td></tr>
     <tr>
         <td align="center" bgcolor="#1e90ff">
