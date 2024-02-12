@@ -386,11 +386,11 @@ class Planned_order
         echo "<tr><td style=' border: 1px solid black'>№ п/п</td><td style=' border: 1px solid black'>Фильтр</td><td style=' border: 1px solid black'>Высота г/п</td><td style=' border: 1px solid black'>Ширина г/п</td><td style=' border: 1px solid black'>Длина полосы, м</td>";
         for ($x = 0; $x < (sizeof($completed_roll_array)); $x++){
             echo "<tr>";
-            echo "<td style=' border: 1px solid black'>".($x+1)."</td>";
-            echo "<td style=' border: 1px solid black'>".$completed_roll_array[$x][0]."</td>";
-            echo "<td style=' border: 1px solid black'>".$completed_roll_array[$x][1]."</td>";
-            echo "<td style=' border: 1px solid black'>".$completed_roll_array[$x][2]."</td>";
-            echo "<td style=' border: 1px solid black'>".$completed_roll_array[$x][3]."</td>";
+            echo "<td style=' border: 1px solid black; background-color: cornflowerblue'>".($x+1)."</td>";
+            echo "<td style=' border: 1px solid black; background-color: cornflowerblue'>".$completed_roll_array[$x][0]."</td>";
+            echo "<td style=' border: 1px solid black; background-color: cornflowerblue'>".$completed_roll_array[$x][1]."</td>";
+            echo "<td style=' border: 1px solid black; background-color: cornflowerblue'>".$completed_roll_array[$x][2]."</td>";
+            echo "<td style=' border: 1px solid black; background-color: cornflowerblue'>".$completed_roll_array[$x][3]."</td>";
             echo "</tr>";
         }
         echo "";
@@ -424,6 +424,12 @@ class Planned_order
             return ($b[3] - $a[3]);
         });
     }
+
+
+    /**                         O                          */
+    /**                         O                          */
+    /**                         O                          */
+    /**                         .                          */
 
 
     /**Функция расширения диапазона и инициализации его  */
@@ -526,7 +532,7 @@ class Planned_order
         $this->sort_cut_arrays();
         /** Проверяем есть в массиве cut_array_simple полосы для добавления в диапазон */
         if (count($this->cut_array_simple) == 0){ // если нет - возвращаем 0 и выходим из процедуры
-            $this->show_diapazon_for_simple('ПОСЛЕ  ДОБАВЛЕНИЯ');
+            //$this->show_diapazon_for_simple('ПОСЛЕ  ДОБАВЛЕНИЯ');
             return 0; // ни чего не добавлено так как нет  полос в массиве
         }
         /**  определяем длину самой длинной полосы из оставшихся в массиве cut_array*/
@@ -608,7 +614,7 @@ class Planned_order
                 $counter++;
             }
         }
-        $this->show_diapazon_for_simple('КОНЕЦ ДОБАВЛЕНИЯ');
+        //$this->show_diapazon_for_simple('КОНЕЦ ДОБАВЛЕНИЯ');
         return 1; // возвращаем 1 если смогли расширить диапазон
     }
 
@@ -691,7 +697,7 @@ class Planned_order
             if (($summ >= $min_width_of_roll)&($summ <= $max_width_of_roll)){
 
                 echo "<table  style='border: 1px solid black; border-collapse: collapse; font-size: 14px;'>";
-                echo "<tr><td style='background-color: #1aff00; text-align: center; color: #0003c4' width='350'> БУХТА СОБРАНА </td></tr>";
+                echo "<tr><td style='background-color: #1aff00; text-align: center; color: #0003c4' width='100%'> БУХТА СОБРАНА </td></tr>";
 
                 /** Если ширина бухта попадает в диапазон, то останавливаем раскрой диапазона и переносим позиции
                  * собранной бухты  в completed_rolls */
@@ -756,7 +762,7 @@ class Planned_order
             if (($summ >= $min_width_of_roll)&($summ <= $max_width_of_roll)){
 
                 echo "<table  style='border: 1px solid black; border-collapse: collapse; font-size: 14px;'>";
-                echo "<tr><td style='background-color: #1aff00; text-align: center; color: #0003c4' width='350'> БУХТА СОБРАНА </td></tr>";
+                echo "<tr><td style='background-color: #1aff00; text-align: center; color: #0003c4' width='100%'> БУХТА СОБРАНА </td></tr>";
 
                 /** Если ширина бухта попадает в диапазон, то останавливаем раскрой диапазона и переносим позиции
                  * собранной бухты  в completed_rolls */
@@ -891,14 +897,15 @@ class Planned_order
                 $this->extension_of_diapazon_for_simple();
 
             }
-            /** Собираем бухты столько раз сколько будет собираться, как имнимум один проход делается */
+            /** Собираем бухты столько раз сколько будет собираться, как минимум один проход делается */
             do {
-                $repeat = $this->cut_execute_for_diapazone_for_simple(1000, 40, 15, 0);
+                $repeat = $this->cut_execute_for_diapazone_for_simple(1000, 40, 10, 0);
 
             } while ($repeat == 1);
             if ($repeat == 0){
                 $safety_counter++;
                 $execute_stop_marker = true;
+                echo "[!] TEST 1";
             }
             if ($safety_counter == 10000){
                 $stop_marker = true;
@@ -907,6 +914,7 @@ class Planned_order
             /**  ни чего больше не можем сделать - останавливаем цикл */
             if (($execute_stop_marker == true)&($check_wide_stop_marker == true)&($extension_stop_marker == true)){
                 $stop_marker = true;
+                echo "<p>[!] НИ ЧЕГО НЕ МОЖЕМ СДЕЛАТЬ. ВСЕ МАРКЕРЫ ОСТАНОВА АКТИВНЫ [!]<p>";
             }
         }
         $this->show_diapazon_for_simple("ОСТАВШИЕСЯ В ДИАПАЗОНЕ РУЛОНы");
