@@ -2,7 +2,7 @@
 require_once ('tools/tools.php');
 require_once ('settings.php');
 
-set_time_limit(300);
+set_time_limit(600);
 
 class Planned_order
 /** Класс реализует планирование заявки и хранение всех данных при поанировании и сохранение вего в БД
@@ -837,7 +837,7 @@ class Planned_order
             }
             /** Собираем бухты столько раз сколько будет собираться, как имнимум один проход делается */
             do {
-                $repeat = $this->cut_execute_for_diapazone_for_carbone(1000, 40, 15, 0);
+                $repeat = $this->cut_execute_for_diapazone_for_carbone(1000, 55, 15, 0);
 
             } while ($repeat == 1);
             if ($repeat == 0){
@@ -893,19 +893,27 @@ class Planned_order
                 }
             }
             /** Запускаем принудительное расширение диапазона, если safety_counter начал рости */
-            if ($safety_counter == 2){
+            //if ($safety_counter == 2){
+            if ($safety_counter > 2){
+
+                echo "<br>safety_counter >2<br>";
+
+                $this->show_diapazon_for_simple("РУЛОНЫ В ДИАПАЗОНЕ ДО РАСШИРЕНИЯ");
+
                 $this->extension_of_diapazon_for_simple();
+
+                $this->show_diapazon_for_simple("РУЛОНЫ В ДИАПАЗОНЕ после РАСШИРЕНИЯ");
 
             }
             /** Собираем бухты столько раз сколько будет собираться, как минимум один проход делается */
             do {
-                $repeat = $this->cut_execute_for_diapazone_for_simple(1000, 40, 10, 0);
+                $repeat = $this->cut_execute_for_diapazone_for_simple(1000, 55, 10, 0);
 
             } while ($repeat == 1);
             if ($repeat == 0){
                 $safety_counter++;
                 $execute_stop_marker = true;
-                echo "[!] TEST 1";
+                echo "[!] TEST".$safety_counter;
             }
             if ($safety_counter == 10000){
                 $stop_marker = true;
@@ -920,7 +928,7 @@ class Planned_order
         $this->show_diapazon_for_simple("ОСТАВШИЕСЯ В ДИАПАЗОНЕ РУЛОНы");
         $this->show_cut_array_simple();
         $this->show_completed_rolls_for_simple();
-        //$this->clear_the_diapazon();
+        $this->clear_the_diapazon();
     }
 
 

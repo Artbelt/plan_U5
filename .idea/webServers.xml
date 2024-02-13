@@ -3,12 +3,14 @@
   <component name="WebServers">
     <option name="servers">
       <webServer id="a5a2428a-ea5c-43ff-af32-832634b9dec8" name="webhost" url="http://files.000webhost.com">
-        <fileTransfer host="files.000webhost.com" port="21" rootFolder="/public_html">
+        <fileTransfer rootFolder="/public_html" host="files.000webhost.com" port="21">
           <advancedOptions>
             <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
           </advancedOptions>
-          <option name="port" value="21" />
         </fileTransfer>
+      </webServer>
+      <webServer id="afe8d07c-502e-42a1-b2d2-82603f2c76c4" name="XAMP" url="http://localhost">
+        <fileTransfer mountedRoot="C:\xampp\htdocs" accessType="MOUNT" port="0" />
       </webServer>
     </option>
   </component>
