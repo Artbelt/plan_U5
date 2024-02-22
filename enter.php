@@ -14,8 +14,8 @@ echo "<link rel=\"stylesheet\" href=\"sheets.css\">";
 /** ---------------------------------------------------------------------------------------------------------------- */
 
 /**  Проверка ввода имени и пароля */
-if ((isset($_POST['user_name']))&&(!$_SESSION)) {
-    if (!$_POST['user_name']) {
+if ((isset($_GET['user_name']))&&(!$_SESSION)) {
+    if (!$_GET['user_name']) {
         echo '<div class="alert">'
             . 'вы не ввели имя'
             . '</div><p><div class="center">'
@@ -24,8 +24,8 @@ if ((isset($_POST['user_name']))&&(!$_SESSION)) {
     }
 }
 
-if ((isset($_POST['user_pass']))&&(!$_SESSION)) {
-    if (!$_POST['user_pass']) {
+if ((isset($_GET['user_pass']))&&(!$_SESSION)) {
+    if (!$_GET['user_pass']) {
         echo '<div class="alert">'
             . 'вы не ввели пароль'
             . '</div><p><div class="center">'
@@ -189,6 +189,7 @@ echo "</td><td>"
     ."<tr><td style='color: cornflowerblue'>изготовленая продукция за последние 10 дней: <p>";
 
 show_weekly_production();
+
 
 echo "</td></tr><tr><td></td></tr>"
     ."</table>"

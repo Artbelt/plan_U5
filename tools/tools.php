@@ -34,6 +34,8 @@ function show_weekly_production(){
     }
 }
 
+
+
 /** Создание <SELECT> списка с перечнем заявок */
 function load_orders($list){
 

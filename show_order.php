@@ -117,3 +117,9 @@ echo "<br><form action='order_planning_U2.php' method='post'>"
     ."<input type='submit' value='Режим простого планирования'>"
     ."</form>";
 
+
+/** Кнопка сокрытия заявки*/
+echo "<br><form action='hiding_order.php' method='post'>"
+    ."<input type='hidden' name='order_number' value='$order_number'>"
+    ."<input type='submit' value='Отправить заявку в архив'>"
+    ."</form>";

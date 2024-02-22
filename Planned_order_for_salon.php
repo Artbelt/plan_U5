@@ -2,7 +2,7 @@
 require_once ('tools/tools.php');
 require_once ('settings.php');
 
-set_time_limit(600);
+set_time_limit(300);
 
 class Planned_order
 /** Класс реализует планирование заявки и хранение всех данных при поанировании и сохранение вего в БД
@@ -701,7 +701,7 @@ class Planned_order
 
                 /** Если ширина бухта попадает в диапазон, то останавливаем раскрой диапазона и переносим позиции
                  * собранной бухты  в completed_rolls */
-                $this->show_diapazon_for_carbon("ДО РАСКРОЯ");
+//                $this->show_diapazon_for_carbon("ДО РАСКРОЯ");
                 for ($z = 0; $z <$amount_of_elements; $z++){ //
                     if (str_split($counter_to_bin)[$z] == '0'){// если позиция счетчика = 0 значит эта позиция остается в диапазоне, переносим ее во временный массив
                         array_push($temp_diapazone, $this->diapazon[$z]);
@@ -720,7 +720,7 @@ class Planned_order
                 /** очищаем временный диапазон */
                 $temp_diapazone = array();
                 /** возвращаем единицу, как признак того что бухта собралась */
-                $this->show_diapazon_for_carbon("ПОСЛЕ РАСКРОЯ");
+//                $this->show_diapazon_for_carbon("ПОСЛЕ РАСКРОЯ");
                 return 1;
             }
             /** Продолжаем цикл, если бухта в данной итерации не собралась */
@@ -766,7 +766,7 @@ class Planned_order
 
                 /** Если ширина бухта попадает в диапазон, то останавливаем раскрой диапазона и переносим позиции
                  * собранной бухты  в completed_rolls */
-                $this->show_diapazon_for_simple("ДО РАСКРОЯ");
+//                $this->show_diapazon_for_simple("ДО РАСКРОЯ");
                 for ($z = 0; $z <$amount_of_elements; $z++){ //
                     if (str_split($counter_to_bin)[$z] == '0'){// если позиция счетчика = 0 значит эта позиция остается в диапазоне, переносим ее во временный массив
                         array_push($temp_diapazone, $this->diapazon[$z]);
@@ -785,7 +785,7 @@ class Planned_order
                 /** очищаем временный диапазон */
                 $temp_diapazone = array();
                 /** возвращаем единицу, как признак того что бухта собралась */
-                $this->show_diapazon_for_simple("ПОСЛЕ РАСКРОЯ");
+//                $this->show_diapazon_for_simple("ПОСЛЕ РАСКРОЯ");
                 return 1;
             }
             /** Продолжаем цикл, если бухта в данной итерации не собралась */
@@ -831,7 +831,8 @@ class Planned_order
                 }
             }
             /** Запускаем принудительное расширение диапазона, если safety_counter начал рости */
-            if ($safety_counter == 2){
+            //if ($safety_counter == 2){
+            if ($safety_counter > 2){
                 $this->extension_of_diapazon_for_carbon() ;
                     echo "<p>SAFETY_COUNTER extension =0";
             }
@@ -893,16 +894,16 @@ class Planned_order
                 }
             }
             /** Запускаем принудительное расширение диапазона, если safety_counter начал рости */
-            //if ($safety_counter == 2){
+           // if ($safety_counter == 2){
             if ($safety_counter > 2){
 
-                echo "<br>safety_counter >2<br>";
+                //echo "<br>safety_counter >2<br>";
 
-                $this->show_diapazon_for_simple("РУЛОНЫ В ДИАПАЗОНЕ ДО РАСШИРЕНИЯ");
+//                $this->show_diapazon_for_simple("РУЛОНЫ В ДИАПАЗОНЕ ДО РАСШИРЕНИЯ");
 
                 $this->extension_of_diapazon_for_simple();
 
-                $this->show_diapazon_for_simple("РУЛОНЫ В ДИАПАЗОНЕ после РАСШИРЕНИЯ");
+//                $this->show_diapazon_for_simple("РУЛОНЫ В ДИАПАЗОНЕ после РАСШИРЕНИЯ");
 
             }
             /** Собираем бухты столько раз сколько будет собираться, как минимум один проход делается */
