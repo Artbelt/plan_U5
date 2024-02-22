@@ -214,7 +214,7 @@ if ($mysqli->connect_errno) {
 }
 
 /** Выполняем запрос SQL для загрузки заявок*/
-$sql = "SELECT DISTINCT order_number, workshop FROM orders;";
+$sql = "SELECT DISTINCT order_number, workshop, hide FROM orders;";
 //$sql = 'SELECT order_number FROM orders;';
 if (!$result = $mysqli->query($sql)){
     echo "Ошибка: Наш запрос не удался и вот почему: \n Запрос: " . $sql . "\n"
@@ -227,11 +227,9 @@ if ($result->num_rows === 0) { echo "В базе нет ни одной заяв
 /** Разбор массива значений  */
 echo '<form action="show_order.php" method="post">';
 while ($orders_data = $result->fetch_assoc()){
-    if ($workshop == $orders_data['workshop']){
-        //echo "<input type='submit' name='".$orders_data['order_number']."' value=".$orders_data['order_number']."><br>";
-        echo "<input type='submit' name='order_number' value=".$orders_data['order_number']." style=\"height: 20px; width: 220px\">"
-            //."<button type=\"button\" onclick='to_hide_order.php' value=".$orders_data['order_number'].">X</button><br>"
-        ;
+    if ( $orders_data['hide'] != 1){
+        echo "<input type='submit' name='order_number' value=".$orders_data['order_number']." style=\"height: 20px; width: 115px\">";
+
     }
 }
 
