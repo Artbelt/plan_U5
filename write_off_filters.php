@@ -13,6 +13,7 @@ require_once ('tools/tools.php');
  /**определяем дату производства и изменяем ее из формата "dd-mm-yy" в формат "yy-mm-dd"  */
  $production_date = reverse_date($_POST['production_date']);
 
+
  /** Обработка массива фильтров. Запись их в БД  */
  if(write_of_filters($production_date,$order_number,$filters_for_write_off)) {
     echo "<div style=\"background-color:springgreen; width: 400px\" >выпуск продукции был успешно проведен</div>
