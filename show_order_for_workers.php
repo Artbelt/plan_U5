@@ -12,13 +12,6 @@ $order_number = $_POST['order_number'];
 /** Показываем номер заявки */
 echo '<h3>Заявка:'.$order_number.'</h3><p>';
 
-/** Кнопка перехода в режим спецификации заявки*/
-echo "<br><form action='show_order_for_workers.php' method='post'>"
-    ."<input type='hidden' name='order_number' value='$order_number'>"
-    ."<input type='submit' value='Режим спецификации заявки'>"
-    ."</form>";
-
-
 /** Формируем шапку таблицы для вывода заявки */
 echo "<table style='border: 1px solid black; border-collapse: collapse; font-size: 14px;'>
         <tr>
@@ -42,9 +35,19 @@ echo "<table style='border: 1px solid black; border-collapse: collapse; font-siz
             </th>    
             <th style=' border: 1px solid black'> Примечание           
             </th>     
-            <th style=' border: 1px solid black'> Изготовлено, шт
+            <th style=' border: 1px solid black'> Ширина шторы
+            </th>              
+            <th style=' border: 1px solid black'> Высота шторы
             </th>  
-            <th style=' border: 1px solid black'> Остаток, шт
+            <th style=' border: 1px solid black'> Поролон
+            </th>                
+            <th style=' border: 1px solid black'> Вставка
+            </th>                                        
+            <th style=' border: 1px solid black'> Язычек
+            </th>                                       
+            <th style=' border: 1px solid black'> Форм-фактор
+            </th>               
+            <th style=' border: 1px solid black'> Коробка
             </th>                                                       
         </tr>";
 
@@ -71,6 +74,7 @@ while ($row = $result->fetch_assoc()){
     $filter_count_in_order = $filter_count_in_order + (int)$row['count'] ;
     $filter_count_produced = $filter_count_produced + (int)select_produced_filters_by_order($row['filter'],$order_number)[1];
     $count += 1;
+    $filter_data = get_salon_filter_data($row['filter']);
     echo "<tr style='hov'>"
         ."<td>".$count."</td>"
         //."<td><input type='submit' name='filter_name' value=".$row['filter']." style=\"height: 20px; width: 200px\">".$row['filter']."</td>"
@@ -83,16 +87,15 @@ while ($row = $result->fetch_assoc()){
         ."<td>".$row['packaging_rate']."</td>"
         ."<td>".$row['group_label']."</td>"
         ."<td>".$row['remark']."</td>"
-        ."<td>".(int)select_produced_filters_by_order($row['filter'],$order_number)[1]."</td>";
-    if (($difference < 75)AND($difference > 0)){
-       // echo "<td bgcolor='yellow'>".$difference."</td></tr>";
-        echo "<td>".$difference."</td></tr>";
-    } elseif ($difference < 0){
-       // echo "<td bgcolor='green'>".$difference."</td></tr>";
-        echo "<td>".$difference."</td></tr>";
-    }else{
-        echo "<td>".$difference."</td></tr>";
-    }
+        ."<td>".$filter_data['paper_package_width']."</td>"
+        ."<td>".$filter_data['paper_package_height']."</td>"
+        ."<td>".$filter_data['foam_rubber']."</td>"
+        ."<td>".$filter_data['insertion_count']."</td>"
+        ."<td>"."***"."</td>"
+        ."<td>"."***"."</td>"
+        ."<td>".$filter_data['box']."</td>";
+
+
 
 }
 
@@ -109,24 +112,16 @@ echo "<tr style='hov'>"
     ."<td></td>"
     ."<td></td>"
     ."<td></td>"
-    ."<td>".$filter_count_produced."</td>"
-    ."<td>".$summ_difference."</td>"
+    ."<td></td>"
+    ."<td></td>"
+    ."<td></td>"
+    ."<td></td>"
+    ."<td></td>"
+    ."<td></td>"
+    ."<td></td>"
+//    ."<td>".$filter_count_produced."</td>"
+//    ."<td>".$summ_difference."</td>"
     ."</tr>";
 
 echo "</table>";
 echo '</form>';
-//echo "Количество фильтров в заявке: ".$filter_count_in_order;
-//echo "Количество фильтров изготовлено: ".$filter_count_produced;
-
-/** Кнопка перехода в режим планирования для У2*/
-echo "<br><form action='order_planning_U2.php' method='post'>"
-    ."<input type='hidden' name='order_number' value='$order_number'>"
-    ."<input type='submit' value='Режим простого планирования'>"
-    ."</form>";
-
-
-/** Кнопка сокрытия заявки*/
-echo "<br><form action='hiding_order.php' method='post'>"
-    ."<input type='hidden' name='order_number' value='$order_number'>"
-    ."<input type='submit' value='Отправить заявку в архив'>"
-    ."</form>";

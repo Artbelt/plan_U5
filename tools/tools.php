@@ -530,6 +530,14 @@ function get_salon_filter_data($target_filter){
     $comment_data = $result->fetch_assoc();
     $result_array['comment'] = $comment_data['comment'];
 
+    /** Поролон */
+    $sql = "SELECT foam_rubber FROM salon_filter_structure WHERE filter = '".$target_filter."';";
+    /** Если запрос не удачный -> exit */
+    if (!$result = $mysqli->query($sql)){ echo "Ошибка: Наш запрос не удался и вот почему: \n Запрос: " . $sql . "\n"."Номер ошибки: " . $mysqli->errno . "\n Ошибка: " . $mysqli->error . "\n"; exit; }
+    /** Разбор массива значений  */
+    $foam_rubber_data = $result->fetch_assoc();
+    $result_array['foam_rubber'] = $foam_rubber_data['foam_rubber'];
+
     /** Закрываем соединение */
     $result->close();
     $mysqli->close();
