@@ -15,8 +15,7 @@ echo '<h3>Заявка:'.$order_number.'</h3><p>';
 /** Формируем шапку таблицы для вывода заявки */
 echo "<table style='border: 1px solid black; border-collapse: collapse; font-size: 14px;'>
         <tr>
-            <th style=' border: 1px solid black'> №п/п
-            </th>            
+         
             <th style=' border: 1px solid black'> Фильтр
             </th>
             <th style=' border: 1px solid black'> Количество, шт           
@@ -38,6 +37,8 @@ echo "<table style='border: 1px solid black; border-collapse: collapse; font-siz
             <th style=' border: 1px solid black'> Ширина шторы
             </th>              
             <th style=' border: 1px solid black'> Высота шторы
+            </th>              
+            <th style=' border: 1px solid black'> Высота ленты 
             </th>  
             <th style=' border: 1px solid black'> Поролон
             </th>                
@@ -76,8 +77,6 @@ while ($row = $result->fetch_assoc()){
     $count += 1;
     $filter_data = get_salon_filter_data($row['filter']);
     echo "<tr style='hov'>"
-        ."<td>".$count."</td>"
-        //."<td><input type='submit' name='filter_name' value=".$row['filter']." style=\"height: 20px; width: 200px\">".$row['filter']."</td>"
         ."<td>".$row['filter']."</td>"
         ."<td>".$row['count']."</td>"
         ."<td>".$row['marking']."</td>"
@@ -89,10 +88,11 @@ while ($row = $result->fetch_assoc()){
         ."<td>".$row['remark']."</td>"
         ."<td>".$filter_data['paper_package_width']."</td>"
         ."<td>".$filter_data['paper_package_height']."</td>"
+        ."<td>".$filter_data['side_type']."</td>"
         ."<td>".$filter_data['foam_rubber']."</td>"
         ."<td>".$filter_data['insertion_count']."</td>"
-        ."<td>"."***"."</td>"
-        ."<td>"."***"."</td>"
+        ."<td>".$filter_data['tail']."</td>"
+        ."<td>".$filter_data['form_factor']."</td>"
         ."<td>".$filter_data['box']."</td>";
 
 
