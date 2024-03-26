@@ -17,7 +17,7 @@ require_once('tools/tools.php');
 <?php  echo '<table border="1"><tr><td>'.$_POST['workshop'].'</td></tr></table>';
 if (isset($_POST['filter_name'])){
     $filter_name = $_POST['filter_name'];
-    echo 'TETST_FILTER_NAME:'.$_POST['analog_filter'];
+    //echo 'TEST_FILTER_NAME:'.$_POST['analog_filter'];
 } else {
     $filter_name = '';
 }
@@ -43,6 +43,10 @@ if (isset($_POST['analog_filter']) AND ($_POST['analog_filter'] != '')){
     $analog_data['box'] ='';
     $analog_data['g_box'] ='';
     $analog_data['comment'] ='';
+    $analog_data['foam_rubber']='';
+    $analog_data['form_factor']='';
+    $analog_data['tail']='';
+    $analog_data['side_type']='';
 }
 
 ?>
@@ -79,6 +83,20 @@ if (isset($_POST['analog_filter']) AND ($_POST['analog_filter'] != '')){
         <label>Поставщик: <select name="insertions_supplier"><option></option>
                                                     <option <?php if ($analog_data['insertion_count'] !='' ) {echo 'selected';} ?>> УУ</option>
                           </select><br></label>
+
+    <hr>
+    <label><b>Лента боковая</b></label><p>
+        <label>Высота ленты: <input type="text" size="2" name="side_type" value="<?php echo $analog_data['side_type']?>"></label>
+
+
+    <hr>
+      <input type="checkbox" name="foam_rubber" <?php echo $analog_data['foam_rubber_checkbox_state']?> >Поролон
+
+    <hr>
+    <input type="checkbox" name="tail" <?php echo $analog_data['tail_checkbox_state']?> >Язычек
+
+    <hr>
+    <input type="checkbox" name="form_factor" <?php echo $analog_data['form_factor_checkbox_state']?> >Трапеция
 
 
     <hr>

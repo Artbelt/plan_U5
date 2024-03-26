@@ -537,33 +537,39 @@ function get_salon_filter_data($target_filter){
     /** Разбор массива значений  */
     $foam_rubber_data = $result->fetch_assoc();
     $result_array['foam_rubber'] = $foam_rubber_data['foam_rubber'];
+    if ($result_array['foam_rubber'] == 'поролон'){
+        $result_array['foam_rubber_checkbox_state'] = 'checked';
+    } else  $result_array['foam_rubber_checkbox_state'] = '';
 
     /** Язычек */
     $sql = "SELECT tail FROM salon_filter_structure WHERE filter = '".$target_filter."';";
     /** Если запрос не удачный -> exit */
     if (!$result = $mysqli->query($sql)){ echo "Ошибка: Наш запрос не удался и вот почему: \n Запрос: " . $sql . "\n"."Номер ошибки: " . $mysqli->errno . "\n Ошибка: " . $mysqli->error . "\n"; exit; }
     /** Разбор массива значений  */
-    $foam_rubber_data = $result->fetch_assoc();
-    $result_array['tail'] = $foam_rubber_data['tail'];
+    $tail_data = $result->fetch_assoc();
+    $result_array['tail'] = $tail_data['tail'];
+    if ($result_array['tail']  == 'язычек'){
+        $result_array['tail_checkbox_state'] = 'checked';
+    } else  $result_array['tail_checkbox_state'] = '';
 
     /** Форма */
     $sql = "SELECT form_factor FROM salon_filter_structure WHERE filter = '".$target_filter."';";
     /** Если запрос не удачный -> exit */
     if (!$result = $mysqli->query($sql)){ echo "Ошибка: Наш запрос не удался и вот почему: \n Запрос: " . $sql . "\n"."Номер ошибки: " . $mysqli->errno . "\n Ошибка: " . $mysqli->error . "\n"; exit; }
     /** Разбор массива значений  */
-    $foam_rubber_data = $result->fetch_assoc();
-    $result_array['form_factor'] = $foam_rubber_data['form_factor'];
+    $form_factor_data = $result->fetch_assoc();
+    $result_array['form_factor'] = $form_factor_data['form_factor'];
+    if ($result_array['form_factor'] == 'трапеция'){
+        $result_array['form_factor_checkbox_state'] = 'checked';
+    } else  $result_array['form_factor_checkbox_state'] = '';
 
-
-    /** Форма */
+    /** Высота ленты*/
     $sql = "SELECT side_type FROM salon_filter_structure WHERE filter = '".$target_filter."';";
     /** Если запрос не удачный -> exit */
     if (!$result = $mysqli->query($sql)){ echo "Ошибка: Наш запрос не удался и вот почему: \n Запрос: " . $sql . "\n"."Номер ошибки: " . $mysqli->errno . "\n Ошибка: " . $mysqli->error . "\n"; exit; }
     /** Разбор массива значений  */
-    $foam_rubber_data = $result->fetch_assoc();
-    $result_array['side_type'] = $foam_rubber_data['side_type'];
-
-
+    $side_type_data = $result->fetch_assoc();
+    $result_array['side_type'] = $side_type_data['side_type'];
 
 
     /** Закрываем соединение */

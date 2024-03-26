@@ -76,6 +76,8 @@ while ($row = $result->fetch_assoc()){
     $filter_count_produced = $filter_count_produced + (int)select_produced_filters_by_order($row['filter'],$order_number)[1];
     $count += 1;
     $filter_data = get_salon_filter_data($row['filter']);
+
+
     echo "<tr style='hov'>"
         ."<td>".$row['filter']."</td>"
         ."<td>".$row['count']."</td>"
@@ -90,6 +92,7 @@ while ($row = $result->fetch_assoc()){
         ."<td>".$filter_data['paper_package_height']."</td>"
         ."<td>".$filter_data['side_type']."</td>"
         ."<td>".$filter_data['foam_rubber']."</td>"
+
         ."<td>".$filter_data['insertion_count']."</td>"
         ."<td>".$filter_data['tail']."</td>"
         ."<td>".$filter_data['form_factor']."</td>"

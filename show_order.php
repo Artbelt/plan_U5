@@ -15,7 +15,7 @@ echo '<h3>Заявка:'.$order_number.'</h3><p>';
 /** Кнопка перехода в режим спецификации заявки*/
 echo "<br><form action='show_order_for_workers.php' method='post'>"
     ."<input type='hidden' name='order_number' value='$order_number'>"
-    ."<input type='submit' value='Режим спецификации заявки'>"
+    ."<input type='submit' value='Подготовить спецификацию заявки'>"
     ."</form>";
 
 
