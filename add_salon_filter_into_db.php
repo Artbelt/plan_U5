@@ -90,13 +90,13 @@ if (isset($_POST['analog_filter']) AND ($_POST['analog_filter'] != '')){
 
 
     <hr>
-      <input type="checkbox" name="foam_rubber" <?php echo $analog_data['foam_rubber_checkbox_state']?> >Поролон
+      <input type="checkbox" name="foam_rubber" <?php if(isset($analog_data['foam_rubber_checkbox_state'])){echo $analog_data['foam_rubber_checkbox_state'];}?> >Поролон
 
     <hr>
-    <input type="checkbox" name="tail" <?php echo $analog_data['tail_checkbox_state']?> >Язычек
+    <input type="checkbox" name="tail" <?php if(isset($analog_data['tail_checkbox_state'])){echo $analog_data['tail_checkbox_state'];}?> >Язычек
 
     <hr>
-    <input type="checkbox" name="form_factor" <?php echo $analog_data['form_factor_checkbox_state']?> >Трапеция
+    <input type="checkbox" name="form_factor" <?php if (isset($analog_data['form_factor_checkbox_state'])){echo $analog_data['form_factor_checkbox_state'];}?> >Трапеция
 
 
     <hr>
