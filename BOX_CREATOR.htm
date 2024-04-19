@@ -1,0 +1,245 @@
+<head>
+<meta charset=UTF-8>
+    <style>
+        .c {
+            border: 1px solid #333; /* Рамка */
+            display: inline-block;
+            padding: 5px 15px; /* Поля */
+            text-decoration: none; /* Убираем подчёркивание */
+            color: #000; /* Цвет текста */
+        }
+        .c:hover {
+            box-shadow: 0 0 5px rgba(0,0,0,0.3); /* Тень */
+            background: linear-gradient(to bottom, #fcfff4, #e9e9ce); /* Градиент */
+            color: #a00;
+        }
+    </style>
+    <title></title>
+	
+</head>
+<script>
+    /*' WriteDXFPolygon creates a minimal DXF file that only contains
+    ' the ENTITIES section. This subroutine requires five parameters,
+    ' the DXF file name, the number of sides for the polygon, the X
+    ' and Y coordinates for the bottom end of the right-most side
+    ' (it starts in a vertical direction), and the length for each
+    ' side. Note that because this only requests 2D points, it does
+    ' not include the Z coordinates (codes 30 and 31). The lines are
+    ' placed on the layer "Polygon."
+    '
+    */
+
+    let area;
+
+    function start_of_file() {
+        //let area = document.getElementById("out");
+        area = "0\n";
+        area = area + "SECTION\n";
+        area = area + "2\n";
+        area = area + "ENTITIES\n";
+    }
+    function end_of_file() {
+        //let area = document.getElementById("out");
+        area = area + "0\n";
+        area = area + "ENDSEC\n";
+        area = area + "0\n";
+        area = area + "EOF\n";
+    }
+    function line(sx,sy,ex,ey,label) {
+        //let area = document.getElementById("out");
+        area = area +"0"+"\n";
+        area = area +"LINE"+"\n";
+        area = area +"8"+"\n";
+        area = area +"Polygon"+"\n";
+        area = area +"10"+"\n";
+        area = area +sx+"\n";
+        area = area +"20"+"\n";
+        area = area +sy+"\n";
+        area = area +"11"+"\n";
+        area = area +ex+"\n";
+        area = area +"21"+"\n";
+        area = area +ey+"\n";
+
+        if (Number.isNaN(ey)){alert("NaN"+label)}
+
+    }
+
+    function main() {
+        // filter sizes
+        //let length = document.getElementById("length").innerText;
+        //let width = document.getElementById("width").innerText;
+        //let height = document.getElementById("height").innerText;
+
+        let D =  Number(document.getElementById("length").value);//длина ящика
+        let C =  Number(document.getElementById("width").value); //ширина ящика
+        let A = Number(document.getElementById("height").value);
+        //let overlap = Number(document.getElementById("overlap").value);
+        //let sheet_width = Number(document.getElementById("sheet_width").value);
+        //let sheet_height = Number(document.getElementById("sheet_height").value);
+        // box specifications
+        let tail = 40;
+
+        // sheet size
+
+        let gap =6;
+
+        // calculations
+        //count of filters in line
+        //let COFIL = Math.trunc(((sheet_width - tail - 2 * length) / height) / 2);
+			//let D = (height + 1) * COFIL;
+		//let D = height * COFIL + 4;
+			//let C = length - 3;
+		//let C = length + 1;
+		//проверка длина выкройки
+		//let test_length = tail + 2*C + 2*D + 3*6; // считаем длину выкройки
+		//if (test_length > sheet_width){ //сравниваем ее длиной листа исходного
+		//	COFIL = COFIL - 1;          // если превышает, то уменьшаем на единицу количество фильтров в ряду
+		//	D = height * COFIL + 4;
+		//}
+		//-конец проверки длины выкройки
+        let B;
+        //if(D > C){
+        //    B = (length / 2) + 1 + 3;
+        //}else {
+        //    B = (D + 11) / 2;
+        //}
+        //count of filters in row
+        //let COFIR = Math.trunc((sheet_height - B * 2 - 8) / width);
+
+        B = C/2 + 4;
+
+        //let  A = width * COFIR + 7 - overlap * (COFIR - 1);
+        start_of_file();
+        //1
+        line(0,0,tail,0,1);
+        //2
+        line(tail,0,tail,B,2);
+        //3
+        line(tail,B,tail+C,B,3);
+        //4
+        line(tail+C,B,tail+C,0,4);
+        //5
+        line(tail+C,0,tail+C+gap,0,5);
+        //6
+        line(tail+C+gap,0,tail+C+gap,B,6);
+        //7
+        line(tail+C+gap,B,tail+C+gap+D,B,7);
+        //8
+        line(tail+C+gap+D,B,tail+C+gap+D,0,8);
+        //9
+        line(tail+C+gap+D,0,tail+C+gap+D+gap,0,9);
+        //10
+        line(tail+C+gap+D+gap,0,tail+C+gap+D+gap,B,10);
+        //11
+        line(tail+C+gap+D+gap,B,tail+C+gap+D+gap+C,B,11);
+        //12
+        line(tail+C+gap+D+gap+C,B,tail+C+gap+D+gap+C,0,12);
+        //13
+        line(tail+C+gap+D+gap+C,0,tail+C+gap+D+gap+C+gap,0,13);
+        //14
+        line(tail+C+gap+D+gap+C+gap,0,tail+C+gap+D+gap+C+gap,B,14);
+        //15
+        line(tail+C+gap+D+gap+C+gap,B,tail+C+gap+D+gap+C+gap+D,B,15);
+
+        let L1 = -1*(A+B);
+        let L2 = -1 * A;
+        //16
+        line(tail+C+gap+D+gap+C+gap+D,B,tail+C+gap+D+gap+C+gap+D,L1,16);
+        //32
+        line(0,0,0,L2,32);
+        //31
+        line(0,L2,tail,L2,31);
+        //30
+        line(tail,L2,tail,L1,30);
+        //29
+        line(tail,L1,tail+C,L1,29);
+        //28
+        line(tail+C,L1,tail+C,L2,28);
+        //27
+        line(tail+C,L2,tail+C+gap,L2,27);
+        //26
+        line(tail+C+gap,L2,tail+C+gap,L1,26);
+        //25
+        line(tail+C+gap,L1,tail+C+gap+D,L1,25);
+        //24
+        line(tail+C+gap+D,L1,tail+C+gap+D,L2,24);
+        //23
+        line(tail+C+gap+D,L2,tail+C+gap+D+gap,L2,23);
+        //22
+        line(tail+C+gap+D+gap,L2,tail+C+gap+D+gap,L1,22);
+        //21
+        line(tail+C+gap+D+gap,L1,tail+C+gap+D+gap+C,L1,21);
+        //20
+        line(tail+C+gap+D+gap+C,L1,tail+C+gap+D+gap+C,L2,20);
+        //19
+        line(tail+C+gap+D+gap+C,L2,tail+C+gap+D+gap+C+gap,L2,19);
+        //18
+        line(tail+C+gap+D+gap+C+gap,L2,tail+C+gap+D+gap+C+gap,L1,18);
+        //17
+        line(tail+C+gap+D+gap+C+gap,L1,tail+C+gap+D+gap+C+gap+D,L1,17);
+
+        //50
+        line(tail + 5,1.5,tail+C-5,1.5);
+        //51
+        line(tail+C+gap+5,3,tail+C+gap+D-5,3);
+        //52
+        line(tail+C+gap+D+gap+5,1.5,tail+C+gap+D+gap+C-5,1.5);
+        //53
+        line(tail+C+gap+D+gap+C+gap+5,3,tail+C+gap+D+gap+C+gap+D-5,3);
+        //60
+        line(tail + 5,L2-1.5,tail+C-5,L2-1.5);
+        //61
+        line(tail+C+gap+5,L2-3,tail+C+gap+D-5,L2-3);
+        //62
+        line(tail+C+gap+D+gap+5,L2-1.5,tail+C+gap+D+gap+C-5,L2-1.5);
+        //63
+        line(tail+C+gap+D+gap+C+gap+5,L2-3,tail+C+gap+D+gap+C+gap+D-5,L2-3);
+        end_of_file();
+
+        //let box_count = document.getElementById("box_count");
+        //box_count.innerText = COFIL;
+        //let row_count = document.getElementById("row_count");
+        //row_count.innerText = COFIR;
+        //let box_summ = document.getElementById("box_summ");
+        //box_summ.innerText = COFIL * COFIR;
+
+    }
+
+    function check_input() {
+       if(document.getElementById("name").innerText == ''){
+           alert("не введено название");
+           return 0;
+       }
+    }
+
+    //сохранение файла
+    function save() {
+        //блок проверки заполнения
+        if(document.getElementById("name").value == ''){ alert("не указано название");return;}
+        if(document.getElementById("length").value == ''){ alert("не указана длина");return;}
+        if(document.getElementById("width").value == ''){ alert("не указана ширина");return;}
+        if(document.getElementById("height").value == ''){ alert("не указана высота");return;}
+
+        main();
+       let art = document.getElementsByTagName('a')[0];
+            //var csv = "hello text";
+        const csv = area;
+        // var csvData = 'data:application/csv;charset=utf-8,' + encodeURIComponent(csv);
+            const csvData = 'data:application/dxf;charset=utf-8,' + encodeURIComponent(csv);
+            art.href = csvData;
+            art.target = '_blank';
+            art.download = document.getElementById("name").value + '.dxf';
+    }
+
+</script>
+<body>
+
+<pre>
+Номер ящика  <label for="name"></label><input type="text" id="name" placeholder="AF ХХХХ"/><br>
+Длина ящика  <label for="length"></label><input type="text" id="length" placeholder="ХХХ"/><br>
+Ширина ящика <label for="width"></label><input type="text" id="width" placeholder="ХХХ"/><br>
+Высота ящика <label for="height"></label><input type="text" id="height" placeholder="ХХХ"/><br>
+</pre>
+
+<a class="c" onclick="save()">Создать схему ящика</a>
+</body>
