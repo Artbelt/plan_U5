@@ -155,6 +155,7 @@ echo "<tr align='center'><td>"
           ."<form action='product_output_view.php' method='post'><input type='submit' value='Обзор выпуска продукции'  style=\"height: 20px; width: 220px\"></form>"
     ."Дополнения:<p>"
           ."<form action='BOX_CREATOR.htm' method='post'><input type='submit' value='Расчет коробок'  style=\"height: 20px; width: 220px\"></form>"
+          ."<form action='BOX_CREATOR_2.htm' method='post'><input type='submit' value='Максимальное количество'  style=\"height: 20px; width: 220px\"></form>"
 
     ."</td></tr>"
     ."<tr bgcolor='#6495ed'><td>"
