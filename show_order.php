@@ -12,6 +12,45 @@ $order_number = $_POST['order_number'];
 /** Показываем номер заявки */
 echo '<h3>Заявка:'.$order_number.'</h3><p>';
 
+?>
+<script>
+    function show_zero(){
+        // Отримуємо таблицю
+        var table = document.getElementById('order_table');
+
+// Створюємо нову таблицю для позицій з нульовим значенням "Изготовлено шт"
+        var newTable = document.createElement('table');
+        var newRow, newCell;
+        var header = table.rows[0]; // Рядок заголовка оригінальної таблиці
+
+// Проходимо по кожному рядку таблиці
+        for (var i = 1; i < table.rows.length; i++) {
+            var currentRow = table.rows[i];
+            var manufactured = parseInt(currentRow.cells[10].innerText); // Отримуємо значення "Изготовлено шт"
+
+            // Якщо значення "Изготовлено шт" дорівнює 0, додаємо рядок у нову таблицю
+            if (manufactured === 0) {
+                newRow = newTable.insertRow();
+                // Проходимо по кожному стовпцю у рядку оригінальної таблиці та додаємо відповідні дані в новий рядок
+                for (var j = 0; j < currentRow.cells.length; j++) {
+                    newCell = newRow.insertCell();
+                    newCell.innerHTML = currentRow.cells[j].innerHTML;
+                }
+            }
+        }
+
+// Створюємо нове вікно для відображення нової таблиці
+        var newWindow = window.open('', 'New Window', 'width=1400,height=600');
+
+        newWindow.document.body.append('Позиции, производство которых не начато')
+        newWindow.document.body.appendChild(newTable);
+        newWindow.document.body.clearAll();
+    }
+</script>
+
+    <button onclick="show_zero()"> Позиции, выпуск которых = 0</button>
+<?php
+
 /** Кнопка перехода в режим спецификации заявки*/
 echo "<br><form action='show_order_for_workers.php' method='post'>"
     ."<input type='hidden' name='order_number' value='$order_number'>"
@@ -20,7 +59,7 @@ echo "<br><form action='show_order_for_workers.php' method='post'>"
 
 
 /** Формируем шапку таблицы для вывода заявки */
-echo "<table style='border: 1px solid black; border-collapse: collapse; font-size: 14px;'>
+echo "<table id='order_table' style='border: 1px solid black; border-collapse: collapse; font-size: 14px;'>
         <tr>
             <th style=' border: 1px solid black'> №п/п
             </th>            
