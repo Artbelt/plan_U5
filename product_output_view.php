@@ -1,3 +1,60 @@
+<script>
+    function show_raiting() {
+        // Отримуємо таблицю
+        var table = document.getElementById('produced_filters_table');
+
+// Створюємо об'єкт для збереження суми кількостей за кожним фільтром
+        var sums = {};
+
+// Проходимо по кожному рядку таблиці (починаючи з другого рядка, оскільки перший - заголовок)
+        for (var i = 1; i < table.rows.length; i++) {
+            var row = table.rows[i];
+            var filter = row.cells[1].innerText; // Отримуємо назву фільтру з другого стовпця
+            var quantity = parseInt(row.cells[2].innerText); // Отримуємо кількість з третього стовпця
+
+            // Додаємо кількість до суми для відповідного фільтру
+            if (sums[filter]) {
+                sums[filter] += quantity;
+            } else {
+                sums[filter] = quantity;
+            }
+        }
+
+// Створюємо масив об'єктів для подальшого сортування
+        var sumsArray = [];
+        for (var filter in sums) {
+            sumsArray.push({ filter: filter, quantity: sums[filter] });
+        }
+
+// Сортуємо масив за кількістю у спадаючому порядку
+        sumsArray.sort(function(a, b) {
+            return b.quantity - a.quantity;
+        });
+
+// Створюємо нову таблицю
+        var newTable = document.createElement('table');
+        var headerRow = newTable.insertRow();
+        var filterHeader = headerRow.insertCell();
+        var quantityHeader = headerRow.insertCell();
+        filterHeader.innerText = 'Фильтр';
+        quantityHeader.innerText = 'Количество';
+
+// Додаємо відсортовані дані до нової таблиці
+        sumsArray.forEach(function(item) {
+            var newRow = newTable.insertRow();
+            var filterCell = newRow.insertCell();
+            var quantityCell = newRow.insertCell();
+            filterCell.innerText = item.filter;
+            quantityCell.innerText = item.quantity;
+        });
+
+// Відкриваємо нове вікно для відображення нової таблиці
+        var newWindow = window.open('', 'Нове вікно', 'width=600,height=400');
+        newWindow.document.body.appendChild(newTable);
+        newWindow.document.body.clearAll();
+    }
+</script>
+
 <?php require_once('tools/tools.php')?>
 
 

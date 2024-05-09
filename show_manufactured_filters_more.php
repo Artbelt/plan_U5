@@ -1,3 +1,6 @@
+
+<button onclick="show_raiting()">Показать рейтинг производства</button>
+
 <?php
 
 require_once('tools/tools.php');
@@ -17,7 +20,7 @@ $production_date_end   = $_POST['production_date_end'];
     $result = mysql_execute($sql);
 
     //echo 'выбранная дата: '.$production_date.'<p>';
-    echo "<table style='border: 1px solid black; border-collapse: collapse; font-size: 14px;'><tr><td>Дата</td><td>Фильтр</td><td>Количество</td><td>Заявка</td></tr>";
+    echo "<table id='produced_filters_table' style='border: 1px solid black; border-collapse: collapse; font-size: 14px;'><tr><td>Дата</td><td>Фильтр</td><td>Количество</td><td>Заявка</td></tr>";
     /** @var $x $variant counter */
     $x=0;
     foreach ($result as $variant){
