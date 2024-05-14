@@ -67,3 +67,7 @@ $result = mysql_execute($sql);
 
 
 echo "Фильтр {$filter_name} успешно добавлен в БД";
+
+?>
+
+<button onclick="window.close();">Закрыть окно</button>

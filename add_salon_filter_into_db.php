@@ -107,7 +107,7 @@ if (isset($_POST['analog_filter']) AND ($_POST['analog_filter'] != '')){
         <label>Ящик №: <select name="g_box"><?php select_g_boxes($analog_data['g_box']);?></select></label><br>
     <hr>
     <label><b>Примечание</b>
-        <input type="text" size="100" name="remark" value="<?php echo $analog_data['comment'] ?>">
+        <input type="text" size="100" name="remark" value="<?php echo $analog_data['comment'] ; if( isset($analog_filter)){echo  'ANALOG_FILTER='.$analog_filter;};?>">
     </label><p>
     <hr>
     <input type="submit" value="Сохранить фильтр">
