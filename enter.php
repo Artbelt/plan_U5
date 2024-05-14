@@ -126,7 +126,7 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))){
     $_SESSION['workshop'] = $workshop;
 }
 
-echo '<title>'.$workshop.'</title>';
+echo '<title>U5</title>';
 
 /** ---------------------------------------------------------------------------------------------------------------- */
 /**                                                 конец авторизации                                                */
