@@ -3,6 +3,7 @@ require_once ('tools/tools.php');
 require_once ('settings.php');
 
 set_time_limit(300);
+ini_set('memory_limit', '600M');
 
 class Planned_order
 /** Класс реализует планирование заявки и хранение всех данных при поанировании и сохранение вего в БД
@@ -701,7 +702,7 @@ class Planned_order
 
                 /** Если ширина бухта попадает в диапазон, то останавливаем раскрой диапазона и переносим позиции
                  * собранной бухты  в completed_rolls */
-//                $this->show_diapazon_for_carbon("ДО РАСКРОЯ");
+ $this->show_diapazon_for_carbon("ДО РАСКРОЯ");
                 for ($z = 0; $z <$amount_of_elements; $z++){ //
                     if (str_split($counter_to_bin)[$z] == '0'){// если позиция счетчика = 0 значит эта позиция остается в диапазоне, переносим ее во временный массив
                         array_push($temp_diapazone, $this->diapazon[$z]);

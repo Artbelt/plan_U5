@@ -2,7 +2,7 @@
 
 require_once('tools/tools.php');
 require_once('settings.php');
-require_once('Planned_order_for_salon.php');
+require_once('Planned_order_for_salon_2times.php');
 
 global $main_roll_length;
 global $max_gap;
@@ -48,11 +48,12 @@ $initial_order->show_cut_array_carbon();
 
 
 /** Тестовый раскрой */
-$initial_order->test_cut_execute_for_carbon();
+//$initial_order->test_cut_execute_for_carbon();
 $initial_order->test_cut_execute_for_simple();
 
 /** отображаем сформированные рулоны */
-//$initial_order->show_completed_rolls();
+$initial_order->show_completed_rolls_for_simple();
+//$initial_order->show_completed_rolls_for_carbon();
 
 /** сортируем позиции не вошедшие в раскрой по высоте валков */
 //$initial_order->sort_not_completed_rolls_array();

@@ -2,7 +2,7 @@
 require_once ('tools/tools.php');
 require_once ('settings.php');
 
-set_time_limit(5);
+set_time_limit(60);
 
 class Planned_order
 /** Класс реализует планирование заявки и хранение всех данных при поанировании и сохранение вего в БД
@@ -40,6 +40,8 @@ class Planned_order
     private $diapazon = array();
 
     /**  $max_width_of_roll -  */
+
+    public $count_of_completed_rolls_of_simple = 0;
 
 
 
@@ -709,9 +711,11 @@ class Planned_order
     /** Функция раскроя для диапазона */
     public function cut_execute_for_diapazone_for_simple ($width_of_main_roll, $max_gap, $min_gap, $print){
         /** на входе получаем массив с N элементов */
-
+echo 'CUT_EXECUTE_FOR_SIMPLE<br>';
         /** @var  $completed_roll - массив для позиций собранной бухты */
         $completed_roll = array();
+
+
 
         /** @var  $temp_diapazone - временный массив для переноса обновленных значений диапазона */
         $temp_diapazone = array();
@@ -728,17 +732,23 @@ class Planned_order
         /** считаем возможные варианты сумм элементов массива, представив счетчик в двоичном наборе битов */
         for ($x=1; $x <=$amount_of_variants; $x++){ // 0 не считаем так как там все равно 0
             $counter_to_bin=str_pad( decbin($x), $amount_of_elements, '0', STR_PAD_LEFT);
+            echo $counter_to_bin."<br>";
             $summ = 0;
             /** цикл подсчета суммы ширины полос для текущей комбинации */
             for ($z = 0; $z <$amount_of_elements; $z++){
+
                 $summ = $summ + $this->diapazon[$z][2]*str_split($counter_to_bin)[$z];
+
             }
 
             /** проверяем сумму, входит ли она в диапазон, в котором бухта считается готовой*/
             if (($summ >= $min_width_of_roll)&($summ <= $max_width_of_roll)){
 
+                $this->count_of_completed_rolls_of_simple++;
+
                 echo "<table  style='border: 1px solid black; border-collapse: collapse; font-size: 14px;'>";
-                echo "<tr><td style='background-color: #1aff00; text-align: center; color: #0003c4' width='350'> БУХТА СОБРАНА </td></tr>";
+                echo "<tr><td style='background-color: #1aff00; text-align: center; color: #0003c4' width='350'> БУХТА СОБРАНА #".$this->count_of_completed_rolls_of_simple."</td></tr>";
+
 
                 /** Если ширина бухта попадает в диапазон, то останавливаем раскрой диапазона и переносим позиции
                  * собранной бухты  в completed_rolls */
@@ -831,7 +841,7 @@ class Planned_order
            }
         }
         $this->show_diapazon_for_carbon("ОСТАВШИЕСЯ В ДИАПАЗОНЕ РУЛОНы");
-        //  $this->show_cut_array_carbon();
+          $this->show_cut_array_carbon();
         $this->show_completed_rolls_for_carbon();
         $this->completed_rolls = array();
     }
@@ -873,7 +883,7 @@ class Planned_order
             //echo "<p>SAFETY_COUNTER = ".$safety_counter;
             /** Запускаем принудительное расширение диапазона, если safety_counter начал рости */
             if ($safety_counter == 2){
-                $this->extension_of_diapazon_for_carbon() ;
+                $this->extension_of_diapazon_for_simple() ;
                 echo "<p>SAFETY_COUNTER extension =0";
             }
             /** Собираем бухты столько раз сколько будет собираться, как имнимум один проход делается */
@@ -895,9 +905,12 @@ class Planned_order
             }
         }
         $this->show_diapazon_for_simple("ОСТАВШИЕСЯ В ДИАПАЗОНЕ РУЛОНы");
-        //  $this->show_cut_array_carbon();
+         $this->show_cut_array_simple();
         $this->show_completed_rolls_for_simple();
+        $this->completed_rolls = array();
     }
+
+
 
 
 

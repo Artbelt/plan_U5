@@ -169,3 +169,30 @@ echo "<br><form action='hiding_order.php' method='post'>"
     ."<input type='hidden' name='order_number' value='$order_number'>"
     ."<input type='submit' value='Отправить заявку в архив'>"
     ."</form>";
+?>
+<script>
+    // Отримуємо таблицю
+    var table = document.getElementById('order_table');
+
+    // Отримуємо номер стовпця, в якому потрібно шукати дублікати (нумерація стовпців починається з 0)
+    var columnIndex = 1; // Замініть 1 на номер вашого стовпця
+
+    // Об'єкт для зберігання зустрічених значень та їхніх позицій
+    var seen = {};
+
+    // Проходимо по кожному рядку таблиці
+    for (var i = 1; i < table.rows.length; i++) {
+        var cell = table.rows[i].cells[columnIndex]; // Отримуємо комірку поточного рядка в зазначеному стовпці
+        var value = cell.textContent || cell.innerText; // Отримуємо текст з комірки
+
+        // Перевіряємо, чи зустрічалося вже це значення
+        if (seen[value]) {
+            // Якщо так, підсвічуємо поточну комірку та першу знайдену комірку з цим значенням
+            seen[value].style.backgroundColor = 'red';
+            cell.style.backgroundColor = 'red';
+        } else {
+            // Якщо це перше входження значення, відзначаємо його у нашому об'єкті seen
+            seen[value] = cell;
+        }
+    }
+</script>

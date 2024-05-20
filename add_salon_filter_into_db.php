@@ -64,8 +64,8 @@ if (isset($_POST['analog_filter']) AND ($_POST['analog_filter'] != '')){
     <hr>
     <label><b>Гофропакет:</b></label><p>
 
-        <label>Ширина шторы: <input type="text" size="5" name="p_p_width" value="<?php echo $analog_data['paper_package_width'] ?>"></label>
-        <label>Высота шторы:<input type="text" size="5" name="p_p_height" value="<?php echo $analog_data['paper_package_height'] ?>"> </label>
+        <label>Ширина шторы: <input type="text" id="width_input" size="5" name="p_p_width" value="<?php echo $analog_data['paper_package_width'] ?>"></label>
+        <label>Высота шторы:<input type="text" id="height_input" size="5" name="p_p_height" value="<?php echo $analog_data['paper_package_height'] ?>"> </label>
         <label>Кол-во ребер: <input type="text" size="5" name="p_p_pleats_count" value="<?php echo $analog_data['paper_package_pleats_count'] ?>"></label>
         <label>Поставщик: <select name="p_p_supplier"  ><option></option>
                                                         <option  <?php if ($analog_data['paper_package_supplier'] == 'У5'){echo 'selected';} ?> >У5</option>
@@ -86,7 +86,7 @@ if (isset($_POST['analog_filter']) AND ($_POST['analog_filter'] != '')){
 
     <hr>
     <label><b>Лента боковая</b></label><p>
-        <label>Высота ленты: <input type="text" size="2" name="side_type" value="<?php echo $analog_data['side_type']?>"></label>
+        <label>Высота ленты: <input type="text" id="line_width_input" size="2" name="side_type" value="<?php echo $analog_data['side_type']?>"></label>
 
 
     <hr>
@@ -113,6 +113,29 @@ if (isset($_POST['analog_filter']) AND ($_POST['analog_filter'] != '')){
     <input type="submit" value="Сохранить фильтр">
 
 </form>
+<script>
+
+    function replacement ( field){
+        // Отримуємо поле вводу
+        var inputField = document.getElementById(field);
+
+        // Додаємо обробник події "input"
+        inputField.addEventListener('input', function() {
+            // Отримуємо текст з поля вводу
+            var text = inputField.value;
+
+            // Замінюємо всі запяті на точки у тексті
+            var newText = text.replace(/,/g, '.');
+
+            // Оновлюємо значення поля вводу
+            inputField.value = newText;
+        });
+    }
+    replacement("width_input");
+    replacement("height_input");
+    replacement("line_width_input");
+
+</script>
 
 </body>
 </html>
