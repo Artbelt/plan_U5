@@ -101,7 +101,7 @@ if (isset($_POST['analog_filter']) AND ($_POST['analog_filter'] != '')){
 
     <hr>
     <label><b>Индивидуальная упаковка</b></label><p>
-        <label>Коробка №:   <select name="box"><?php select_boxes($analog_data['box']);?></select></label><br>
+        <label>Коробка №:  <select name="box"><?php select_boxes($analog_data['box']);?></select></label><br>
     <hr>
     <label><b>Групповая упаковка</b></label><p>
         <label>Ящик №: <select name="g_box"><?php select_g_boxes($analog_data['g_box']);?></select></label><br>

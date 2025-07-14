@@ -46,7 +46,6 @@
         area = area + "EOF\n";
     }
     function line(sx,sy,ex,ey,label) {
-        //let area = document.getElementById("out");
         area = area +"0"+"\n";
         area = area +"LINE"+"\n";
         area = area +"8"+"\n";
@@ -63,6 +62,36 @@
         if (Number.isNaN(ey)){alert("NaN"+label)}
 
     }
+    function circle(sx,sy,r){
+        area = area +"0"+"\n";
+        area = area +"CIRCLE"+"\n";
+        area = area +"8"+"\n";
+        area = area +"Polygon"+"\n";
+        area = area +"10"+"\n";
+        area = area +sx+"\n";
+        area = area +"20"+"\n";
+        area = area +sy+"\n";
+        area = area +"40"+"\n";
+        area = area +r+"\n";
+
+    }
+    function arc(sx,sy,r,sa,ea){
+        area = area +"0"+"\n";
+        area = area +"ARC"+"\n";
+        area = area +"8"+"\n";
+        area = area +"Polygon"+"\n";
+        area = area +"10"+"\n";
+        area = area +sx+"\n";
+        area = area +"20"+"\n";
+        area = area +sy+"\n";
+        area = area +"40"+"\n";
+        area = area +r+"\n";
+        area = area +"50"+"\n";
+        area = area +sa+"\n";
+        area = area +"51"+"\n";
+        area = area +ea+"\n";
+
+    }
 
     function main() {
         // filter sizes
@@ -73,135 +102,118 @@
         let D =  Number(document.getElementById("length").value);//длина ящика
         let C =  Number(document.getElementById("width").value); //ширина ящика
         let A = Number(document.getElementById("height").value);
-        //let overlap = Number(document.getElementById("overlap").value);
-        //let sheet_width = Number(document.getElementById("sheet_width").value);
-        //let sheet_height = Number(document.getElementById("sheet_height").value);
-        // box specifications
         let tail = 40;
 
-        // sheet size
-
         let gap =6;
+        let paper_thickness = 3;
 
-        // calculations
-        //count of filters in line
-        //let COFIL = Math.trunc(((sheet_width - tail - 2 * length) / height) / 2);
-			//let D = (height + 1) * COFIL;
-		//let D = height * COFIL + 4;
-			//let C = length - 3;
-		//let C = length + 1;
-		//проверка длина выкройки
-		//let test_length = tail + 2*C + 2*D + 3*6; // считаем длину выкройки
-		//if (test_length > sheet_width){ //сравниваем ее длиной листа исходного
-		//	COFIL = COFIL - 1;          // если превышает, то уменьшаем на единицу количество фильтров в ряду
-		//	D = height * COFIL + 4;
-		//}
-		//-конец проверки длины выкройки
         let B;
-        //if(D > C){
-        //    B = (length / 2) + 1 + 3;
-        //}else {
-        //    B = (D + 11) / 2;
-        //}
-        //count of filters in row
-        //let COFIR = Math.trunc((sheet_height - B * 2 - 8) / width);
+        //коэффициенты для корректировки длины клапанов
+        let g1 = -0.25;
+        let g2 = 2;
+        //коэффициент для корректировки высоты ящика
+        let h1 = 3*2;
+
+        A = A + h1;
+
 
         B = C/2 + 4;
 
-        //let  A = width * COFIR + 7 - overlap * (COFIR - 1);
         start_of_file();
         //1
-        line(0,0,tail,0,1);
+        line(0,0,tail+paper_thickness,0,1);
         //2
-        line(tail,0,tail,B,2);
+        line(tail+paper_thickness,0,tail+paper_thickness,B+g1,2);
         //3
-        line(tail,B,tail+C,B,3);
+        line(tail+paper_thickness,B+g1,tail+C,B+g1,3);
+        //71 дуга
+        arc(tail+0.5*C,B+g1,10,180,0);
         //4
-        line(tail+C,B,tail+C,0,4);
+        line(tail+C,B+g1,tail+C,0,4);
         //5
         line(tail+C,0,tail+C+gap,0,5);
         //6
-        line(tail+C+gap,0,tail+C+gap,B,6);
+        line(tail+C+gap,0,tail+C+gap,B+g2,6);
         //7
-        line(tail+C+gap,B,tail+C+gap+D,B,7);
+        line(tail+C+gap,B+g2,tail+C+gap+D,B+g2,7);
         //8
-        line(tail+C+gap+D,B,tail+C+gap+D,0,8);
+        line(tail+C+gap+D,B+g2,tail+C+gap+D,0,8);
         //9
         line(tail+C+gap+D,0,tail+C+gap+D+gap,0,9);
         //10
-        line(tail+C+gap+D+gap,0,tail+C+gap+D+gap,B,10);
+        line(tail+C+gap+D+gap,0,tail+C+gap+D+gap,B+g1,10);
         //11
-        line(tail+C+gap+D+gap,B,tail+C+gap+D+gap+C,B,11);
+        line(tail+C+gap+D+gap,B+g1,tail+C+gap+D+gap+C,B+g1,11);
+        //72 дуга
+        arc(tail+C+gap+D+gap+0.5*C,B+g1,10,180,0);
         //12
-        line(tail+C+gap+D+gap+C,B,tail+C+gap+D+gap+C,0,12);
+        line(tail+C+gap+D+gap+C,B+g1,tail+C+gap+D+gap+C,0,12);
         //13
         line(tail+C+gap+D+gap+C,0,tail+C+gap+D+gap+C+gap,0,13);
         //14
-        line(tail+C+gap+D+gap+C+gap,0,tail+C+gap+D+gap+C+gap,B,14);
+        line(tail+C+gap+D+gap+C+gap,0,tail+C+gap+D+gap+C+gap,B+g2,14);
         //15
-        line(tail+C+gap+D+gap+C+gap,B,tail+C+gap+D+gap+C+gap+D,B,15);
+        line(tail+C+gap+D+gap+C+gap,B+g2,tail+C+gap+D+gap+C+gap+D,B+g2,15);
 
         let L1 = -1*(A+B);
         let L2 = -1 * A;
         //16
-        line(tail+C+gap+D+gap+C+gap+D,B,tail+C+gap+D+gap+C+gap+D,L1,16);
+        line(tail+C+gap+D+gap+C+gap+D,B+g2,tail+C+gap+D+gap+C+gap+D,L1-g2,16);
         //32
         line(0,0,0,L2,32);
         //31
-        line(0,L2,tail,L2,31);
+        line(0,L2,tail+paper_thickness,L2,31);
         //30
-        line(tail,L2,tail,L1,30);
+        line(tail+paper_thickness,L2,tail+paper_thickness,L1-g1,30);
         //29
-        line(tail,L1,tail+C,L1,29);
+        line(tail+paper_thickness,L1-g1,tail+C,L1-g1,29);
+        //73 дуга
+        arc(tail+0.5*C,L1,10,0,180);
         //28
-        line(tail+C,L1,tail+C,L2,28);
+        line(tail+C,L1-g1,tail+C,L2,28);
         //27
         line(tail+C,L2,tail+C+gap,L2,27);
         //26
-        line(tail+C+gap,L2,tail+C+gap,L1,26);
+        line(tail+C+gap,L2,tail+C+gap,L1-g2,26);
         //25
-        line(tail+C+gap,L1,tail+C+gap+D,L1,25);
+        line(tail+C+gap,L1-g2,tail+C+gap+D,L1-g2,25);
         //24
-        line(tail+C+gap+D,L1,tail+C+gap+D,L2,24);
+        line(tail+C+gap+D,L1-g2,tail+C+gap+D,L2,24);
         //23
         line(tail+C+gap+D,L2,tail+C+gap+D+gap,L2,23);
         //22
-        line(tail+C+gap+D+gap,L2,tail+C+gap+D+gap,L1,22);
+        line(tail+C+gap+D+gap,L2,tail+C+gap+D+gap,L1-g1,22);
         //21
-        line(tail+C+gap+D+gap,L1,tail+C+gap+D+gap+C,L1,21);
+        line(tail+C+gap+D+gap,L1-g1,tail+C+gap+D+gap+C,L1-g1,21);
+        //74 дуга
+        arc(tail+C+gap+D+gap+0.5*C,L1,10,0,180);
         //20
-        line(tail+C+gap+D+gap+C,L1,tail+C+gap+D+gap+C,L2,20);
+        line(tail+C+gap+D+gap+C,L1-g1,tail+C+gap+D+gap+C,L2,20);
         //19
         line(tail+C+gap+D+gap+C,L2,tail+C+gap+D+gap+C+gap,L2,19);
         //18
-        line(tail+C+gap+D+gap+C+gap,L2,tail+C+gap+D+gap+C+gap,L1,18);
+        line(tail+C+gap+D+gap+C+gap,L2,tail+C+gap+D+gap+C+gap,L1-g2,18);
         //17
-        line(tail+C+gap+D+gap+C+gap,L1,tail+C+gap+D+gap+C+gap+D,L1,17);
+        line(tail+C+gap+D+gap+C+gap,L1-g2,tail+C+gap+D+gap+C+gap+D,L1-g2,17);
 
         //50
-        line(tail + 5,1.5,tail+C-5,1.5);
+        line(tail+paper_thickness,1.5,tail+C,1.5);
         //51
-        line(tail+C+gap+5,3,tail+C+gap+D-5,3);
+        line(tail+C+gap,3,tail+C+gap+D,3);
         //52
-        line(tail+C+gap+D+gap+5,1.5,tail+C+gap+D+gap+C-5,1.5);
+        line(tail+C+gap+D+gap,1.5,tail+C+gap+D+gap+C,1.5);
         //53
-        line(tail+C+gap+D+gap+C+gap+5,3,tail+C+gap+D+gap+C+gap+D-5,3);
+        line(tail+C+gap+D+gap+C+gap,3,tail+C+gap+D+gap+C+gap+D,3);
         //60
-        line(tail + 5,L2-1.5,tail+C-5,L2-1.5);
+        line(tail+paper_thickness,L2-1.5,tail+C,L2-1.5);
         //61
-        line(tail+C+gap+5,L2-3,tail+C+gap+D-5,L2-3);
+        line(tail+C+gap,L2-3,tail+C+gap+D,L2-3);
         //62
-        line(tail+C+gap+D+gap+5,L2-1.5,tail+C+gap+D+gap+C-5,L2-1.5);
+        line(tail+C+gap+D+gap,L2-1.5,tail+C+gap+D+gap+C,L2-1.5);
         //63
-        line(tail+C+gap+D+gap+C+gap+5,L2-3,tail+C+gap+D+gap+C+gap+D-5,L2-3);
-        end_of_file();
+        line(tail+C+gap+D+gap+C+gap,L2-3,tail+C+gap+D+gap+C+gap+D,L2-3);
 
-        //let box_count = document.getElementById("box_count");
-        //box_count.innerText = COFIL;
-        //let row_count = document.getElementById("row_count");
-        //row_count.innerText = COFIR;
-        //let box_summ = document.getElementById("box_summ");
-        //box_summ.innerText = COFIL * COFIR;
+        end_of_file();
 
     }
 
@@ -222,9 +234,9 @@
 
         main();
        let art = document.getElementsByTagName('a')[0];
-            //var csv = "hello text";
+
         const csv = area;
-        // var csvData = 'data:application/csv;charset=utf-8,' + encodeURIComponent(csv);
+
             const csvData = 'data:application/dxf;charset=utf-8,' + encodeURIComponent(csv);
             art.href = csvData;
             art.target = '_blank';

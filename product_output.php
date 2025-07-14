@@ -1,3 +1,5 @@
+
+
 <?php require_once('tools/tools.php')?>
 
 <html>
@@ -20,6 +22,7 @@
         info {
             background: green;
         }
+
         </style>
 </head>
 <body>
@@ -62,12 +65,13 @@
 
         function add_to_list() {
 
-            var count = document.getElementsByTagName("input")[2].value;               // количество выпущенной продукции
+            //var count = document.getElementsByTagName("input")[2].value;               // количество выпущенной продукции
+            var count = document.getElementById("filter_count").value;               // количество выпущенной продукции
             if (count == ""){
                 alert("Не указано количество");
                 return;
             }
-
+            //prompt(count)
             var n = document.getElementById("select_filter").options.selectedIndex;     // номер выбранной строка списка
             var filter = document.getElementById("select_filter").options[n].text;      // выбранный фильтр в списке
             //document.getElementById("final_list").innerHTML += filter + " = " + count + "<br>";      // вывод на
@@ -118,16 +122,34 @@
                     document.getElementById("write_off_place").innerHTML = this.responseText;
                 }
             };
+
+            let team_number = "";
+            let radios = document.getElementsByName("team");
+            for (let i = 0; i < radios.length; i++) {
+                if (radios[i].checked) {
+                    team_number = radios[i].value;
+                    break;
+                }
+            }
+
             let filters_for_write_off_json = JSON.stringify(array_of_filters);
             xhttp.open("POST", "write_off_filters.php", true);
             xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-            xhttp.send("filters_for_write_off_json="+filters_for_write_off_json
-                        +"&order_number="+selected_order+"&production_date="+production_date);
+
+            xhttp.send("filters_for_write_off_json=" + filters_for_write_off_json
+                + "&order_number=" + selected_order
+                + "&production_date=" + production_date
+                + "&team_number=" + team_number);
 
             //очистка полей "номер фильтра" "количество фильтров" "список фильтров"
             document.getElementById('text').value = '';
             document.getElementById('demo').innerHTML = '<input type="text" size="15px"/>';
             document.getElementById('count').value = '';
+            const select1 = document.getElementById("maked_filters");
+            while (select1.options.length > 0) {
+                select1.remove(0);
+            }
+
 
             //очистка массива фильтров
             array_of_filters = [];
@@ -160,16 +182,22 @@
                 Выпущенная продукция <p>
                 <select id="maked_filters" name="filters" size="10"><!--Список выпущенной продукции -->
                 </select>
-                <br>
-                по заявке № <br>
+                <p>
+                Заявка № <br>
                <?php load_orders(0) ?>
+                <br>
+            <hr>
+                <label><input type="radio" name="team" value="1">Бригада № 1</label><p>
+                <label><input type="radio" name="team" value="2">Бригада № 2</label><p>
+                <label><input type="radio" name="team" value="3">Бригада № 3</label><p>
+            <hr>
         </td></tr>
     <tr>
         <td align="center" bgcolor="#1e90ff">
             <p id="demo">
                 <select id="select_filter" size="1"></select> <!-- Выпаадающий список с фильтрами -->
             </p>
-            Кол-во  <input type="text" id="count" size="10" maxlength="25" value="" onFocus="this.select()"/>
+            Кол-во  <input type="text" id="filter_count" size="10" maxlength="25" value="" onFocus="this.select()"/>
         <td></td>
     </tr>
     <tr>

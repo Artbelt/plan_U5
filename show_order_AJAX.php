@@ -38,7 +38,7 @@ $initial_order->cut_arrays_init();
 $initial_order->sort_cut_arrays();
 
 /** отображаем заявку с загруженными данными по г/пакетам*/
-$initial_order->show_order();                                                                           //--------SERVICE_FUNCTION_MUST_BE_HIDE
+$initial_order->show_order();                                                                                  //---------SERVICE_FUNCTION_MUST_BE_HIDE
 
 /** отображаем cut_array массив подготовленный для раскроя*/
 $initial_order->show_cut_array_simple();                                                                       //---------SERVICE_FUNCTION_MUST_BE_HIDE
@@ -49,10 +49,10 @@ $initial_order->show_cut_array_carbon();
 
 /** Тестовый раскрой */
 //$initial_order->test_cut_execute_for_carbon();
-$initial_order->test_cut_execute_for_simple();
+#$initial_order->test_cut_execute_for_simple();                            #ОТКЛЮЧЕН РАСКРОЙ
 
 /** отображаем сформированные рулоны */
-$initial_order->show_completed_rolls_for_simple();
+#$initial_order->show_completed_rolls_for_simple();                         #ОТКЛЮЧЕН РАСКРОЙ
 //$initial_order->show_completed_rolls_for_carbon();
 
 /** сортируем позиции не вошедшие в раскрой по высоте валков */

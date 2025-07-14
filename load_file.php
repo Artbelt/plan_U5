@@ -57,6 +57,13 @@ echo '<tr><td><b>Фильтр</b></td><td><b>Кол-во</b></td><td><b>Марк
 foreach ($sheetData as $arr){
     if($arr['B']=='Марка фильтра') {$propusk = false; continue;}
     if(($propusk == false) && ($arr['B']!='')){/**Убираем пустые ячейки*/
+
+        /** @var убираем все переносі строк $arr */
+        $arr = array_map(function($item) {
+            return str_replace(["\r", "\n"], '', $item);
+        }, $arr);
+
+
         array_push($order, $arr);
         echo '<tr><td>' . $arr['B'] . '</td><td>' . $arr['C'] . '</td><td>' . $arr['D'] . '</td><td>' . $arr['E'] . '</td><td>' . $arr['F']
             . '</td><td>' . $arr['G'] . '</td><td>' . $arr['H'] . '</td><td>' . $arr['I'] . '</td><td>' . $arr['J'] . '</td></tr>';
@@ -64,6 +71,10 @@ foreach ($sheetData as $arr){
 }
 $propusk = true;
 echo '</table><br>';
+
+/** Надо убрать все переносы строки в ячейках */
+
+
 /** Переменная для сериализации и передачи массива в следующий скрипт */
 $order_str = serialize($order);
 

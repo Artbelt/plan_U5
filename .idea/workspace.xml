@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/BACKUP/show_manufactured_filters.php" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/check_tarif.php" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/create_ad.php" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/enter_old.php" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/fix_tariffs.php" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/save_hours.php" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scripts.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/uploads/05-14 тиждень заявка 5 дільниця (FSO+Luft Wal+Романцов+ARV+RedAuto+Бехтер+DustWell+Miratelli+Демшин+Shafer+Goodway+Ulka+AF) - 23.01.2025.xlsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/uploads/33-42 тиждень заявка 5 дільниця (AF+Ulka+Dustwell+Демшин+FSO+Shafer+НейлТронік+Mogen+Шпіньов+Бехтер+Sprint+Red Auto+ЛТСП) - 06.08.2024.xlsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/Plan.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/sqldialects.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/webServers.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/BOX_CREATOR.htm" beforeDir="false" afterPath="$PROJECT_DIR$/BOX_CREATOR.htm" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/add_salon_filter_into_db.php" beforeDir="false" afterPath="$PROJECT_DIR$/add_salon_filter_into_db.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/enter.php" beforeDir="false" afterPath="$PROJECT_DIR$/enter.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/load_file.php" beforeDir="false" afterPath="$PROJECT_DIR$/load_file.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/product_output.php" beforeDir="false" afterPath="$PROJECT_DIR$/product_output.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/product_output_view.php" beforeDir="false" afterPath="$PROJECT_DIR$/product_output_view.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/share_orders.php" beforeDir="false" afterPath="$PROJECT_DIR$/share_orders.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/shared_orders.php" beforeDir="false" afterPath="$PROJECT_DIR$/shared_orders.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/show_manufactured_filters.php" beforeDir="false" afterPath="$PROJECT_DIR$/show_manufactured_filters.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/show_manufactured_filters_more.php" beforeDir="false" afterPath="$PROJECT_DIR$/show_manufactured_filters_more.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/show_order.php" beforeDir="false" afterPath="$PROJECT_DIR$/show_order.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/show_order_AJAX.php" beforeDir="false" afterPath="$PROJECT_DIR$/show_order_AJAX.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/show_order_for_workers.php" beforeDir="false" afterPath="$PROJECT_DIR$/show_order_for_workers.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test.php" beforeDir="false" afterPath="$PROJECT_DIR$/test.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/tools.php" beforeDir="false" afterPath="$PROJECT_DIR$/tools/tools.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/write_off_filters.php" beforeDir="false" afterPath="$PROJECT_DIR$/write_off_filters.php" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ComposerSettings">
+    <execution />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="PhpWorkspaceProjectConfiguration" interpreter_name="C:\xampp\php\php.exe" />
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 4
+}</component>
+  <component name="ProjectId" id="2i2ZTmzHIwlpV2qwBJ3FzfOAq5D" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/xampp/htdocs/plan&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;reference.settingsdialog.IDE.editor.colors&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\xampp\htdocs\plan_U5" />
+    </key>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-1d06a55b98c1-74d2a5396914-JavaScript-PS-241.14494.237" />
+        <option value="bundled-php-predefined-ba97393d7c68-8f0632a2a215-com.jetbrains.php.sharedIndexes-PS-241.14494.237" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="" />
+      <created>1718690642549</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1718690642549</updated>
+      <workItem from="1718690643661" duration="1285000" />
+      <workItem from="1718780720047" duration="938000" />
+      <workItem from="1718964971378" duration="55000" />
+      <workItem from="1719581625995" duration="860000" />
+      <workItem from="1719811513163" duration="624000" />
+      <workItem from="1720158176339" duration="57000" />
+      <workItem from="1720160189739" duration="102000" />
+      <workItem from="1722948229311" duration="2113000" />
+      <workItem from="1723451439993" duration="348000" />
+      <workItem from="1723451930642" duration="19000" />
+      <workItem from="1727778049175" duration="172000" />
+      <workItem from="1727778486186" duration="224000" />
+      <workItem from="1728899015750" duration="150000" />
+      <workItem from="1728899743467" duration="59000" />
+      <workItem from="1730720510631" duration="2030000" />
+      <workItem from="1730890041060" duration="45000" />
+      <workItem from="1731568461129" duration="37000" />
+      <workItem from="1731568514111" duration="2353000" />
+      <workItem from="1732093888711" duration="632000" />
+      <workItem from="1732787812450" duration="2846000" />
+      <workItem from="1732804873756" duration="674000" />
+      <workItem from="1734529158832" duration="1054000" />
+      <workItem from="1737362041520" duration="539000" />
+      <workItem from="1737704403359" duration="588000" />
+      <workItem from="1737705282275" duration="1372000" />
+      <workItem from="1738157384333" duration="2547000" />
+      <workItem from="1747127749992" duration="578000" />
+      <workItem from="1747201862615" duration="4191000" />
+      <workItem from="1747213280306" duration="449000" />
+      <workItem from="1747981311786" duration="67000" />
+      <workItem from="1750049992184" duration="87000" />
+      <workItem from="1750050112994" duration="1782000" />
+      <workItem from="1750248647308" duration="732000" />
+      <workItem from="1750315130128" duration="3029000" />
+      <workItem from="1750742854724" duration="1100000" />
+      <workItem from="1750832633654" duration="3358000" />
+      <workItem from="1750836338280" duration="2425000" />
+      <workItem from="1750847627331" duration="129000" />
+      <workItem from="1750930853196" duration="1648000" />
+      <workItem from="1751370359237" duration="2024000" />
+      <workItem from="1751373132960" duration="762000" />
+      <workItem from="1751435223122" duration="8165000" />
+      <workItem from="1752474368367" duration="11521000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
+  </component>
+</project>

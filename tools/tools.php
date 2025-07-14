@@ -1,7 +1,7 @@
 <?php /** tools.php в файле прописаны разные функции */
 
 /** ПОдключаем функции */
-require_once('settings.php') ;
+require_once('C:/xampp/htdocs/plan_U5/settings.php') ;
 
 
 /** Вывод массива в удобном виде
@@ -15,8 +15,96 @@ function print_r_my ($a){
     }
 }
 
+/**  */
+function show_ads(){
+
+    global $mysql_host,$mysql_user,$mysql_user_pass,$mysql_database;
+
+    $host = $mysql_host;
+    $db = $mysql_database;
+    $user = $mysql_user;
+    $pass = $mysql_user_pass;
+
+    try {
+        $pdo = new PDO("mysql:host=$host;dbname=$db", $user, $pass);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        // Запрос активных объявлений
+        $stmt = $pdo->prepare("SELECT * FROM ads WHERE expires_at >= NOW() ORDER BY expires_at ASC");
+        $stmt->execute();
+        $ads = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        die("Ошибка подключения: " . $e->getMessage());
+    }
+    ?>
+    <style>
+        .ads-container {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            color: #333;
+        }
+        .ads-container h1 {
+            font-size: 24px;
+            color: #0056b3;
+            border-bottom: 2px solid #0056b3;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        .ads-container ul {
+            list-style: none;
+            padding: 0;
+        }
+        .ads-container li {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .ads-container h2 {
+            font-size: 18px;
+            margin: 0 0 10px;
+            color: #333;
+        }
+        .ads-container p {
+            font-size: 14px;
+            margin: 0 0 10px;
+        }
+        .ads-container small {
+            font-size: 12px;
+            color: #666;
+        }
+        .ads-container .no-ads {
+            font-size: 16px;
+            color: #888;
+            text-align: center;
+        }
+    </style>
+    <div class="ads-container">
+       Объявления:
+        <?php if (!empty($ads)): ?>
+            <ul>
+                <?php foreach ($ads as $ad): ?>
+                    <li>
+                        <h2><?= htmlspecialchars($ad['title']) ?></h2>
+                        <p><?= htmlspecialchars($ad['content']) ?></p>
+                        <small>Действительно до: <?= htmlspecialchars($ad['expires_at']) ?></small>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php else: ?>
+            <p class="no-ads">Нет актуальных объявлений.</p>
+        <?php endif; ?>
+    </div>
+    <?php
+
+}
+
 /** Отображение выпуска продукции за последнюю неделю */
 function show_weekly_production(){
+    $count = 0;
+    echo "изготовленая продукция за последние 10 дней:<p> ";
     for ($a = 1; $a < 11; $a++) {
 
         $production_date = date("Y-m-d", time() - (60 * 60 * 24 * $a));;
@@ -30,9 +118,43 @@ function show_weekly_production(){
         }
         /** Выводим сумму фильтров */
         echo $production_date . " " . $x . " шт <br>";
+        $count = $count + $x;
 
     }
+    $count_per_day = $count / 10;
+    if ($count_per_day > 1000){
+        echo "Среднее количество в смену: <span class='highlight_green' title='Это количество обеспечит 30 000 фильтров в месяц'>".$count_per_day."</span>";
+    } else {
+        echo "Среднее количество в смену: <span class='highlight_red' title='Это количество НЕ обеспечит 30 000 фильтров в месяц'>".$count_per_day."</span>";
+    }
+
 }
+
+/** Отображение выпуска продукции за месяц */
+function show_monthly_production(){
+    $first_day = date("Y-m-01"); // первое число текущего месяца
+    $today = date("Y-m-d");
+
+    $first_day_reversed = reverse_date($first_day);
+    $today_reversed = reverse_date($today);
+
+    $sql = "SELECT SUM(count_of_filters) as total FROM manufactured_production 
+            WHERE date_of_production >= '$first_day_reversed' AND date_of_production <= '$today_reversed';";
+    $result = mysql_execute($sql);
+
+    $total = 0;
+    if ($result) {
+        $row = $result->fetch_assoc();  // вот здесь — корректно работаем с mysqli_result
+        if ($row && isset($row['total'])) {
+            $total = $row['total'];
+        }
+    }
+
+    echo "<p>В текущем месяце произведено $total фильтров (с 1 числа по сегодня).";
+}
+
+
+
 
 
 
@@ -101,7 +223,7 @@ function load_filters_into_select(){
     echo "<select name='analog_filter'>";
     echo "<option value=''>выбор аналога</option>";
     for ($x=0; $x < count($sorted_values); $x++){
-        echo "<option value=".$sorted_values[$x].">".$sorted_values[$x]."</option>";
+        echo "<option value='".$sorted_values[$x]."'>".$sorted_values[$x]."</option>";
     }
     echo "</select>";
 
@@ -118,7 +240,7 @@ function load_filters_into_select(){
  * @param $filters
  * @return bool
  */
-function write_of_filters($date_of_production, $order_number, $filters){
+function write_of_filters($date_of_production, $order_number, $filters, $team){
 
     global $mysql_host,$mysql_user,$mysql_user_pass,$mysql_database;
 
@@ -133,8 +255,8 @@ function write_of_filters($date_of_production, $order_number, $filters){
         $filter_count = $filter_record[1];
 
         /** Форматируем sql-запрос, "записать в БД -> дата -> заявка -> фильтер -> количство" */
-        $sql = "INSERT INTO manufactured_production (date_of_production, name_of_filter, count_of_filters, name_of_order) 
-                VALUES ('$date_of_production','$filter_name','$filter_count','$order_number')";
+        $sql = "INSERT INTO manufactured_production (date_of_production, name_of_filter, count_of_filters, name_of_order, team) 
+                VALUES ('$date_of_production','$filter_name','$filter_count','$order_number', '$team')";
 
         /** Выполняем запрос. Если запрос не удачный -> exit */
         if (!$result = $mysqli->query($sql)){ echo "Ошибка: Наш запрос не удался и вот почему: \n Запрос: " . $sql . "\n"."Номер ошибки: " . $mysqli->errno . "\n Ошибка: " . $mysqli->error . "\n";
@@ -179,20 +301,22 @@ function select_produced_filters_by_order($filter_name, $order_name){
         return "ERROR#01";
     }
 
+    $dates = [];
+
     /** Разбираем результата запроса */
     while ($row = $result->fetch_assoc()){
         $count += $row['count_of_filters'];
+        array_push($dates, $row['date_of_production'],$row['count_of_filters']);
     }
 
     /** Создаем массив для вывода результата*/
-    $result_part_one = "#in_construction";
+    $result_part_one = $dates;
     $result_part_two = $count;
     $result_array = [];
     array_push($result_array,$result_part_one);
     array_push($result_array,$result_part_two);
 
-    return $result_array;
-}
+    return $result_array;}
 
 /** Функция выполняет запрос к БД и создает выборку заявки по выбранному номеру */
 function show_order($order_number){
@@ -380,7 +504,8 @@ function select_boxes($index){
         exit;
     }
 
-    $sql = "SELECT * FROM box";
+    $sql = "SELECT * FROM box ORDER BY b_name";
+    #$sql = "SELECT * FROM box";
     /** Выполняем запрос SQL */
     if (!$result = $mysqli->query($sql)) {
         echo "Ошибка: Наш запрос не удался и вот почему: \n"
@@ -487,12 +612,13 @@ function get_salon_filter_data($target_filter){
     /** Разбор массива значений  */
     $paper_package_data = $result->fetch_assoc();
 
-    $result_array['paper_package_width'] = $paper_package_data['p_p_width'];
-    $result_array['paper_package_height'] = $paper_package_data['p_p_height'];
-    $result_array['paper_package_pleats_count'] = $paper_package_data['p_p_pleats_count'];
-    $result_array['paper_package_supplier'] = $paper_package_data['p_p_supplier'];
-    $result_array['paper_package_remark'] = $paper_package_data['p_p_remark'];
-    $result_array['paper_package_material'] = $paper_package_data['p_p_material'];
+    if (isset($paper_package_data['p_p_width'])){$result_array['paper_package_width'] = $paper_package_data['p_p_width'];}else{$result_array['paper_package_width'] ='';}
+    if (isset( $paper_package_data['p_p_height'])){$result_array['paper_package_height'] = $paper_package_data['p_p_height'];}else{$result_array['paper_package_height'] ='';}
+    if (isset( $paper_package_data['p_p_pleats_count'])){$result_array['paper_package_pleats_count'] = $paper_package_data['p_p_pleats_count'];}else{$result_array['paper_package_pleats_count'] ='';}
+    if (isset( $paper_package_data['p_p_supplier'])){$result_array['paper_package_supplier'] = $paper_package_data['p_p_supplier'];}else{$result_array['paper_package_supplier'] = '';}
+    if (isset( $paper_package_data['p_p_remark'])){$result_array['paper_package_remark'] = $paper_package_data['p_p_remark'];}else{$result_array['paper_package_remark'] = '';}
+    if (isset( $paper_package_data['p_p_material'])){$result_array['paper_package_material'] = $paper_package_data['p_p_material'];}else{$result_array['paper_package_material'] ='';}
+
 
     /** Вставка */
     $sql = "SELECT * FROM salon_filter_structure WHERE filter = '".$target_filter."';";
@@ -500,7 +626,8 @@ function get_salon_filter_data($target_filter){
     if (!$result = $mysqli->query($sql)){ echo "Ошибка: Наш запрос не удался и вот почему: \n Запрос: " . $sql . "\n"."Номер ошибки: " . $mysqli->errno . "\n Ошибка: " . $mysqli->error . "\n"; exit; }
    /** Разбор массивыа значений */
     $salon_filter_data = $result->fetch_assoc();
-    $result_array['insertion_count'] = $salon_filter_data['insertion_count'];
+
+    if (isset($salon_filter_data['insertion_count'])){$result_array['insertion_count'] = $salon_filter_data['insertion_count'];}else{$result_array['insertion_count'] = '';}
 
 
     /** КОРОБКА ИНДИВИДУАЛЬНАЯ */
@@ -510,7 +637,8 @@ function get_salon_filter_data($target_filter){
     if (!$result = $mysqli->query($sql)){ echo "Ошибка: Наш запрос не удался и вот почему: \n Запрос: " . $sql . "\n"."Номер ошибки: " . $mysqli->errno . "\n Ошибка: " . $mysqli->error . "\n"; exit; }
     /** Разбор массива значений  */
     $box_data = $result->fetch_assoc();
-    $result_array['box'] = $box_data['box'];
+
+    if (isset($box_data['box'])){$result_array['box'] = $box_data['box'];}else{$result_array['box'] ='';}
 
     /** КОРОБКА ГРУППОВАЯ */
     /** Выполняем запрос SQL */
@@ -519,7 +647,9 @@ function get_salon_filter_data($target_filter){
     if (!$result = $mysqli->query($sql)){ echo "Ошибка: Наш запрос не удался и вот почему: \n Запрос: " . $sql . "\n"."Номер ошибки: " . $mysqli->errno . "\n Ошибка: " . $mysqli->error . "\n"; exit; }
     /** Разбор массива значений  */
     $g_box_data = $result->fetch_assoc();
-    $result_array['g_box'] = $g_box_data['g_box'];
+
+    if (isset($g_box_data['g_box'])){$result_array['g_box'] = $g_box_data['g_box'];}else{$result_array['g_box'] = '';}
+
 
     /** ПРИМЕЧАНИЯ */
     /** Выполняем запрос SQL */
@@ -528,7 +658,9 @@ function get_salon_filter_data($target_filter){
     if (!$result = $mysqli->query($sql)){ echo "Ошибка: Наш запрос не удался и вот почему: \n Запрос: " . $sql . "\n"."Номер ошибки: " . $mysqli->errno . "\n Ошибка: " . $mysqli->error . "\n"; exit; }
     /** Разбор массива значений  */
     $comment_data = $result->fetch_assoc();
-    $result_array['comment'] = $comment_data['comment'];
+
+    if (isset($comment_data['comment'])){$result_array['comment'] = $comment_data['comment'];}else{$result_array['comment'] = '';}
+
 
     /** Поролон */
     $sql = "SELECT foam_rubber FROM salon_filter_structure WHERE filter = '".$target_filter."';";
@@ -536,7 +668,11 @@ function get_salon_filter_data($target_filter){
     if (!$result = $mysqli->query($sql)){ echo "Ошибка: Наш запрос не удался и вот почему: \n Запрос: " . $sql . "\n"."Номер ошибки: " . $mysqli->errno . "\n Ошибка: " . $mysqli->error . "\n"; exit; }
     /** Разбор массива значений  */
     $foam_rubber_data = $result->fetch_assoc();
-    $result_array['foam_rubber'] = $foam_rubber_data['foam_rubber'];
+
+
+    if (isset($foam_rubber_data['foam_rubber'])){$result_array['foam_rubber'] = $foam_rubber_data['foam_rubber'];}else{$result_array['foam_rubber'] = '';}
+
+
     if ($result_array['foam_rubber'] == 'поролон'){
         $result_array['foam_rubber_checkbox_state'] = 'checked';
     } else  $result_array['foam_rubber_checkbox_state'] = '';
@@ -547,7 +683,12 @@ function get_salon_filter_data($target_filter){
     if (!$result = $mysqli->query($sql)){ echo "Ошибка: Наш запрос не удался и вот почему: \n Запрос: " . $sql . "\n"."Номер ошибки: " . $mysqli->errno . "\n Ошибка: " . $mysqli->error . "\n"; exit; }
     /** Разбор массива значений  */
     $tail_data = $result->fetch_assoc();
-    $result_array['tail'] = $tail_data['tail'];
+
+
+
+    if (isset($tail_data['tail'])){$result_array['tail'] = $tail_data['tail'];}else{$result_array['tail'] = '';}
+
+
     if ($result_array['tail']  == 'язычек'){
         $result_array['tail_checkbox_state'] = 'checked';
     } else  $result_array['tail_checkbox_state'] = '';
@@ -558,7 +699,10 @@ function get_salon_filter_data($target_filter){
     if (!$result = $mysqli->query($sql)){ echo "Ошибка: Наш запрос не удался и вот почему: \n Запрос: " . $sql . "\n"."Номер ошибки: " . $mysqli->errno . "\n Ошибка: " . $mysqli->error . "\n"; exit; }
     /** Разбор массива значений  */
     $form_factor_data = $result->fetch_assoc();
-    $result_array['form_factor'] = $form_factor_data['form_factor'];
+
+
+    if (isset($form_factor_data['form_factor'])){$result_array['form_factor'] = $form_factor_data['form_factor'];}else{$result_array['form_factor'] ='';}
+
     if ($result_array['form_factor'] == 'трапеция'){
         $result_array['form_factor_checkbox_state'] = 'checked';
     } else  $result_array['form_factor_checkbox_state'] = '';
@@ -569,7 +713,9 @@ function get_salon_filter_data($target_filter){
     if (!$result = $mysqli->query($sql)){ echo "Ошибка: Наш запрос не удался и вот почему: \n Запрос: " . $sql . "\n"."Номер ошибки: " . $mysqli->errno . "\n Ошибка: " . $mysqli->error . "\n"; exit; }
     /** Разбор массива значений  */
     $side_type_data = $result->fetch_assoc();
-    $result_array['side_type'] = $side_type_data['side_type'];
+
+    if (isset($side_type_data['side_type'])){$result_array['side_type'] = $side_type_data['side_type'];}else{$result_array['side_type'] ='';}
+
 
 
     /** Закрываем соединение */

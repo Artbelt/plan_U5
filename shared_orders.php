@@ -63,6 +63,8 @@ echo "</td></tr></table><p>";
 
 echo "<form action='search_filter_in_the_orders.php' method='post'><input type='text' name='filter'><input type='submit' value='Заявки, в которых упоминается фильтр'></form>";
 echo "<form action='product_output_view.php' method='post'><input type='submit' value='Просмотр выпущенной продукции'></form>";
-echo "<form action='product_output_for_workers.php' method='post'><input type='submit' value='Внесение выпущенной продукции'></form>";
-//echo "<form action='show_bill.php' method='post'><input type='submit' value=' * Создание отчетки * '></form>";
-//echo "<form action='parts_output_for_workers.php' method='post'><input type='submit' value='Внесение изготовленных гофропакетов'></form>";
+?>
+
+<a href="test.php" target="_blank" rel="noopener noreferrer">
+    <button style="height: 20px; width: 220px">Выпуск продукции</button>
+</a>
