@@ -129,8 +129,11 @@ $photo_html = file_exists($photo_full_path)
     </div>
 
     <!-- Комментарий -->
-    <div style="margin-top:5px;"><strong>Комментарий:</strong><br><?php echo nl2br($filter['comment']); ?></div>
-
+    <div style="margin-top:0px;">
+    <strong>
+        <?php echo ($filter['comment'] !== '' ? ('Комментарий: '.$filter['comment']) : ''); ?>
+    </strong><br>
+    </div>
     <!-- Фото снизу -->
     <?php echo $photo_html; ?>
 </div>

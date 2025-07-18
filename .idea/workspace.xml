@@ -4,47 +4,25 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/get_filter_details.php" afterDir="false" />
+    <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="Добавлено окно просмотра параметров изделия">
+      <change afterPath="$PROJECT_DIR$/photo/AF5006.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/photo/AF5007.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/photo/AF5008.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/photo/AF5010.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/photo/AF5011.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/photo/AF5012.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/photo/AF5013.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/photo/AF5015.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/photo/AF5016.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/photo/AF5017.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/photo/AF5018.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/photo/AF5019.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/photo/AF5020.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/photo/AF5021.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/photo/AF5022.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/photo/AF5315.jpg" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/product_output_view.php" beforeDir="false" afterPath="$PROJECT_DIR$/product_output_view.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/save_hours.php" beforeDir="false" afterPath="$PROJECT_DIR$/save_hours.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/scripts.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/show_manufactured_filters.php" beforeDir="false" afterPath="$PROJECT_DIR$/show_manufactured_filters.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/show_order.php" beforeDir="false" afterPath="$PROJECT_DIR$/show_order.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/(!)51-03 доп раскрой.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/(!)51-03 тиждень заявка 5 дільниця (AF+Moto Profil+REDAUTO+Ulka+Dustwell+Демшин +FSO) 05.12.2023.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/02-03 тиждень заявка 5 дільниця (FS-7) 11.12.2023.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/05-14 тиждень заявка 5 дільниця (FSO+Luft Wal+Романцов+ARV+RedAuto+Бехтер+DustWell+Miratelli+Демшин+Shafer+Goodway+Ulka+AF) - 23.01.2025.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/07-12 тиждень заявка 5 дільниця (AF+Moto Profil+Ulka+Dustwell+Демшин+FSO+Shafer+MIRATELI+Luft Wahl+Mogen)  09.02.2024.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/07-16  для раскроя.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/07-16 тиждень 1-1.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/07-16-1 тиждень заявка 5 дільниця (AF+Moto Profil+Ulka+Dustwell+Демшин+FSO+Shafer+MIRATELI+Luft Wahl+Mogen)  09.02.2024 .xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/14-22 тиждень заявка 3 дільниця (AF, AT, Лідер, Shafer, Moto Profil, Luft Wahl, FSO, FSA, ЛТСП, WT) - 29.03.24.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/16-18 тиждень - заявка 6 дільниця (AF+REDAUTO) - 12.04.24.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/16-23 тиждень заявка 5 дільниця (AF+LW+ARV+ULKA+Демшин+Red Auto+FSO+Shafer+Goodway+Світто+Mirateli+XR+Полістиль) 11.04.2025.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/20-27 тиждень заявка 5 дільниця (AF+Omega+Moto Profil+Ulka+Dustwell+Демшин+FSO+Shafer+MIRATELI+WT+ARV+Red Auto+Просто Контакт+ЛТСП) - 08.05.24.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/2024 49-52 тиждень заявка 5 дільниця (Diana, Goodway)- 27.11.2024.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/24-28 без предзаказа 12.06.25.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/24-28 тиждень заявка 5 дільниця (AF+ARV+Red Auto+FSO+Mirateli+Mogen+Бехтер) - 12.06.25.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/33-42 тиждень заявка 5 дільниця (AF+Ulka+Dustwell+Демшин+FSO+Shafer+НейлТронік+Mogen+Шпіньов+Бехтер+Sprint+Red Auto+ЛТСП) - 06.08.2024.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/40-42 тиждень заявка 5 дільниця (Ulka+Демшин+MIRATELI) - 26.09.2024.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/44 тиждень заявка 5 дільниця (FSO, Luft Wal)- 28.10.2024.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/44-48 для раскроя.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/45-03 тиждень заявка 5 доработка.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/45-03 тиждень заявка 5 дільниця (FSO+Luft Wal+Mogen+Романцов+ARV+RedAuto+Бехтер+DustWell+Miratelli+Демшин+НейлТронік+Sprint+Shafer+AF)- 04.11.2024.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/50-51 тиждень - заявка 6 дільниця (AF+REDAUTO+SHAFER) 06.12.2023.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/51-03 тиждень заявка 5 дільниця (AF+Moto Profil+REDAUTO+Ulka+Dustwell+Демшин +FSO) 05.12.2023.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/У5 24-26 тиждень заявка 5 дільниця (AF+ARV+Shafer+Ulka+DS) 09.06.2023.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/У5 27-32 тиждень заявка 5 дільниця (AF+Shafer+Moto Profil+REDAUTO+Демшин+FRC Beauty) 30.06.2023.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/У5 27-32 тиждень заявка 5 дільниця раскрой (AF+Shafer+Moto Profil+REDAUTO+Демшин+FRC Beauty) 30.06.2023.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/У5 29 тиждень заявка 5 дільниця (Ulka) 17.07.2023.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/У5 33-38 тиждень заявка 5 дільниця (AF+Moto Profil+DianaNailShop+Ulka+MIRATELI+Ворлд Трак+Славія Авто Трак+Демшин+Luft Wahl) 16.08.23.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/У5 33-38 тиждень раскрой заявка 5 дільниця (AF+Moto Profil+DianaNailShop+Ulka+MIRATELI+Ворлд Трак+Славія Авто Трак+Демшин+Luft Wahl) 16.08.23.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/У5 39-44 тиждень заявка 5 дільниця (AF+Moto Profil+Ulka+RED AUTO+Ворлд Трак+Славія+Shafer+MIRATELI+Демшин) 21.09.2023.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/У5 39-44 тиждень заявка 5 дільниця раскрой (AF+Moto Profil+Ulka+RED AUTO+Ворлд Трак+Славія+Shafer+MIRATELI+Демшин) 21.09.2023.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/У5 44-48 тиждень заявка 5 дільниця (AF+Moto Profil+ARV+REDAUTO+Shafer+Ulka+Dustwell+Демшин +Luft Wahl ) 31.10.2023.xlsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/uploads/У5 44-48 тиждень заявка 5 дільниця раскрой (AF+Moto Profil+ARV+REDAUTO+Shafer+Ulka+Dustwell+Демшин +Luft Wahl ) 31.10.2023.xlsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/get_filter_details.php" beforeDir="false" afterPath="$PROJECT_DIR$/get_filter_details.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -151,8 +129,24 @@
       <workItem from="1751373132960" duration="762000" />
       <workItem from="1751435223122" duration="8165000" />
       <workItem from="1752474368367" duration="17140000" />
-      <workItem from="1752738317873" duration="10760000" />
+      <workItem from="1752738317873" duration="10852000" />
+      <workItem from="1752824412425" duration="315000" />
     </task>
+    <task id="LOCAL-00001" summary="Добавлено окно просмотра параметров изделия">
+      <created>1752823327851</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1752823327851</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Добавлено окно просмотра параметров изделия">
+      <created>1752823356179</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1752823356179</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -160,5 +154,7 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
+    <MESSAGE value="Добавлено окно просмотра параметров изделия" />
+    <option name="LAST_COMMIT_MESSAGE" value="Добавлено окно просмотра параметров изделия" />
   </component>
 </project>
