@@ -4,7 +4,15 @@ require_once('tools/tools.php');
 require_once('style/table.txt');
 
 $production_date = reverse_date($_POST['production_date']);
+?>
+<input type="text"
+       id="calendar_input"
+       name="selected_date"
+       value="<?php echo isset($production_date) ? htmlspecialchars($production_date) : ''; ?>"
+       readonly
 
+       style="width: 120px;">
+<?php
 // === Загружаем доплаты из БД в массив ===
 $addition_rows = mysql_execute("SELECT code, amount FROM salary_additions");
 $additions = [];

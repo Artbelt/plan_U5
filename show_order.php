@@ -53,6 +53,11 @@ $order_number = $_POST['order_number'];
         }
 
         /* Адаптивные стили для мобильных устройств */
+        @media (max-width: 600px) {
+            .filter-blocks {
+                flex-direction: column;
+            }
+        }
         @media screen and (max-width: 600px) {
             #order_table {
                 font-size: 12px;
@@ -60,29 +65,153 @@ $order_number = $_POST['order_number'];
                 overflow-x: auto;
                 white-space: nowrap;
             }
+
             #order_table th, #order_table td {
                 padding: 5px;
                 min-width: 80px;
             }
+
             h3 {
                 font-size: 1.2em;
             }
-            button, input[type="submit"] {
+
+            /* Применяем ширину только к кнопкам вне ячеек */
+            input[type="submit"], button:not(.info-btn) {
                 font-size: 12px;
                 padding: 6px 10px;
                 width: 100%;
                 box-sizing: border-box;
             }
+
             #order_table th:nth-child(5), #order_table td:nth-child(5),
             #order_table th:nth-child(6), #order_table td:nth-child(6),
             #order_table th:nth-child(7), #order_table td:nth-child(7),
             #order_table th:nth-child(9), #order_table td:nth-child(9) {
                 display: none;
             }
+        }        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            padding-top: 60px;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 700px;
+            position: relative;
+
+            max-height: 90vh;   /* окно не больше 90% высоты экрана */
+            overflow-y: auto;   /* прокрутка контента */
+            box-sizing: border-box;
+        }
+
+        .close {
+            color: #aaa;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .info-btn {
+            float: right;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            color: #007BFF;
+            margin-left: 1px;
+        }
+        #loader {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2000;
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #loader::after {
+            content: "";
+            width: 60px;
+            height: 60px;
+            border: 8px solid #ccc;
+            border-top: 8px solid #007BFF;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .filter-cell {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .filter-name {
+            flex: 1;
+            padding-right: 10px;
+            word-break: break-word;
+        }
+
+        .info-btn {
+            background: #007BFF;
+            border: none;
+            color: white;
+            border-radius: 4px;
+            font-size: 16px;
+            padding: 3px 8px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .info-btn {
+            all: unset; /* сбрасывает ВСЁ */
+            display: inline-block;
+            background-color: #007BFF;
+            color: white;
+            font-size: 14px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .info-btn {
+            outline: none;
+        }
+        .info-btn:focus {
+            outline: none;
+            box-shadow: none;
         }
     </style>
 </head>
 <body>
+<div id="loader"></div>
+<div id="filterModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+        <div id="modalBody">
+            Загрузка...
+        </div>
+    </div>
+</div>
 <h3>Заявка: <?php echo htmlspecialchars($order_number); ?></h3>
 
 <button onclick="show_zero()">Позиции, выпуск которых = 0</button>
@@ -130,7 +259,12 @@ $order_number = $_POST['order_number'];
         ?>
         <tr>
             <td><?php echo $count; ?></td>
-            <td><?php echo htmlspecialchars($row['filter']); ?></td>
+
+            <td class="filter-cell">
+                <span class="filter-name"><?php echo htmlspecialchars($row['filter']); ?></span>
+                <button class="info-btn" onclick="openModal('<?php echo htmlspecialchars($row['filter'], ENT_QUOTES); ?>')">ℹ️</button>
+            </td>
+
             <td><?php echo htmlspecialchars($row['count']); ?></td>
             <td><?php echo htmlspecialchars($row['marking']); ?></td>
             <td><?php echo htmlspecialchars($row['personal_packaging']); ?></td>
@@ -211,6 +345,32 @@ $order_number = $_POST['order_number'];
             seen[value] = cell;
         }
     }
+</script>
+<script>
+    function openModal(filterId) {
+        fetch('get_filter_details.php?id=' + filterId)
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('modalBody').innerHTML = html;
+                document.getElementById('filterModal').style.display = 'block';
+            });
+    }
+
+    function closeModal() {
+        document.getElementById('filterModal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('filterModal');
+        if (event.target == modal) {
+            modal.style.display = 'none';
+        }
+    }
+</script>
+<script>
+    window.addEventListener("load", function () {
+        document.getElementById("loader").style.display = "none";
+    });
 </script>
 </body>
 </html>

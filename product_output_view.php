@@ -235,13 +235,19 @@
             }
         });
 
+        //  Добавляем дату
+        const dateInput = document.getElementById('calendar_input');
+        if (dateInput && dateInput.value.trim() !== '') {
+            formData.append('selected_date', dateInput.value.trim());
+        }
+
         fetch('save_hours.php', {
             method: 'POST',
             body: formData
         })
             .then(response => response.text())
             .then(result => {
-                alert("✅ Часы успешно сохранены!");
+                alert("✅ Часы успешно сохранены!    V1"+dateInput.value);
             })
             .catch(error => {
                 console.error("Ошибка:", error);
@@ -249,36 +255,4 @@
             });
     }
 </script>
-<script>
-    const productionDate = "<?= $production_date ?>";
-
-    function saveHours() {
-        const inputs = document.querySelectorAll("input[name^='hours']");
-        const formData = new FormData();
-
-        inputs.forEach(input => {
-            if (input.value.trim() !== '') {
-                formData.append(input.name, input.value);
-            }
-        });
-
-        formData.append('date', productionDate); // ⬅️ добавляем дату в форму
-
-        fetch('save_hours.php', {
-            method: 'POST',
-            body: formData
-        })
-            .then(response => response.text())
-            .then(result => {
-                alert("✅ Часы успешно сохранены!");
-                console.log(result);
-            })
-            .catch(error => {
-                console.error("❌ Ошибка сохранения:", error);
-                alert("❌ Не удалось сохранить часы.");
-            });
-    }
-</script>
-
-
 </body>
