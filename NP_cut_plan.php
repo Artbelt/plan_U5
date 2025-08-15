@@ -1,4 +1,98 @@
 <?php
+/***** AJAX: сохранить/загрузить раскрой в ОДНУ таблицу cut_plan_salon *****/
+if (isset($_GET['action']) && in_array($_GET['action'], ['save_plan','load_plan'], true)) {
+    header('Content-Type: application/json; charset=utf-8');
+    $dsn='mysql:host=127.0.0.1;dbname=plan_U5;charset=utf8mb4'; $user='root'; $pass='';
+    try {
+        $pdo=new PDO($dsn,$user,$pass,[
+            PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC
+        ]);
+
+        if ($_GET['action']==='save_plan') {
+            $payload = json_decode(file_get_contents('php://input'), true);
+            if (!$payload || !isset($payload['order_number']) || !isset($payload['bales'])) {
+                http_response_code(400); echo json_encode(['ok'=>false,'error'=>'bad payload']); exit;
+            }
+            $order  = (string)$payload['order_number'];
+            $format = (int)($payload['format_mm'] ?? 1000);
+            $bales  = $payload['bales'];
+
+            $pdo->beginTransaction();
+            $pdo->prepare("DELETE FROM cut_plan_salon WHERE order_number=?")->execute([$order]);
+
+            $ins = $pdo->prepare("
+              INSERT INTO cut_plan_salon
+                (order_number,bale_no,strip_no,material,filter_name,width_mm,height_mm,length_m,format_mm,source)
+              VALUES (?,?,?,?,?,?,?,?,?,?)
+            ");
+            foreach ($bales as $i=>$b) {
+                $baleNo = $i+1;
+                $mat    = (string)$b['mat'];
+                $j=1;
+                foreach ($b['strips'] as $s) {
+                    $ins->execute([
+                        $order,
+                        $baleNo,
+                        $j++,
+                        $mat,
+                        (string)$s['filter'],
+                        (float)$s['w'],
+                        (float)$s['h'],
+                        (float)$s['len'],
+                        $format,
+                        !empty($s['rowEl']) ? 'order' : 'assort'
+                    ]);
+                }
+            }
+            $pdo->commit();
+            echo json_encode(['ok'=>true]); exit;
+        }
+
+        if ($_GET['action']==='load_plan') {
+            $order = $_GET['order_number'] ?? '';
+            if ($order==='') { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'no order']); exit; }
+
+            $st=$pdo->prepare("
+              SELECT order_number,bale_no,strip_no,material,filter_name,width_mm,height_mm,length_m,format_mm,source
+              FROM cut_plan_salon
+              WHERE order_number=?
+              ORDER BY bale_no, strip_no
+            ");
+            $st->execute([$order]);
+            $rows = $st->fetchAll();
+            if (!$rows) { echo json_encode(['ok'=>true,'exists'=>false,'bales'=>[],'format_mm'=>1000]); exit; }
+
+            $format=(int)$rows[0]['format_mm'];
+            $bales=[]; $curNo=null; $cur=null;
+            foreach ($rows as $r) {
+                if ($curNo !== (int)$r['bale_no']) {
+                    if ($cur) $bales[]=$cur;
+                    $curNo=(int)$r['bale_no'];
+                    $cur=['w'=>0.0,'len'=>0.0,'mat'=>$r['material'],'strips'=>[]];
+                }
+                $cur['w']   += (float)$r['width_mm'];
+                $cur['len'] += (float)$r['length_m'];
+                $cur['strips'][]=[
+                    'filter'=>$r['filter_name'],
+                    'w'=>(float)$r['width_mm'],
+                    'h'=>(float)$r['height_mm'],
+                    'len'=>(float)$r['length_m'],
+                    'rowEl'=>null
+                ];
+            }
+            if ($cur) $bales[]=$cur;
+
+            echo json_encode(['ok'=>true,'exists'=>true,'bales'=>$bales,'format_mm'=>$format]); exit;
+        }
+    } catch(Throwable $e){
+        if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
+        http_response_code(500); echo json_encode(['ok'=>false,'error'=>$e->getMessage()]); exit;
+    }
+    exit;
+}
+?>
+<?php
 $dsn='mysql:host=127.0.0.1;dbname=plan_U5;charset=utf8mb4'; $user='root'; $pass='';
 $orderNumber=$_GET['order_number']??''; if($orderNumber===''){http_response_code(400);exit('Укажите ?order_number=...');}
 try{
@@ -57,7 +151,7 @@ try{
     .section{margin-bottom:10px}
     .section h3{margin:0 0 6px;font:600 13px/1.2 Arial}
 
-    .panel{border:1px solid #ccc;border-radius:8px;padding:10px;height:100%;overflow:auto}
+    .panel{border:1px solid #ccc;border-radius:8px;padding:10px;height:100%;overflow:auto;background:#fff}
     .panel h3{margin:0 0 6px;font:600 14px/1.2 Arial}
     .meta{margin:6px 0 8px}
     .meta span{display:inline-block;margin-right:10px}
@@ -99,10 +193,11 @@ try{
     .delBtn:hover{background:#fdd}
 
     /* собранные бухты */
-    .balesList .card{border:1px dashed #bbb;border-radius:8px;padding:8px;margin-bottom:8px}
-    .cardHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+    .balesList .card{border:1px dashed #bbb;border-radius:8px;padding:8px;margin-bottom:8px;background:#fff}
+    .cardHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px}
     .delBaleBtn{border:1px solid #d66;background:#fee;border-radius:6px;padding:3px 10px;cursor:pointer}
     .delBaleBtn:hover{background:#fdd}
+    .panelHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
 
     /* контекстное меню */
     .menu{position:fixed;z-index:50;display:none;background:#fff;border:1px solid #ccc;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.15);padding:8px}
@@ -115,6 +210,23 @@ try{
     #assortPanel{max-height:340px;overflow:auto}
     .acol-mat{width:80px}.acol-filter{width:180px}.acol-w{width:70px}.acol-h{width:60px}.acol-act{width:120px}
     .assortBtn{border:1px solid #aaa;padding:3px 8px;border-radius:6px;background:#fafafa;cursor:pointer;margin-right:4px}
+
+    /* ПЕЧАТЬ — две карточки в строку */
+    @media print {
+        @page { size: A4 portrait; margin: 10mm; }
+        body * { visibility: hidden; }
+        #balesPanel, #balesPanel * { visibility: visible; }
+        #balesPanel { position: absolute; left: 0; top: 0; width: 100%; border: none; box-shadow: none; background: #fff; }
+        #balesPanel .balesList {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8mm;
+        }
+        #balesPanel .balesList > div:not(.card) { grid-column: 1 / -1; margin: 0 0 3mm; padding: 0; }
+        #balesPanel .card { break-inside: avoid; page-break-inside: avoid; margin: 0; border: 1px solid #000; box-shadow: none; }
+        #balesPanel .cardHead { margin-bottom: 2mm; }
+        #balesPanel .baleTbl th, #balesPanel .baleTbl td { padding: 2mm 2mm; }
+        #balesPanel .baleTbl th { background: #fff; }
+        .btn, .delBaleBtn, .delBtn, .lenInput, .menu { display: none !important; }
+    }
 </style>
 
 <h2>Раскрой по заявке #<?=htmlspecialchars($orderNumber)?></h2>
@@ -231,8 +343,15 @@ try{
     </div>
 
     <!-- ПРАВО -->
-    <div class="panel">
-        <h3>Собранные бухты</h3>
+    <div class="panel" id="balesPanel">
+        <div class="panelHead">
+            <h3 style="margin:0">Собранные бухты</h3>
+            <div style="display:flex;gap:6px;align-items:center">
+                <button class="btn" id="btnLoadPlan">Загрузить</button>
+                <button class="btn" id="btnSavePlan">Сохранить в БД</button>
+                <button class="btn" id="btnPrint">Распечатать</button>
+            </div>
+        </div>
         <div id="bales" class="balesList quiet">Пока нет</div>
     </div>
 </div>
@@ -248,6 +367,8 @@ try{
 
 <script>
     const BALE_WIDTH=1000.0, eps=1e-9;
+    const ORDER_NUMBER = "<?=htmlspecialchars($orderNumber, ENT_QUOTES)?>";
+
     let curRow=null, baleStrips=[], baleWidth=0.0, baleMaterial=null, bales=[];
     let lastN = 1;
     const el=(id)=>document.getElementById(id);
@@ -263,7 +384,7 @@ try{
         return round3(tm - cut); // может быть отрицательным
     }
 
-    // Подсветка по |остаток| 0..30 → зелёный→жёлтый (симметрично для минуса)
+    // Подсветка по |остаток| 0..30 → зелёный→жёлтый
     function applyRestColor(tr){
         const RANGE = 30;
         const rest = restMetersOf(tr);
@@ -287,23 +408,32 @@ try{
     }
 
     /* подсветка кандидатов по ширине в окне [free-30 .. free] */
+    /* подсветка кандидатов по ширине в окне [free-30 .. free],
+    НО только если по позиции осталось ≥ 30 м */
     function highlightWidthMatches(){
-        const RANGE = 30;
-        const free = Math.max(0, BALE_WIDTH - baleWidth);
-        const mat  = baleMaterial;
+        const RANGE = 30;                                // окно по ширине, мм
+        const free  = Math.max(0, BALE_WIDTH - baleWidth);
+        const mat   = baleMaterial;
 
         document.querySelectorAll('.posTable tr[data-i]').forEach(tr=>{
+            // сброс предыдущего состояния
             tr.classList.remove('width-cand');
             tr.style.removeProperty('--wbg');
 
+            // нет начатой бухты/материал не задан → не подсвечиваем
             if(!baleStrips.length || !mat) return;
             if(tr.dataset.mat !== mat) return;
 
-            const w = parseFloat(tr.dataset.w);
-            const delta = free - w;
+            // НОВОЕ: если по позиции осталось < 30 м — не подсвечиваем
+            const restM = restMetersOf(tr);
+            if (restM < 30 - eps) return;
 
+            // проверка попадания по ширине
+            const w = parseFloat(tr.dataset.w);
+            const delta = free - w;                       // 0 — идеальное попадание
             if (delta < -eps || delta > RANGE + eps) return;
 
+            // градиент: от светло-голубого (на free-RANGE) к синему (на free)
             const t = Math.max(0, Math.min(1, 1 - (delta / RANGE)));
             const light=[210,235,255], dark=[0,102,204];
             const r=Math.round(light[0] + (dark[0]-light[0])*t);
@@ -314,6 +444,7 @@ try{
             tr.style.setProperty('--wbg', `rgba(${r},${g},${b},0.40)`);
         });
     }
+
 
     /* выбор строки слева */
     function setSelection(tr){
@@ -562,20 +693,49 @@ try{
     }
 
     // Удаление сохранённой бухты: вернуть полосы в левую таблицу
+    // Удаление сохранённой бухты: вернуть полосы в левую таблицу
     function deleteBale(idx){
         const b = bales[idx]; if(!b) return;
-        const sums = new Map();
-        for(const s of b.strips){
-            if(!s.rowEl) continue;
-            sums.set(s.rowEl, round3((sums.get(s.rowEl)||0) + s.len));
+
+        // 1) собираем суммы по исходным строкам (если rowEl есть)
+        const sumsByRowEl = new Map();
+        // 2) и отдельно — по ключу (материал|фильтр) для загруженных из БД (rowEl == null)
+        const sumsByKey   = new Map();
+
+        for (const s of b.strips) {
+            if (s.rowEl) {
+                sumsByRowEl.set(s.rowEl, round3((sumsByRowEl.get(s.rowEl)||0) + s.len));
+            } else {
+                const key = (b.mat || s.mat || '') + '|' + (s.filter || '');
+                sumsByKey.set(key, round3((sumsByKey.get(key)||0) + s.len));
+            }
         }
-        for (const [tr, sum] of sums.entries()){
+
+        // вернуть метры тем строкам, у которых есть прямые ссылки
+        for (const [tr, sum] of sumsByRowEl.entries()) {
             updateRowMeters(tr, -sum);
         }
+
+        // для загруженных — найти строку в левой таблице по (материал|фильтр) и тоже вернуть метры
+        if (sumsByKey.size) {
+            const idxMap = {};
+            document.querySelectorAll('.posTable tr[data-i]').forEach(tr=>{
+                const key = (tr.dataset.mat||'') + '|' + (tr.dataset.filter||'');
+                idxMap[key] = tr;
+            });
+            for (const [key, sum] of sumsByKey.entries()) {
+                const tr = idxMap[key];
+                if (tr) updateRowMeters(tr, -sum);
+                // если позиции нет в левой таблице — просто пропускаем
+            }
+        }
+
+        // убрать бухту и перерисовать
         bales.splice(idx,1);
         renderBales();
         highlightWidthMatches();
     }
+
 
     function renderBales(){
         const box=el('bales');
@@ -615,6 +775,89 @@ try{
         });
     }
 
+    /* Печать только панели сохранённых бухт */
+    function printBales(){
+        if(!bales.length){ alert('Нет сохранённых бухт для печати.'); return; }
+        window.print();
+    }
+    if(el('btnPrint')) el('btnPrint').addEventListener('click', printBales);
+
+    /* === Сохранение/Загрузка плана (одна таблица) === */
+    function buildPlanPayload(){
+        return {
+            order_number: ORDER_NUMBER,
+            format_mm: 1000,
+            bales: bales.map(b => ({
+                w: b.w, len: b.len, mat: b.mat,
+                strips: b.strips.map(s => ({
+                    filter: s.filter, w: s.w, h: s.h, len: s.len,
+                    rowEl: s.rowEl ? true : null
+                }))
+            }))
+        };
+    }
+
+    async function savePlanToDB(){
+        if(!bales.length){ alert('Нет собранных бухт для сохранения.'); return; }
+        try{
+            const res = await fetch(location.pathname+'?action=save_plan', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify(buildPlanPayload())
+            });
+            const data = await res.json();
+            if(!data.ok) throw new Error(data.error||'Ошибка сохранения');
+            alert('Сохранено.');
+        }catch(e){ alert('Не удалось сохранить: '+e.message); }
+    }
+
+    async function loadPlanFromDB(){
+        try{
+            const res = await fetch(location.pathname+'?action=load_plan&order_number='+encodeURIComponent(ORDER_NUMBER));
+            const data = await res.json();
+            if(!data.ok) throw new Error(data.error||'Ошибка загрузки');
+            if(!data.exists){ alert('Сохранённый раскрой не найден.'); return; }
+
+            // очистить текущую бухту и правую панель
+            clearBale(); bales=[];
+
+            // восстановить сохранённые бухты
+            for(const b of data.bales){
+                bales.push({
+                    w:b.w, len:b.len, mat:b.mat,
+                    strips: b.strips.map(s=>({...s, rowEl:null}))
+                });
+            }
+
+            // восстановить «в раскрое» слева по сумме длин (только для строк, которые есть слева)
+            const sums=new Map(); // key = material|filter
+            for(const b of bales){
+                for(const s of b.strips){
+                    const key=b.mat+'|'+s.filter;
+                    sums.set(key,(sums.get(key)||0)+s.len);
+                }
+            }
+            const idx={};
+            document.querySelectorAll('.posTable tr[data-i]').forEach(tr=>{
+                const key=(tr.dataset.mat||'')+'|'+(tr.dataset.filter||'');
+                idx[key]=tr;
+                tr.dataset.cutm='0';
+                tr.querySelector('.cutm').textContent='0.000';
+                tr.querySelector('.restm').textContent=fmt3(parseFloat(tr.dataset.tm)||0);
+                applyRestColor(tr);
+            });
+            for(const [key,sum] of sums.entries()){
+                if(idx[key]) updateRowMeters(idx[key], sum);
+            }
+
+            renderBales();
+            highlightWidthMatches();
+            alert('Загружено.');
+        }catch(e){ alert('Не удалось загрузить: '+e.message); }
+    }
+
+    if (el('btnSavePlan')) el('btnSavePlan').addEventListener('click', savePlanToDB);
+    if (el('btnLoadPlan')) el('btnLoadPlan').addEventListener('click', loadPlanFromDB);
+
     /* контекстное меню (для левой таблицы) */
     const menu=el('ctxMenu');
     function openMenu(cx,cy){
@@ -648,5 +891,6 @@ try{
     });
 
     /* init */
+    function toggleCtrls(){ const hasBale=baleStrips.length>0; if(el('btnSave'))  el('btnSave').disabled=!hasBale; if(el('btnClear')) el('btnClear').disabled=!hasBale; }
     updBaleUI(); setSelection(null); highlightWidthMatches();
 </script>

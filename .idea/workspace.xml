@@ -122,7 +122,7 @@
       <workItem from="1753078037561" duration="1941000" />
       <workItem from="1753162550199" duration="628000" />
       <workItem from="1755165694246" duration="9409000" />
-      <workItem from="1755233698449" duration="8490000" />
+      <workItem from="1755233698449" duration="13277000" />
     </task>
     <task id="LOCAL-00001" summary="Добавлено окно просмотра параметров изделия">
       <created>1752823327851</created>
@@ -166,7 +166,14 @@
       <option name="project" value="LOCAL" />
       <updated>1755240759636</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Улучшен модуль раскроя">
+      <created>1755252836901</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1755252836901</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
