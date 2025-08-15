@@ -57,10 +57,18 @@ try{
     .col-filter{width:160px}.col-w{width:55px}.col-h{width:45px}.col-q{width:48px}
     .col-sum{width:70px}.col-cut{width:80px}.col-rest{width:80px}
 
-    /* подсветки */
-    .posTable tr.sel td{background:#d0e8ff !important}
+    /* подсветки по остаткам */
+    .posTable tr.sel td{background: #ffd0d0 !important}
     .posTable tr:hover td{background:#f3f8ff}
-    .posTable tr.rest-colored td{background:var(--rest-bg)} /* задаём цвет инлайном */
+    .posTable tr.rest-colored td{background:var(--rest-bg)}
+
+    /* подсветка кандидатов по ширине (оверлей поверх строки) */
+    .posTable tr.width-cand td{ position:relative; }
+    .posTable tr.width-cand td::after{
+        content:""; position:absolute; inset:0;
+        background: var(--wbg, transparent);
+        pointer-events:none;
+    }
 
     .btn{border:1px solid #aaa;padding:5px 9px;border-radius:6px;background:#fafafa;cursor:pointer}
     .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -69,8 +77,10 @@ try{
 
     /* таблицы бухты */
     .baleTbl{width:100%;table-layout:fixed;margin-top:6px}
-    .bcol-pos{width:200px}.bcol-w{width:80px}.bcol-h{width:70px}.bcol-l{width:120px}
+    .bcol-act{width:36px}.bcol-pos{width:200px}.bcol-w{width:80px}.bcol-h{width:70px}.bcol-l{width:120px}
     .lenInput{width:100%;padding:3px 6px;border:1px solid #bbb;border-radius:6px}
+    .delBtn{border:1px solid #d66;background:#fee;border-radius:6px;padding:2px 8px;cursor:pointer}
+    .delBtn:hover{background:#fdd}
 
     .balesList .card{border:1px dashed #bbb;border-radius:8px;padding:8px;margin-bottom:8px}
 
@@ -168,9 +178,8 @@ try{
             <span>Материал бухты: <b id="baleMat" class="quiet">—</b></span>
         </div>
         <div class="ctrls">
-            <button class="btn" id="btnAuto" disabled>Добавить авто</button>
-            <input id="nInput" type="number" min="1" step="1" placeholder="N" disabled>
-            <button class="btn" id="btnAddN" disabled>Добавить N</button>
+            <!-- «Добавить авто» и «Добавить N» убраны -->
+            <input id="nInput" type="number" min="1" step="1" value="1" placeholder="N" disabled>
             <button class="btn" id="btnAddEmpty" disabled>Добавить пустую</button>
             <button class="btn" id="btnSave" disabled>Сохранить бухту</button>
             <button class="btn" id="btnClear" disabled>Очистить</button>
@@ -189,12 +198,10 @@ try{
 <div class="menu" id="ctxMenu">
     <div class="row"><button class="mi" id="mi_auto">Добавить авто</button></div>
     <div class="row">
-        <input id="mi_n" type="number" min="1" step="1" placeholder="N">
+        <input id="mi_n" type="number" min="1" step="1" value="1" placeholder="N">
         <button class="mi" id="mi_addN">Добавить N</button>
     </div>
-    <div class="row"><button class="mi" id="mi_addEmpty">Добавить пустую</button></div>
-    <div class="row"><button class="mi" id="mi_save">Сохранить бухту</button></div>
-    <div class="row"><button class="mi" id="mi_clear">Очистить</button></div>
+    <!-- убраны: Добавить пустую / Сохранить / Очистить -->
 </div>
 
 <script>
@@ -207,17 +214,16 @@ try{
 
     /* === утилиты левой таблицы === */
     function restMetersOf(tr){
-        const tm = parseFloat(tr.dataset.tm || '0');     // Σ, м
-        const cut= parseFloat(tr.dataset.cutm || '0');   // уже в раскрое
+        const tm = parseFloat(tr.dataset.tm || '0');
+        const cut= parseFloat(tr.dataset.cutm || '0');
         return Math.max(0, round3(tm - cut));
     }
 
     function applyRestColor(tr){
         const rest = restMetersOf(tr);
-        // 0 — зелёный, 20 — жёлтый
         if (rest <= 0 + eps) {
             tr.classList.add('rest-colored');
-            tr.style.setProperty('--rest-bg','rgb(200,247,197)'); // зелёный
+            tr.style.setProperty('--rest-bg','rgb(200,247,197)');
         } else if (rest <= 20) {
             const g=[200,247,197], y=[255,243,176];
             const t = rest/20;
@@ -230,6 +236,35 @@ try{
             tr.classList.remove('rest-colored');
             tr.style.removeProperty('--rest-bg');
         }
+    }
+
+    /* подсветка кандидатов по ширине в окне [free-30 .. free] */
+    function highlightWidthMatches(){
+        const RANGE = 30;
+        const free = Math.max(0, BALE_WIDTH - baleWidth);
+        const mat  = baleMaterial;
+
+        document.querySelectorAll('.posTable tr[data-i]').forEach(tr=>{
+            tr.classList.remove('width-cand');
+            tr.style.removeProperty('--wbg');
+
+            if(!baleStrips.length || !mat) return;
+            if(tr.dataset.mat !== mat) return;
+
+            const w = parseFloat(tr.dataset.w);
+            const delta = free - w;
+
+            if (delta < -eps || delta > RANGE + eps) return;
+
+            const t = Math.max(0, Math.min(1, 1 - (delta / RANGE)));
+            const light=[210,235,255], dark=[0,102,204];
+            const r=Math.round(light[0] + (dark[0]-light[0])*t);
+            const g=Math.round(light[1] + (dark[1]-light[1])*t);
+            const b=Math.round(light[2] + (dark[2]-light[2])*t);
+
+            tr.classList.add('width-cand');
+            tr.style.setProperty('--wbg', `rgba(${r},${g},${b},0.40)`);
+        });
     }
 
     /* выбор строки */
@@ -256,23 +291,20 @@ try{
             const tr=e.target.closest('tr[data-i]'); if(!tr) return;
             e.preventDefault(); setSelection(tr); openMenu(e.clientX, e.clientY);
         });
-        // стартовая подсветка
         tbl.querySelectorAll('tr[data-i]').forEach(applyRestColor);
     });
 
     /* центральные кнопки */
     function toggleCtrls(){
         const hasSel=!!curRow, hasBale=baleStrips.length>0;
-        el('btnAuto').disabled=!hasSel;
-        el('nInput').disabled=!hasSel; el('btnAddN').disabled=!hasSel;
-        el('btnAddEmpty').disabled=!hasSel;
-        el('btnSave').disabled=!hasBale; el('btnClear').disabled=!hasBale;
+        if(el('nInput')) el('nInput').disabled=!hasSel;
+        if(el('btnAddEmpty')) el('btnAddEmpty').disabled=!hasSel;
+        if(el('btnSave')) el('btnSave').disabled=!hasBale;
+        if(el('btnClear')) el('btnClear').disabled=!hasBale;
     }
-    el('btnAuto').addEventListener('click', addAuto);
-    el('btnAddN').addEventListener('click', ()=>addN(parseInt(el('nInput').value||'0',10)));
-    el('btnAddEmpty').addEventListener('click', addEmpty);
-    el('btnSave').addEventListener('click', saveBale);
-    el('btnClear').addEventListener('click', clearBale);
+    if(el('btnAddEmpty')) el('btnAddEmpty').addEventListener('click', addEmpty);
+    if(el('btnSave')) el('btnSave').addEventListener('click', saveBale);
+    if(el('btnClear')) el('btnClear').addEventListener('click', clearBale);
 
     /* обновление метрик (по Δметров), с жёсткими границами [0..Σ] */
     function updateRowMeters(tr, deltaMeters){
@@ -283,7 +315,7 @@ try{
         if (cutNow < 0) cutNow = 0;
         if (cutNow > total) cutNow = total;
 
-        const effDelta = round3(cutNow - cutPrev); // фактически применённая разница
+        const effDelta = round3(cutNow - cutPrev);
 
         tr.dataset.cutm = cutNow;
         const rest  = Math.max(0, round3(total - cutNow));
@@ -303,43 +335,77 @@ try{
         if(!baleMaterial) el('baleMat').classList.add('quiet'); else el('baleMat').classList.remove('quiet');
 
         const box=el('baleList');
-        if(!baleStrips.length){box.textContent='Пусто';box.classList.add('quiet');toggleCtrls();return;}
+        if(!baleStrips.length){box.textContent='Пусто';box.classList.add('quiet');toggleCtrls();highlightWidthMatches();return;}
         box.classList.remove('quiet');
 
-        let html='<table class="baleTbl"><colgroup><col class="bcol-pos"><col class="bcol-w"><col class="bcol-h"><col class="bcol-l"></colgroup>';
-        html+='<tr><th>Позиция</th><th>Ширина</th><th>H</th><th>Длина</th></tr>';
+        let html='<table class="baleTbl"><colgroup><col class="bcol-act"><col class="bcol-pos"><col class="bcol-w"><col class="bcol-h"><col class="bcol-l"></colgroup>';
+        html+='<tr><th></th><th>Позиция</th><th>Ширина</th><th>H</th><th>Длина</th></tr>';
         html+=baleStrips.map((s,idx)=>`
       <tr>
+        <td><button class="delBtn" title="Убрать полосу" data-idx="${idx}">×</button></td>
         <td>${s.filter}</td>
         <td>${fmt1(s.w)} мм</td>
         <td>${s.h} мм</td>
         <td>
-          <input type="number" class="lenInput" data-idx="${idx}" min="0" step="0.001" value="${fmt3(s.len)}">
+          <input type="number" class="lenInput" data-idx="${idx}" min="0" step="10" value="${fmt3(s.len)}">
         </td>
       </tr>`).join('');
         html+='</table>';
         box.innerHTML=html;
 
-        // обработчики ручного редактирования длины
         box.querySelectorAll('.lenInput').forEach(inp=>{
             inp.addEventListener('change', e=>{
-                const i = parseInt(e.target.dataset.idx,10);
-                const newVal = round3(parseFloat(e.target.value||'0'));
-                if(isNaN(newVal) || newVal<0){ e.target.value = fmt3(baleStrips[i].len); return; }
-
-                const s = baleStrips[i];
-                const tr = s.rowEl; // ссылка на исходную строку
-                if(!tr){ s.len=newVal; return; }
-
-                // применяем Δ с ограничением [0..Σ] через updateRowMeters
-                const old = s.len;
-                let effDelta = updateRowMeters(tr, round3(newVal - old));
-                s.len = round3(old + effDelta);  // корректируем по фактически применённой дельте
-                e.target.value = fmt3(s.len);    // синхронизируем инпут
+                let L = round3(parseFloat(e.target.value||'0')); if(isNaN(L)||L<0) L=0;
+                unifyBaleLength(L);
+            });
+        });
+        box.querySelectorAll('.delBtn').forEach(btn=>{
+            btn.addEventListener('click', e=>{
+                const i = parseInt(e.currentTarget.dataset.idx,10);
+                removeStrip(i);
             });
         });
 
         toggleCtrls();
+        highlightWidthMatches();
+    }
+
+    // Сделать все полосы одинаковой длины L с учётом доступного остатка
+    function unifyBaleLength(Lnew){
+        if(!baleStrips.length) return;
+
+        const groups=[]; const map=new Map();
+        for(let i=0;i<baleStrips.length;i++){
+            const s=baleStrips[i];
+            const key = s.rowEl ? s.rowEl.dataset.i : `nr:${s.filter}:${s.w}:${s.h}`;
+            let g=map.get(key);
+            if(!g){ g={rowEl:s.rowEl, idxs:[], sum:0, count:0, avg:0, rest:Infinity}; map.set(key,g); groups.push(g); }
+            g.idxs.push(i); g.sum=round3(g.sum + s.len); g.count++;
+        }
+        groups.forEach(g=>{
+            g.avg = g.count ? round3(g.sum/g.count) : 0;
+            g.rest = g.rowEl ? restMetersOf(g.rowEl) : Infinity;
+        });
+
+        let Lmax = Infinity;
+        for(const g of groups){
+            const addPerStrip = (g.rest===Infinity) ? Infinity : g.rest / g.count;
+            const candidate = (g.avg) + addPerStrip;
+            if(candidate < Lmax) Lmax = candidate;
+        }
+        if(Lnew > Lmax){
+            Lnew = round3(Lmax);
+            alert('Недостаточно остатка по одной из позиций. Длина бухты увеличена до максимально возможной.');
+        }
+
+        for(const g of groups){
+            const desiredSum = round3(Lnew * g.count);
+            const delta = round3(desiredSum - g.sum);
+            if(g.rowEl) updateRowMeters(g.rowEl, delta);
+        }
+        baleStrips.forEach(s=>{ s.len=Lnew; });
+
+        updBaleUI();
     }
 
     function ensureMaterial(mat){
@@ -349,7 +415,18 @@ try{
         return false;
     }
 
-    /* === ДОБАВЛЕНИЕ: переносим ВСЮ «остаток, м» по выбранной строке; длина каждой из X полос = остаток / X === */
+    /* Удаление одной полосы с возвратом метров */
+    function removeStrip(idx){
+        const s = baleStrips[idx];
+        if(!s) return;
+        if(s.rowEl) updateRowMeters(s.rowEl, -round3(s.len));
+        baleWidth = Math.max(0, round3(baleWidth - s.w));
+        baleStrips.splice(idx,1);
+        if(!baleStrips.length) baleMaterial = null;
+        updBaleUI();
+    }
+
+    /* Добавление: переносим весь «остаток, м» выбранной строки, длина каждой из X полос = остаток/X */
     function addStrips(take){
         if(!curRow) return;
         let w   = parseFloat(curRow.dataset.w),
@@ -359,21 +436,20 @@ try{
         if(take<=0) return;
         if(!ensureMaterial(mat)) return;
 
-        const restMeters = restMetersOf(curRow);     // сколько метров ещё надо по этой позиции
+        const restMeters = restMetersOf(curRow);
         if(restMeters<=0){ alert('По этой позиции метров не осталось.'); return; }
 
-        const perLen = round3(restMeters / take);    // раздать всю сумму поровну на X полос
+        const perLen = round3(restMeters / take);
+
+        const free=Math.max(0, BALE_WIDTH-baleWidth);
+        const needW=w*take;
+        if(needW > free+eps){ alert('Не помещается по ширине.'); return; }
 
         for(let i=0;i<take;i++)
             baleStrips.push({filter:curRow.dataset.filter,w:w,h:h,len:perLen,mat:mat,rowEl:curRow});
 
-        // ширина бухты
-        const free=Math.max(0, BALE_WIDTH-baleWidth);
-        const needW=w*take;
-        if(needW > free+eps){ alert('Не помещается по ширине.'); return; }
         baleWidth += needW;
 
-        // «в раскрое» += S, «остаток» -= S
         updateRowMeters(curRow, restMeters);
         updBaleUI();
     }
@@ -399,7 +475,7 @@ try{
         addStrips(take);
     }
 
-    // Добавить одну «пустую» полосу (0 м) — удобно, когда нужно раскидать длину вручную
+    // Добавить «пустую» полосу (0 м)
     function addEmpty(){
         if(!curRow) return;
         const w=parseFloat(curRow.dataset.w), h=parseFloat(curRow.dataset.h), mat=curRow.dataset.mat || 'Simple';
@@ -411,13 +487,28 @@ try{
         updBaleUI();
     }
 
-    function clearBale(){ baleStrips=[]; baleWidth=0; baleMaterial=null; updBaleUI(); }
+    // ОЧИСТИТЬ: вернуть все метры по группам в левую таблицу
+    function clearBale(){
+        if(!baleStrips.length){ updBaleUI(); return; }
+        const sums = new Map(); // key: tr (rowEl), val: суммарные метры
+        for(const s of baleStrips){
+            if(!s.rowEl) continue;
+            sums.set(s.rowEl, round3((sums.get(s.rowEl)||0) + s.len));
+        }
+        for (const [tr, sum] of sums.entries()){
+            updateRowMeters(tr, -sum); // вернуть метры
+        }
+        baleStrips=[]; baleWidth=0; baleMaterial=null;
+        updBaleUI();
+    }
+
     function saveBale(){
         if(!baleStrips.length) return;
         let totalLen=baleStrips.reduce((s,x)=>s+x.len,0);
         bales.push({w:baleWidth, len:round3(totalLen), mat:baleMaterial, strips:[...baleStrips]});
-        renderBales(); clearBale();
+        renderBales(); baleStrips=[]; baleWidth=0; baleMaterial=null; updBaleUI();
     }
+
     function renderBales(){
         const box=el('bales');
         if(!bales.length){box.textContent='Пока нет'; box.classList.add('quiet'); return;}
@@ -447,7 +538,8 @@ try{
         let x=Math.min(window.innerWidth - menu.offsetWidth - pad, Math.max(pad, cx+pad));
         let y=Math.min(window.innerHeight- menu.offsetHeight- pad, Math.max(pad, cy+pad));
         menu.style.left=x+'px'; menu.style.top=y+'px';
-        el('mi_n').value='';
+        const centralN = el('nInput') ? (el('nInput').value || '1') : '1';
+        el('mi_n').value = centralN;
     }
     function closeMenu(){ menu.style.display='none'; }
     document.addEventListener('click',e=>{
@@ -455,10 +547,7 @@ try{
     });
     el('mi_auto').addEventListener('click',()=>{ addAuto(); closeMenu(); });
     el('mi_addN').addEventListener('click',()=>{ addN(el('mi_n').value); closeMenu(); });
-    el('mi_addEmpty').addEventListener('click',()=>{ addEmpty(); closeMenu(); });
-    el('mi_clear').addEventListener('click',()=>{ clearBale(); closeMenu(); });
-    el('mi_save').addEventListener('click',()=>{ saveBale(); closeMenu(); });
 
     /* init */
-    updBaleUI(); setSelection(null);
+    updBaleUI(); setSelection(null); highlightWidthMatches();
 </script>

@@ -4,26 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="Добавлено окно просмотра параметров изделия">
-      <change afterPath="$PROJECT_DIR$/NP_cut_plan.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5023.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5024.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5025.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5026.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5027.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5028.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5029.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5030.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5031.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5032.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5033.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5034.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5035.jpg" afterDir="false" />
+    <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="Добавлен модуль раскроя">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/get_filter_details.php" beforeDir="false" afterPath="$PROJECT_DIR$/get_filter_details.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/photo/AF5021.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/photo/AF5021.jpg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/photo/AF5022.jpg" beforeDir="false" afterPath="$PROJECT_DIR$/photo/AF5022.jpg" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/show_order.php" beforeDir="false" afterPath="$PROJECT_DIR$/show_order.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/NP_cut_plan.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_cut_plan.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -139,7 +122,7 @@
       <workItem from="1753078037561" duration="1941000" />
       <workItem from="1753162550199" duration="628000" />
       <workItem from="1755165694246" duration="9409000" />
-      <workItem from="1755233698449" duration="301000" />
+      <workItem from="1755233698449" duration="3832000" />
     </task>
     <task id="LOCAL-00001" summary="Добавлено окно просмотра параметров изделия">
       <created>1752823327851</created>
@@ -162,7 +145,14 @@
       <option name="project" value="LOCAL" />
       <updated>1752824800662</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Добавлен модуль раскроя">
+      <created>1755234037448</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1755234037449</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -171,6 +161,7 @@
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <MESSAGE value="Добавлено окно просмотра параметров изделия" />
-    <option name="LAST_COMMIT_MESSAGE" value="Добавлено окно просмотра параметров изделия" />
+    <MESSAGE value="Добавлен модуль раскроя" />
+    <option name="LAST_COMMIT_MESSAGE" value="Добавлен модуль раскроя" />
   </component>
 </project>
