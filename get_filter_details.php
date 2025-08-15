@@ -58,9 +58,32 @@ function yesno($v) {
 $photo_name = preg_replace('/[^a-zA-Z0-9а-яА-Я_-]+/u', '_', $filter['filter']) . '.jpg';
 $photo_path = 'photo/' . $photo_name;
 $photo_full_path = __DIR__ . '/' . $photo_path;
-$photo_html = file_exists($photo_full_path)
-    ? "<img src='{$photo_path}' alt='Фото {$filter['filter']}' style='max-width:95%; max-height:300px; display:block; margin:20px auto; border:1px solid #ccc; border-radius:5px;'>"
-    : "<div style='font-size:12px; color:#666; text-align:center; margin:20px;'>Фото не найдено</div>";
+//$photo_html = file_exists($photo_full_path)
+//    ? "<img src='{$photo_path}' alt='Фото {$filter['filter']}' style='max-width:95%; max-height:600px; display:block; margin:10px auto; border:1px solid #ccc; border-radius:5px;'>"
+//    : "<div style='font-size:12px; color:#666; text-align:center; margin:20px;'>Фото не найдено</div>";
+if (file_exists($photo_full_path)) {
+    $photo_html = "<img src='{$photo_path}' alt='Фото {$filter['filter']}' style='max-width:95%; max-height:600px; display:block; margin:10px auto; border:1px solid #ccc; border-radius:5px;'>";
+} else {
+    // Попытка найти аналог из комментария
+    $analog_photo = null;
+    if (!empty($filter['comment'])) {
+        // Ищем в комментарии шаблон AF + 4 цифры
+        if (preg_match('/AF\d{4}/', $filter['comment'], $matches)) {
+            $analog_name = $matches[0];
+            $analog_photo_path = "photo/{$analog_name}.jpg"; // путь к фото аналога
+            $analog_photo_full_path = $_SERVER['DOCUMENT_ROOT'] . '/plan_U5/' . $analog_photo_path;
+            //echo $analog_photo_full_path;
+            if (file_exists($analog_photo_full_path)) {
+                $analog_photo = "<img src='{$analog_photo_path}' alt='Фото аналога {$analog_name}' style='max-width:95%; max-height:600px; display:block; margin:10px auto; border:1px solid #ccc; border-radius:5px;'>";
+            }
+        }
+    }
+
+    // Если нашли фото аналога
+    $photo_html = $analog_photo ?: "<div style='font-size:12px; color:#666; text-align:center; margin:20px;'>Фото не найдено</div>";
+}
+
+
 ?>
 
 <!-- Контейнер с прокруткой -->

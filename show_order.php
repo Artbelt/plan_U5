@@ -262,7 +262,7 @@ $order_number = $_POST['order_number'];
 
             <td class="filter-cell">
                 <span class="filter-name"><?php echo htmlspecialchars($row['filter']); ?></span>
-                <button class="info-btn" onclick="openModal('<?php echo htmlspecialchars($row['filter'], ENT_QUOTES); ?>')">ℹ️</button>
+                <button class="info-btn" onclick="openModal('<?php echo htmlspecialchars($row['filter'], ENT_QUOTES); ?>')">i</button>
             </td>
 
             <td><?php echo htmlspecialchars($row['count']); ?></td>
