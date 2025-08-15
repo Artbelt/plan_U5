@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="Добавлен модуль раскроя">
+    <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="Улучшен модуль раскроя">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/NP_cut_plan.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_cut_plan.php" afterDir="false" />
     </list>
@@ -122,7 +122,7 @@
       <workItem from="1753078037561" duration="1941000" />
       <workItem from="1753162550199" duration="628000" />
       <workItem from="1755165694246" duration="9409000" />
-      <workItem from="1755233698449" duration="3832000" />
+      <workItem from="1755233698449" duration="5000000" />
     </task>
     <task id="LOCAL-00001" summary="Добавлено окно просмотра параметров изделия">
       <created>1752823327851</created>
@@ -152,7 +152,14 @@
       <option name="project" value="LOCAL" />
       <updated>1755234037449</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="Улучшен модуль раскроя">
+      <created>1755239584978</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1755239584978</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -162,6 +169,7 @@
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <MESSAGE value="Добавлено окно просмотра параметров изделия" />
     <MESSAGE value="Добавлен модуль раскроя" />
-    <option name="LAST_COMMIT_MESSAGE" value="Добавлен модуль раскроя" />
+    <MESSAGE value="Улучшен модуль раскроя" />
+    <option name="LAST_COMMIT_MESSAGE" value="Улучшен модуль раскроя" />
   </component>
 </project>

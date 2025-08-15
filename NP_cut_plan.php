@@ -73,7 +73,6 @@ try{
     .btn{border:1px solid #aaa;padding:5px 9px;border-radius:6px;background:#fafafa;cursor:pointer}
     .btn:disabled{opacity:.5;cursor:not-allowed}
     .ctrls{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
-    .ctrls input{width:70px;padding:4px 6px;border:1px solid #bbb;border-radius:6px}
 
     /* таблицы бухты */
     .baleTbl{width:100%;table-layout:fixed;margin-top:6px}
@@ -88,7 +87,12 @@ try{
     .menu{position:fixed;z-index:50;display:none;background:#fff;border:1px solid #ccc;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.15);padding:8px}
     .menu .row{display:flex;align-items:center;gap:6px;margin:4px 0}
     .menu .mi{border:1px solid #aaa;padding:5px 9px;border-radius:6px;background:#fafafa;cursor:pointer;white-space:nowrap}
-    .menu input{width:70px;padding:4px 6px;border:1px solid #bbb;border-radius:6px}
+    .menu input{width:50px;padding:4px 6px;border:1px solid #bbb;border-radius:6px}
+    /* шире кнопка «Добавить авто» */
+    #mi_auto{min-width:180px; text-align:center;}
+    #mi_addN {
+        width: 125px; /* Установите ширину для кнопки "Добавить N" */
+    }
 </style>
 
 <h2>Раскрой по заявке #<?=htmlspecialchars($orderNumber)?></h2>
@@ -178,9 +182,7 @@ try{
             <span>Материал бухты: <b id="baleMat" class="quiet">—</b></span>
         </div>
         <div class="ctrls">
-            <!-- «Добавить авто» и «Добавить N» убраны -->
-            <input id="nInput" type="number" min="1" step="1" value="1" placeholder="N" disabled>
-            <button class="btn" id="btnAddEmpty" disabled>Добавить пустую</button>
+            <!-- Поле N и «Добавить пустую» удалены -->
             <button class="btn" id="btnSave" disabled>Сохранить бухту</button>
             <button class="btn" id="btnClear" disabled>Очистить</button>
         </div>
@@ -198,15 +200,16 @@ try{
 <div class="menu" id="ctxMenu">
     <div class="row"><button class="mi" id="mi_auto">Добавить авто</button></div>
     <div class="row">
-        <input id="mi_n" type="number" min="1" step="1" value="1" placeholder="N">
         <button class="mi" id="mi_addN">Добавить N</button>
+        <input id="mi_n" type="number" min="1" step="1" value="1" placeholder="N" >
+
     </div>
-    <!-- убраны: Добавить пустую / Сохранить / Очистить -->
 </div>
 
 <script>
     const BALE_WIDTH=1000.0, eps=1e-9;
     let curRow=null, baleStrips=[], baleWidth=0.0, baleMaterial=null, bales=[];
+    let lastN = 1; // дефолт для меню
     const el=(id)=>document.getElementById(id);
     const fmt1=(x)=>(Math.round(x*10)/10).toFixed(1);
     const fmt3=(x)=>(Math.round(x*1000)/1000).toFixed(3);
@@ -296,33 +299,25 @@ try{
 
     /* центральные кнопки */
     function toggleCtrls(){
-        const hasSel=!!curRow, hasBale=baleStrips.length>0;
-        if(el('nInput')) el('nInput').disabled=!hasSel;
-        if(el('btnAddEmpty')) el('btnAddEmpty').disabled=!hasSel;
-        if(el('btnSave')) el('btnSave').disabled=!hasBale;
-        if(el('btnClear')) el('btnClear').disabled=!hasBale;
+        const hasBale=baleStrips.length>0;
+        if(el('btnSave'))  el('btnSave').disabled = !hasBale;
+        if(el('btnClear')) el('btnClear').disabled= !hasBale;
     }
-    if(el('btnAddEmpty')) el('btnAddEmpty').addEventListener('click', addEmpty);
-    if(el('btnSave')) el('btnSave').addEventListener('click', saveBale);
+    if(el('btnSave'))  el('btnSave').addEventListener('click', saveBale);
     if(el('btnClear')) el('btnClear').addEventListener('click', clearBale);
 
-    /* обновление метрик (по Δметров), с жёсткими границами [0..Σ] */
+    /* обновление метрик (по Δметров) */
     function updateRowMeters(tr, deltaMeters){
         const total = parseFloat(tr.dataset.tm);
         const cutPrev = parseFloat(tr.dataset.cutm||'0');
         let cutNow = round3(cutPrev + deltaMeters);
-
         if (cutNow < 0) cutNow = 0;
         if (cutNow > total) cutNow = total;
-
         const effDelta = round3(cutNow - cutPrev);
-
         tr.dataset.cutm = cutNow;
         const rest  = Math.max(0, round3(total - cutNow));
-
         tr.querySelector('.cutm').textContent = fmt3(cutNow);
         tr.querySelector('.restm').textContent = fmt3(rest);
-
         applyRestColor(tr);
         return effDelta;
     }
@@ -370,10 +365,9 @@ try{
         highlightWidthMatches();
     }
 
-    // Сделать все полосы одинаковой длины L с учётом доступного остатка
+    // Сделать все полосы одинаковой длины L
     function unifyBaleLength(Lnew){
         if(!baleStrips.length) return;
-
         const groups=[]; const map=new Map();
         for(let i=0;i<baleStrips.length;i++){
             const s=baleStrips[i];
@@ -415,7 +409,7 @@ try{
         return false;
     }
 
-    /* Удаление одной полосы с возвратом метров */
+    /* Удаление одной полосы */
     function removeStrip(idx){
         const s = baleStrips[idx];
         if(!s) return;
@@ -473,30 +467,19 @@ try{
         const take = Math.min(n, maxFit);
         if(take<=0){ alert('Не помещается по ширине.'); return; }
         addStrips(take);
+        lastN = n;
     }
 
-    // Добавить «пустую» полосу (0 м)
-    function addEmpty(){
-        if(!curRow) return;
-        const w=parseFloat(curRow.dataset.w), h=parseFloat(curRow.dataset.h), mat=curRow.dataset.mat || 'Simple';
-        if(!ensureMaterial(mat)) return;
-        const free=Math.max(0, BALE_WIDTH-baleWidth);
-        if(w > free+eps){ alert('Не помещается по ширине.'); return; }
-        baleStrips.push({filter:curRow.dataset.filter,w:w,h:h,len:0,mat:mat,rowEl:curRow});
-        baleWidth += w;
-        updBaleUI();
-    }
-
-    // ОЧИСТИТЬ: вернуть все метры по группам в левую таблицу
+    // Очистка: вернуть все метры по группам
     function clearBale(){
         if(!baleStrips.length){ updBaleUI(); return; }
-        const sums = new Map(); // key: tr (rowEl), val: суммарные метры
+        const sums = new Map();
         for(const s of baleStrips){
             if(!s.rowEl) continue;
             sums.set(s.rowEl, round3((sums.get(s.rowEl)||0) + s.len));
         }
         for (const [tr, sum] of sums.entries()){
-            updateRowMeters(tr, -sum); // вернуть метры
+            updateRowMeters(tr, -sum);
         }
         baleStrips=[]; baleWidth=0; baleMaterial=null;
         updBaleUI();
@@ -538,15 +521,14 @@ try{
         let x=Math.min(window.innerWidth - menu.offsetWidth - pad, Math.max(pad, cx+pad));
         let y=Math.min(window.innerHeight- menu.offsetHeight- pad, Math.max(pad, cy+pad));
         menu.style.left=x+'px'; menu.style.top=y+'px';
-        const centralN = el('nInput') ? (el('nInput').value || '1') : '1';
-        el('mi_n').value = centralN;
+        el('mi_n').value = String(lastN || 1);
     }
     function closeMenu(){ menu.style.display='none'; }
     document.addEventListener('click',e=>{
         if(!e.target.closest('#ctxMenu') && !e.target.closest('.posTable')) closeMenu();
     });
     el('mi_auto').addEventListener('click',()=>{ addAuto(); closeMenu(); });
-    el('mi_addN').addEventListener('click',()=>{ addN(el('mi_n').value); closeMenu(); });
+    el('mi_addN').addEventListener('click',()=>{ const n=parseInt(el('mi_n').value||'1',10); addN(n); closeMenu(); });
 
     /* init */
     updBaleUI(); setSelection(null); highlightWidthMatches();
