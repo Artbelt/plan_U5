@@ -1,5 +1,6 @@
 <?php
-/***** AJAX: сохранить/загрузить раскрой в ОДНУ таблицу cut_plan_salon *****/
+/***** AJAX: сохранить/загрузить раскрой в ОДНУ таблицу cut_plan_salon
+Требуется столбец fact_length_m (DECIMAL(10,3) NULL) *****/
 if (isset($_GET['action']) && in_array($_GET['action'], ['save_plan','load_plan'], true)) {
     header('Content-Type: application/json; charset=utf-8');
     $dsn='mysql:host=127.0.0.1;dbname=plan_U5;charset=utf8mb4'; $user='root'; $pass='';
@@ -15,20 +16,21 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save_plan','load_plan'
                 http_response_code(400); echo json_encode(['ok'=>false,'error'=>'bad payload']); exit;
             }
             $order  = (string)$payload['order_number'];
-            $format = (int)($payload['format_mm'] ?? 1000);
+            $format = (int)($payload['format'] ?? 1000);
             $bales  = $payload['bales'];
 
             $pdo->beginTransaction();
-            $pdo->prepare("DELETE FROM cut_plan_salon WHERE order_number=?")->execute([$order]);
+            $pdo->prepare("DELETE FROM cut_plans WHERE order_number=?")->execute([$order]);
 
             $ins = $pdo->prepare("
-              INSERT INTO cut_plan_salon
-                (order_number,bale_no,strip_no,material,filter_name,width_mm,height_mm,length_m,format_mm,source)
-              VALUES (?,?,?,?,?,?,?,?,?,?)
+              INSERT INTO cut_plans
+                (order_number,bale_id,strip_no,material,filter,width,height,length,format,source,fact_length)
+              VALUES (?,?,?,?,?,?,?,?,?,?,?)
             ");
             foreach ($bales as $i=>$b) {
                 $baleNo = $i+1;
                 $mat    = (string)$b['mat'];
+                $fact   = isset($b['fact']) ? (float)$b['fact'] : null;
                 $j=1;
                 foreach ($b['strips'] as $s) {
                     $ins->execute([
@@ -41,7 +43,8 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save_plan','load_plan'
                         (float)$s['h'],
                         (float)$s['len'],
                         $format,
-                        !empty($s['rowEl']) ? 'order' : 'assort'
+                        !empty($s['rowEl']) ? 'order' : 'assort',
+                        $fact
                     ]);
                 }
             }
@@ -54,34 +57,36 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save_plan','load_plan'
             if ($order==='') { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'no order']); exit; }
 
             $st=$pdo->prepare("
-              SELECT order_number,bale_no,strip_no,material,filter_name,width_mm,height_mm,length_m,format_mm,source
-              FROM cut_plan_salon
+              SELECT order_number,bale_id,strip_no,material,filter,width,height,length,format,source,fact_length
+              FROM cut_plans
               WHERE order_number=?
-              ORDER BY bale_no, strip_no
+              ORDER BY bale_id, strip_no
             ");
             $st->execute([$order]);
             $rows = $st->fetchAll();
             if (!$rows) { echo json_encode(['ok'=>true,'exists'=>false,'bales'=>[],'format_mm'=>1000]); exit; }
 
-            $format=(int)$rows[0]['format_mm'];
-            $bales=[]; $curNo=null; $cur=null;
+            $format=(int)$rows[0]['format'];
+            $bales=[]; $curNo=null; $cur=null; $curFact=null;
             foreach ($rows as $r) {
-                if ($curNo !== (int)$r['bale_no']) {
-                    if ($cur) $bales[]=$cur;
-                    $curNo=(int)$r['bale_no'];
+                if ($curNo !== (int)$r['bale_id']) {
+                    if ($cur) { $cur['fact']=$curFact; $bales[]=$cur; }
+                    $curNo=(int)$r['bale_id'];
                     $cur=['w'=>0.0,'len'=>0.0,'mat'=>$r['material'],'strips'=>[]];
+                    $curFact = null;
                 }
-                $cur['w']   += (float)$r['width_mm'];
-                $cur['len'] += (float)$r['length_m'];
+                $cur['w']   += (float)$r['width'];
+                $cur['len'] += (float)$r['length'];
+                if ($r['fact_length'] !== null) $curFact = (float)$r['fact_length'];
                 $cur['strips'][]=[
-                    'filter'=>$r['filter_name'],
-                    'w'=>(float)$r['width_mm'],
-                    'h'=>(float)$r['height_mm'],
-                    'len'=>(float)$r['length_m'],
+                    'filter'=>$r['filter'],
+                    'w'=>(float)$r['width'],
+                    'h'=>(float)$r['height'],
+                    'len'=>(float)$r['length'],
                     'rowEl'=>null
                 ];
             }
-            if ($cur) $bales[]=$cur;
+            if ($cur) { $cur['fact']=$curFact; $bales[]=$cur; }
 
             echo json_encode(['ok'=>true,'exists'=>true,'bales'=>$bales,'format_mm'=>$format]); exit;
         }
@@ -123,7 +128,7 @@ try{
         if (strtoupper((string)$r['material'])==='CARBON') $rowsCarbon[]=$r; else $rowsSimple[]=$r;
     }
 
-    // АССОРТИМЕНТ (все позиции из БД, не привязанные к заявке)
+    // АССОРТИМЕНТ
     $sqlAssort="
     SELECT
       sfs.filter,
@@ -156,7 +161,6 @@ try{
     .meta{margin:6px 0 8px}
     .meta span{display:inline-block;margin-right:10px}
 
-    /* текущая бухта в 2 раза выше */
     #currentBalePanel{max-height:600px;overflow-y:auto}
 
     table{border-collapse:collapse;table-layout:fixed;width:100%}
@@ -164,68 +168,62 @@ try{
     th{background:#f6f6f6}
     .right{text-align:right}
 
-    /* колонки в левой таблице (без «Шт») */
     .col-filter{width:180px}.col-w{width:60px}.col-h{width:50px}
     .col-sum{width:80px}.col-cut{width:90px}.col-rest{width:90px}
 
-    /* подсветки по остаткам */
     .posTable tr.sel td{background: #ffd0d0 !important}
     .posTable tr:hover td{background:#f3f8ff}
-    .posTable tr.rest-colored td{background:var(--rest-bg)} /* градиент по |остаток| 0..30 */
+    .posTable tr.rest-colored td{background:var(--rest-bg)}
 
-    /* подсветка кандидатов по ширине (оверлей поверх строки) */
     .posTable tr.width-cand td{ position:relative; }
     .posTable tr.width-cand td::after{
-        content:""; position:absolute; inset:0;
-        background: var(--wbg, transparent);
-        pointer-events:none;
+        content:""; position:absolute; inset:0; background: var(--wbg, transparent); pointer-events:none;
     }
 
     .btn{border:1px solid #aaa;padding:5px 9px;border-radius:6px;background:#fafafa;cursor:pointer}
     .btn:disabled{opacity:.5;cursor:not-allowed}
-    .ctrls{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+    .ctrls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:6px 0}
+    .factControl{display:flex;align-items:center;gap:6px}
+    .factControl input{width:90px;padding:4px 6px;border:1px solid #bbb;border-radius:6px}
 
-    /* таблицы бухты */
     .baleTbl{table-layout:fixed;margin-top:6px}
-    .bcol-act{width:36px}.bcol-pos{width:200px}.bcol-w{width:80px}.bcol-h{width:70px}.bcol-l{width:120px}
+    .bcol-act{width:36px}.bcol-pos{width:200px}.bcol-w{width:80px}.bcol-h{width:70px}.bcol-l{width:140px}
     .lenInput{width:100%;padding:3px 6px;border:1px solid #bbb;border-radius:6px}
     .delBtn{border:1px solid #d66;background:#fee;border-radius:6px;padding:2px 8px;cursor:pointer}
     .delBtn:hover{background:#fdd}
 
-    /* собранные бухты */
+    .lenWrap{display:flex;align-items:center;gap:6px}
+    .eqBtn{border:1px solid #aaa;background:#f6f6f6;border-radius:6px;padding:2px 8px;cursor:pointer;line-height:1;font-weight:600}
+    .eqBtn:hover{background:#eee}
+
     .balesList .card{border:1px dashed #bbb;border-radius:8px;padding:8px;margin-bottom:8px;background:#fff}
     .cardHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px}
     .delBaleBtn{border:1px solid #d66;background:#fee;border-radius:6px;padding:3px 10px;cursor:pointer}
     .delBaleBtn:hover{background:#fdd}
     .panelHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
 
-    /* контекстное меню */
     .menu{position:fixed;z-index:50;display:none;background:#fff;border:1px solid #ccc;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.15);padding:8px}
     .menu .row{display:flex;align-items:center;gap:6px;margin:4px 0}
     .menu .mi{border:1px solid #aaa;padding:5px 9px;border-radius:6px;background:#fafafa;cursor:pointer;white-space:nowrap}
     .menu input{width:35px;padding:4px 6px;border:1px solid #bbb;border-radius:6px}
     #mi_auto{min-width:180px; text-align:center;}
 
-    /* ассортимент */
     #assortPanel{max-height:340px;overflow:auto}
     .acol-mat{width:80px}.acol-filter{width:180px}.acol-w{width:70px}.acol-h{width:60px}.acol-act{width:120px}
     .assortBtn{border:1px solid #aaa;padding:3px 8px;border-radius:6px;background:#fafafa;cursor:pointer;margin-right:4px}
 
-    /* ПЕЧАТЬ — две карточки в строку */
     @media print {
         @page { size: A4 portrait; margin: 10mm; }
         body * { visibility: hidden; }
         #balesPanel, #balesPanel * { visibility: visible; }
         #balesPanel { position: absolute; left: 0; top: 0; width: 100%; border: none; box-shadow: none; background: #fff; }
-        #balesPanel .balesList {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 8mm;
-        }
+        #balesPanel .balesList { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; }
         #balesPanel .balesList > div:not(.card) { grid-column: 1 / -1; margin: 0 0 3mm; padding: 0; }
         #balesPanel .card { break-inside: avoid; page-break-inside: avoid; margin: 0; border: 1px solid #000; box-shadow: none; }
         #balesPanel .cardHead { margin-bottom: 2mm; }
         #balesPanel .baleTbl th, #balesPanel .baleTbl td { padding: 2mm 2mm; }
         #balesPanel .baleTbl th { background: #fff; }
-        .btn, .delBaleBtn, .delBtn, .lenInput, .menu { display: none !important; }
+        .btn, .delBaleBtn, .delBtn, .lenInput, .menu, .eqBtn { display: none !important; }
     }
 </style>
 
@@ -298,7 +296,7 @@ try{
         <p class="quiet">ИТОГО материала: <b><?=number_format($totalMeters,3,'.',' ')?> м</b></p>
     </div>
 
-    <!-- ЦЕНТР: текущая бухта + ассортимент -->
+    <!-- ЦЕНТР -->
     <div class="mid" style="display:flex;flex-direction:column;gap:12px;overflow:auto">
         <div class="panel" id="currentBalePanel">
             <h3>Текущая бухта</h3>
@@ -312,6 +310,9 @@ try{
             <div class="ctrls">
                 <button class="btn" id="btnSave" disabled>Сохранить бухту</button>
                 <button class="btn" id="btnClear" disabled>Очистить</button>
+                <span class="factControl">Длина реза (факт):
+                    <input id="factLenInput" type="number" min="0" step="10" value="0"> м
+                </span>
             </div>
             <div id="baleList" class="quiet">Пусто</div>
         </div>
@@ -348,7 +349,7 @@ try{
             <h3 style="margin:0">Собранные бухты</h3>
             <div style="display:flex;gap:6px;align-items:center">
                 <button class="btn" id="btnLoadPlan">Загрузить</button>
-                <button class="btn" id="btnSavePlan">Сохранить в БД</button>
+                <button class="btn" id="btnSavePlan">Сохранить</button>
                 <button class="btn" id="btnPrint">Распечатать</button>
             </div>
         </div>
@@ -370,6 +371,10 @@ try{
     const ORDER_NUMBER = "<?=htmlspecialchars($orderNumber, ENT_QUOTES)?>";
 
     let curRow=null, baleStrips=[], baleWidth=0.0, baleMaterial=null, bales=[];
+    // фактическая длина текущей бухты
+    let baleFactLen = 0;     // м
+    let baleFactManual = false; // true, если пользователь менял поле вручную
+
     let lastN = 1;
     const el=(id)=>document.getElementById(id);
     const fmt1=(x)=>(Math.round(x*10)/10).toFixed(1);
@@ -377,14 +382,19 @@ try{
     const fmt0=(x)=>String(Math.round(x));
     const round3=(x)=>Math.round(x*1000)/1000;
 
+    function calcBaleMaxLen(){
+        let m = 0;
+        for(const s of baleStrips) if (s.len > m) m = Math.round(s.len);
+        return m;
+    }
+
     /* === утилиты левой таблицы === */
     function restMetersOf(tr){
         const tm = parseFloat(tr.dataset.tm || '0');
         const cut= parseFloat(tr.dataset.cutm || '0');
-        return round3(tm - cut); // может быть отрицательным
+        return round3(tm - cut);
     }
 
-    // Подсветка по |остаток| 0..30 → зелёный→жёлтый
     function applyRestColor(tr){
         const RANGE = 30;
         const rest = restMetersOf(tr);
@@ -407,33 +417,26 @@ try{
         }
     }
 
-    /* подсветка кандидатов по ширине в окне [free-30 .. free] */
-    /* подсветка кандидатов по ширине в окне [free-30 .. free],
-    НО только если по позиции осталось ≥ 30 м */
+    /* подсветка подходящих по ширине (+ остаток ≥30 м) */
     function highlightWidthMatches(){
-        const RANGE = 30;                                // окно по ширине, мм
+        const RANGE = 30;
         const free  = Math.max(0, BALE_WIDTH - baleWidth);
         const mat   = baleMaterial;
 
         document.querySelectorAll('.posTable tr[data-i]').forEach(tr=>{
-            // сброс предыдущего состояния
             tr.classList.remove('width-cand');
             tr.style.removeProperty('--wbg');
 
-            // нет начатой бухты/материал не задан → не подсвечиваем
             if(!baleStrips.length || !mat) return;
             if(tr.dataset.mat !== mat) return;
 
-            // НОВОЕ: если по позиции осталось < 30 м — не подсвечиваем
             const restM = restMetersOf(tr);
             if (restM < 30 - eps) return;
 
-            // проверка попадания по ширине
             const w = parseFloat(tr.dataset.w);
-            const delta = free - w;                       // 0 — идеальное попадание
+            const delta = free - w;
             if (delta < -eps || delta > RANGE + eps) return;
 
-            // градиент: от светло-голубого (на free-RANGE) к синему (на free)
             const t = Math.max(0, Math.min(1, 1 - (delta / RANGE)));
             const light=[210,235,255], dark=[0,102,204];
             const r=Math.round(light[0] + (dark[0]-light[0])*t);
@@ -445,8 +448,7 @@ try{
         });
     }
 
-
-    /* выбор строки слева */
+    /* выбор в левой таблице */
     function setSelection(tr){
         document.querySelectorAll('.posTable tr').forEach(r=>r.classList.remove('sel'));
         curRow=tr||null;
@@ -473,7 +475,6 @@ try{
         tbl.querySelectorAll('tr[data-i]').forEach(applyRestColor);
     });
 
-    /* центральные кнопки */
     function toggleCtrls(){
         const hasBale=baleStrips.length>0;
         if(el('btnSave'))  el('btnSave').disabled = !hasBale;
@@ -487,12 +488,12 @@ try{
         const total   = parseFloat(tr.dataset.tm);
         const cutPrev = parseFloat(tr.dataset.cutm||'0');
         let cutNow    = round3(cutPrev + deltaMeters);
-        if (cutNow < 0) cutNow = 0; // «в раскрое» не ниже 0
+        if (cutNow < 0) cutNow = 0;
 
         const effDelta = round3(cutNow - cutPrev);
         tr.dataset.cutm = cutNow;
 
-        const rest  = round3(total - cutNow); // может быть отрицательным
+        const rest  = round3(total - cutNow);
         tr.querySelector('.cutm').textContent = fmt3(cutNow);
         tr.querySelector('.restm').textContent = fmt3(rest);
 
@@ -500,15 +501,22 @@ try{
         return effDelta;
     }
 
-    /* интерфейс бухты */
+    /* интерфейс текущей бухты */
     function updBaleUI(){
         el('bw').textContent=fmt1(baleWidth);
         el('rest').textContent=fmt1(Math.max(0,BALE_WIDTH-baleWidth));
         el('baleMat').textContent=baleMaterial?baleMaterial:'—';
         if(!baleMaterial) el('baleMat').classList.add('quiet'); else el('baleMat').classList.remove('quiet');
 
+        // если факт не трогали вручную — подстраиваем его к максимуму длин
+        if(!baleFactManual) baleFactLen = calcBaleMaxLen();
+        const fi = el('factLenInput'); if (fi) fi.value = String(baleFactLen||0);
+
         const box=el('baleList');
-        if(!baleStrips.length){box.textContent='Пусто';box.classList.add('quiet');toggleCtrls();highlightWidthMatches();return;}
+        if(!baleStrips.length){
+            box.textContent='Пусто'; box.classList.add('quiet');
+            toggleCtrls(); highlightWidthMatches(); return;
+        }
         box.classList.remove('quiet');
 
         let html='<table class="baleTbl"><colgroup><col class="bcol-act"><col class="bcol-pos"><col class="bcol-w"><col class="bcol-h"><col class="bcol-l"></colgroup>';
@@ -520,17 +528,36 @@ try{
         <td>${fmt1(s.w)} мм</td>
         <td>${s.h} мм</td>
         <td>
-          <input type="number" class="lenInput" data-idx="${idx}" min="0" step="10" value="${fmt0(s.len)}">
+          <div class="lenWrap">
+            <input type="number" class="lenInput" data-idx="${idx}" min="0" step="10" value="${fmt0(s.len)}">
+            <button class="eqBtn" data-idx="${idx}" title="Сделать длину всех равной этой">=</button>
+          </div>
         </td>
       </tr>`).join('');
         html+='</table>';
         box.innerHTML=html;
 
-        // единая длина
+        // ручное редактирование длины конкретной строки → унифицируем по введённому значению
         box.querySelectorAll('.lenInput').forEach(inp=>{
             inp.addEventListener('change', e=>{
                 let L = Math.round(parseFloat(e.target.value||'0')); if(isNaN(L)||L<0) L=0;
                 unifyBaleLength(L);
+                if(!baleFactManual){ baleFactLen = calcBaleMaxLen(); el('factLenInput').value = String(baleFactLen); }
+            });
+        });
+        // "=" — сделать длину всех равной выбранной
+        box.querySelectorAll('.eqBtn').forEach(btn=>{
+            btn.addEventListener('click', e=>{
+                const i = parseInt(e.currentTarget.dataset.idx,10);
+                let L = Math.round(baleStrips[i]?.len || 0);
+                const wrap = e.currentTarget.closest('.lenWrap');
+                const inp = wrap?.querySelector('.lenInput');
+                if (inp) {
+                    const v = Math.round(parseFloat(inp.value||'0'));
+                    if(!isNaN(v) && v>=0) L = v;
+                }
+                unifyBaleLength(L);
+                if(!baleFactManual){ baleFactLen = calcBaleMaxLen(); el('factLenInput').value = String(baleFactLen); }
             });
         });
         // удаление полос
@@ -545,7 +572,7 @@ try{
         highlightWidthMatches();
     }
 
-    // Сделать все полосы одинаковой длины L
+    // унификация длин до L с учётом остатков
     function unifyBaleLength(Lnew){
         if(!baleStrips.length) return;
 
@@ -583,25 +610,35 @@ try{
         updBaleUI();
     }
 
-    function ensureMaterial(mat){
-        if(!baleMaterial){ baleMaterial=mat; return true; }
-        if(baleMaterial===mat) return true;
-        alert('Материал текущей бухты: '+baleMaterial+'. Нельзя смешивать с: '+mat+'. Очистите или сохраните бухту.');
+    function ensureMaterial(matRaw){
+        const cur = (baleMaterial ?? '').trim();          // текущий материал бухты (как текст)
+        const m   = (matRaw ?? '').trim();                // материал добавляемой позиции
+
+        // если в бухте ещё нет материала — устанавливаем (или дефолтимся к Simple)
+        if (!cur) { baleMaterial = m || 'Simple'; return true; }
+
+        // если у позиции материал пустой — считаем, что он такой же, как в бухте
+        if (!m) return true;
+
+        // сравнение без учёта регистра и пробелов
+        if (cur.toLowerCase() === m.toLowerCase()) return true;
+
+        alert('Материал текущей бухты: ' + cur + '. Нельзя смешивать с: ' + (m || '—') + '. Очистите или сохраните бухту.');
         return false;
     }
 
-    /* Удаление одной полосы */
+
     function removeStrip(idx){
         const s = baleStrips[idx];
         if(!s) return;
         if(s.rowEl) updateRowMeters(s.rowEl, -round3(s.len));
         baleWidth = Math.max(0, round3(baleWidth - s.w));
         baleStrips.splice(idx,1);
-        if(!baleStrips.length) baleMaterial = null;
+        if(!baleStrips.length){ baleMaterial = null; baleFactLen = 0; baleFactManual=false; }
         updBaleUI();
     }
 
-    /* Добавление из ЛЕВОЙ таблицы: переносим остаток, длина = round(rest/X) */
+    /* добавление из левой таблицы */
     function addStrips(take){
         if(!curRow) return;
         let w   = parseFloat(curRow.dataset.w),
@@ -651,26 +688,39 @@ try{
         lastN = n;
     }
 
-    // ДОБАВЛЕНИЕ из АССОРТИМЕНТА (len=0, rowEl=null)
-    function addAssort(filter, w, h, mat, mode){
-        if(!ensureMaterial(mat)) return;
+    // добавление из ассортимента (len=0)
+    function addAssort(filter, w, h, matRaw, mode){
+        const mClean = (matRaw ?? '').trim();
+        const effMat = baleMaterial || mClean || 'Simple';   // что реально используем
+
+        if(!ensureMaterial(effMat)) return;
+
         const free = Math.max(0, BALE_WIDTH - baleWidth);
         let take = 0;
         if(mode==='auto'){
             take = Math.floor((free + eps)/w);
             if(take<=0){ alert('Не помещается по ширине.'); return; }
-        }else{
+        } else {
             take = 1;
             if(w > free+eps){ alert('Не помещается по ширине.'); return; }
         }
+
         for(let i=0;i<take;i++){
-            baleStrips.push({filter:filter,w:parseFloat(w),h:parseFloat(h),len:0,mat:mat,rowEl:null});
+            baleStrips.push({
+                filter: filter,
+                w: parseFloat(w),
+                h: parseFloat(h),
+                len: 0,
+                mat: effMat,         // <-- фикс: сохраняем нормализованный материал
+                rowEl: null
+            });
         }
         baleWidth = round3(baleWidth + w*take);
         updBaleUI();
     }
 
-    // Очистка текущей бухты: вернуть метры по группам
+
+    // очистка
     function clearBale(){
         if(!baleStrips.length){ updBaleUI(); return; }
         const sums = new Map();
@@ -681,25 +731,22 @@ try{
         for (const [tr, sum] of sums.entries()){
             updateRowMeters(tr, -sum);
         }
-        baleStrips=[]; baleWidth=0; baleMaterial=null;
+        baleStrips=[]; baleWidth=0; baleMaterial=null; baleFactLen=0; baleFactManual=false;
         updBaleUI();
     }
 
     function saveBale(){
         if(!baleStrips.length) return;
         let totalLen=baleStrips.reduce((s,x)=>s+x.len,0);
-        bales.push({w:baleWidth, len:round3(totalLen), mat:baleMaterial, strips:[...baleStrips]});
-        renderBales(); baleStrips=[]; baleWidth=0; baleMaterial=null; updBaleUI();
+        bales.push({w:baleWidth, len:round3(totalLen), mat:baleMaterial, fact:baleFactLen||null, strips:[...baleStrips]});
+        renderBales(); baleStrips=[]; baleWidth=0; baleMaterial=null; baleFactLen=0; baleFactManual=false; updBaleUI();
     }
 
-    // Удаление сохранённой бухты: вернуть полосы в левую таблицу
-    // Удаление сохранённой бухты: вернуть полосы в левую таблицу
+    // удаление сохранённой бухты (возврат полос влево)
     function deleteBale(idx){
         const b = bales[idx]; if(!b) return;
 
-        // 1) собираем суммы по исходным строкам (если rowEl есть)
         const sumsByRowEl = new Map();
-        // 2) и отдельно — по ключу (материал|фильтр) для загруженных из БД (rowEl == null)
         const sumsByKey   = new Map();
 
         for (const s of b.strips) {
@@ -711,12 +758,8 @@ try{
             }
         }
 
-        // вернуть метры тем строкам, у которых есть прямые ссылки
-        for (const [tr, sum] of sumsByRowEl.entries()) {
-            updateRowMeters(tr, -sum);
-        }
+        for (const [tr, sum] of sumsByRowEl.entries()) updateRowMeters(tr, -sum);
 
-        // для загруженных — найти строку в левой таблице по (материал|фильтр) и тоже вернуть метры
         if (sumsByKey.size) {
             const idxMap = {};
             document.querySelectorAll('.posTable tr[data-i]').forEach(tr=>{
@@ -726,23 +769,19 @@ try{
             for (const [key, sum] of sumsByKey.entries()) {
                 const tr = idxMap[key];
                 if (tr) updateRowMeters(tr, -sum);
-                // если позиции нет в левой таблице — просто пропускаем
             }
         }
 
-        // убрать бухту и перерисовать
         bales.splice(idx,1);
         renderBales();
         highlightWidthMatches();
     }
-
 
     function renderBales(){
         const box=el('bales');
         if(!bales.length){box.textContent='Пока нет'; box.classList.add('quiet'); return;}
         box.classList.remove('quiet');
 
-        // группируем по материалу, но нумерация глобальная (# по индексу в bales)
         const byMatIdx={};
         bales.forEach((b,idx)=>{ (byMatIdx[b.mat]??=[]).push(idx); });
 
@@ -751,11 +790,11 @@ try{
             html+=`<div style="margin:4px 0 6px"><b>${mat}</b></div>`;
             html+=byMatIdx[mat].map((idx)=>{
                 const b = bales[idx];
-                const leftover = Math.max(0, Math.round(BALE_WIDTH - b.w)); // остаток по ширине, мм
+                const leftover = Math.max(0, Math.round(BALE_WIDTH - b.w));
                 const rows=b.strips.map(s=>`<tr><td>${s.filter}</td><td>${fmt1(s.w)} мм</td><td>${s.h} мм</td><td>${fmt0(s.len)} м</td></tr>`).join('');
                 return `<div class="card">
           <div class="cardHead">
-            <div><b>Бухта #${idx+1}</b> · Материал: <b>${b.mat}</b> · Остаток: <b>${leftover} мм</b> · Формат: <b>1000 мм</b></div>
+            <div><b>Бухта #${idx+1}</b> · Материал: <b>${b.mat}</b> · Остаток: <b>${leftover} мм</b> · Формат: <b>1000 мм</b>${b.fact?` · Факт: <b>${fmt0(b.fact)} м</b>`:''}</div>
             <button class="delBaleBtn" data-idx="${idx}" title="Удалить бухту">×</button>
           </div>
           <table class="baleTbl"><colgroup><col class="bcol-pos"><col class="bcol-w"><col class="bcol-h"><col class="bcol-l"></colgroup>
@@ -766,7 +805,6 @@ try{
         }
         box.innerHTML=html;
 
-        // обработчики удаления сохранённых бухт
         box.querySelectorAll('.delBaleBtn').forEach(btn=>{
             btn.addEventListener('click', e=>{
                 const idx = parseInt(e.currentTarget.dataset.idx,10);
@@ -775,20 +813,19 @@ try{
         });
     }
 
-    /* Печать только панели сохранённых бухт */
     function printBales(){
         if(!bales.length){ alert('Нет сохранённых бухт для печати.'); return; }
         window.print();
     }
     if(el('btnPrint')) el('btnPrint').addEventListener('click', printBales);
 
-    /* === Сохранение/Загрузка плана (одна таблица) === */
+    /* === Сохранение/Загрузка плана === */
     function buildPlanPayload(){
         return {
             order_number: ORDER_NUMBER,
             format_mm: 1000,
             bales: bales.map(b => ({
-                w: b.w, len: b.len, mat: b.mat,
+                w: b.w, len: b.len, mat: b.mat, fact: (b.fact ?? null),
                 strips: b.strips.map(s => ({
                     filter: s.filter, w: s.w, h: s.h, len: s.len,
                     rowEl: s.rowEl ? true : null
@@ -812,53 +849,52 @@ try{
 
     async function loadPlanFromDB(){
         try{
-            const res = await fetch(location.pathname+'?action=load_plan&order_number='+encodeURIComponent(ORDER_NUMBER));
-            const data = await res.json();
+            const url = 'NP_cut_plan.php?action=load_plan&order_number='+encodeURIComponent(ORDER_NUMBER);
+            const res = await fetch(url, { headers:{'Accept':'application/json'} });
+
+            const txt = await res.text();                     // читаем ОДИН раз
+            if (!res.ok) throw new Error(`HTTP ${res.status}: ${txt.slice(0,500)}`);
+
+            let data;
+            try {
+                data = JSON.parse(txt);                         // пытаемся распарсить
+            } catch {
+                throw new Error('Backend вернул не JSON:\n'+txt.slice(0,500));
+            }
+
             if(!data.ok) throw new Error(data.error||'Ошибка загрузки');
             if(!data.exists){ alert('Сохранённый раскрой не найден.'); return; }
 
-            // очистить текущую бухту и правую панель
             clearBale(); bales=[];
-
-            // восстановить сохранённые бухты
             for(const b of data.bales){
-                bales.push({
-                    w:b.w, len:b.len, mat:b.mat,
-                    strips: b.strips.map(s=>({...s, rowEl:null}))
-                });
+                bales.push({ w:b.w, len:b.len, mat:b.mat, fact:(b.fact ?? null),
+                    strips: b.strips.map(s=>({...s, rowEl:null})) });
             }
 
-            // восстановить «в раскрое» слева по сумме длин (только для строк, которые есть слева)
-            const sums=new Map(); // key = material|filter
-            for(const b of bales){
-                for(const s of b.strips){
-                    const key=b.mat+'|'+s.filter;
-                    sums.set(key,(sums.get(key)||0)+s.len);
-                }
-            }
+            const sums=new Map();
+            for(const b of bales){ for(const s of b.strips){
+                const key=b.mat+'|'+s.filter; sums.set(key,(sums.get(key)||0)+s.len);
+            }}
             const idx={};
             document.querySelectorAll('.posTable tr[data-i]').forEach(tr=>{
                 const key=(tr.dataset.mat||'')+'|'+(tr.dataset.filter||'');
-                idx[key]=tr;
-                tr.dataset.cutm='0';
+                idx[key]=tr; tr.dataset.cutm='0';
                 tr.querySelector('.cutm').textContent='0.000';
                 tr.querySelector('.restm').textContent=fmt3(parseFloat(tr.dataset.tm)||0);
                 applyRestColor(tr);
             });
-            for(const [key,sum] of sums.entries()){
-                if(idx[key]) updateRowMeters(idx[key], sum);
-            }
+            for(const [key,sum] of sums.entries()){ if(idx[key]) updateRowMeters(idx[key], sum); }
 
-            renderBales();
-            highlightWidthMatches();
-            alert('Загружено.');
-        }catch(e){ alert('Не удалось загрузить: '+e.message); }
+            renderBales(); highlightWidthMatches(); alert('Загружено.');
+        }catch(e){
+            alert('Не удалось загрузить: '+e.message);
+        }
     }
-
     if (el('btnSavePlan')) el('btnSavePlan').addEventListener('click', savePlanToDB);
     if (el('btnLoadPlan')) el('btnLoadPlan').addEventListener('click', loadPlanFromDB);
+    if (el('btnSign')) el('btnSign').addEventListener('click',signPlan );
 
-    /* контекстное меню (для левой таблицы) */
+    /* контекстное меню (левая таблица) */
     const menu=el('ctxMenu');
     function openMenu(cx,cy){
         menu.style.display='block';
@@ -879,7 +915,7 @@ try{
     document.getElementById('assortTable').addEventListener('click', (e)=>{
         const tr = e.target.closest('tr[data-filter]'); if(!tr) return;
         const filter = tr.dataset.filter;
-        const mat    = tr.dataset.mat;
+        const mat    = (tr.dataset.mat || '').trim();   // <-- trim
         const w      = parseFloat(tr.dataset.w);
         const h      = parseFloat(tr.dataset.h);
 
@@ -889,6 +925,17 @@ try{
             addAssort(filter, w, h, mat, 'auto');
         }
     });
+
+
+    // изменение фактической длины пользователем — только запоминаем (не унифицируем автоматически)
+    const factInp = el('factLenInput');
+    if (factInp){
+        factInp.addEventListener('change', ()=>{
+            let L = Math.round(parseFloat(factInp.value||'0')); if(isNaN(L)||L<0) L=0;
+            baleFactLen = L; baleFactManual = true;
+            factInp.value = String(baleFactLen);
+        });
+    }
 
     /* init */
     function toggleCtrls(){ const hasBale=baleStrips.length>0; if(el('btnSave'))  el('btnSave').disabled=!hasBale; if(el('btnClear')) el('btnClear').disabled=!hasBale; }

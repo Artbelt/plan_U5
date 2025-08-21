@@ -162,16 +162,14 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))){
 
 <table  width=100% height=100% style='background-color: #6495ed' >
 <tr height='10%' align='center' style='background-color: #dedede'><td width='20%' >Подразделение: <?php $workshop?>
-</td><td width='80%'><!--#application_name=--><br> <?php $application_name ?> <br></td>
+</td><td width='80%'><!--#application_name=--><br>  <br></td>
 <td >Пользователь: $user<br><a href='logout.php'>выход из системы</a></td></tr>
 <tr height='10%' align='center' ><td colspan='3'>#attention block<br>
 
 /** Раздел объявлений */
 
 <?php echo $advertisement."</td></tr>"; ?>
-/** ---------------------------------------------------------------------------------------------------------------- */
-/**                                                 Раздел ОПЕРАЦИИ                                                  */
-/** ---------------------------------------------------------------------------------------------------------------- */
+
 <tr align='center'><td>
 <table  height='100%' width='100%' bgcolor='white' style='border-collapse: collapse'>
 <tr height='80%'><td>Операции: <p>
@@ -339,7 +337,10 @@ echo '</form>';
 /** Блок распланированных заявок  */
 echo "Распланированные заявки";
 echo "<form action='planning_manager.php' method='post'>"
-    ."<input type='submit' value='Менеджер планирования' style='height: 20px; width: 220px'>"
+    ."<input type='submit' value='Менеджер планирования (старый)' style='height: 20px; width: 220px'>"
+    ."</form>";
+echo "<form action='NP_cut_index.php' method='post' target='_blank'>"
+    ."<input type='submit' value='Менеджер планирования (новый)' style='height: 20px; width: 220px'>"
     ."</form>";
 echo "<form action='combine_orders.php' method='post'>"
     ."<input type='submit' value='Объединение заявок' style='height: 20px; width: 220px'>"
