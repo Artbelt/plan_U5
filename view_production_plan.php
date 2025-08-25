@@ -138,6 +138,7 @@ function sumFactForDayMap($map){ $s=0; foreach($map as $v) $s+=(int)$v; return $
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>План и факт сборки — переносы | Заявка № <?= htmlspecialchars($order) ?></title>
     <style>
+
         :root{
             --bg:#f6f7fb; --card:#fff; --text:#111827; --muted:#6b7280; --line:#e5e7eb;
             --ok:#16a34a; --warn:#d97706; --bad:#dc2626; --accent:#2563eb;

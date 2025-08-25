@@ -91,6 +91,9 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
             // перечитать статус
             $st->execute([$order]);
             $status = $st->fetch();
+            //переход на следующую страницу
+            header("Location: ../NP_cut_index.php" );
+            exit;
         }
     }
     if (isset($_POST['action']) && $_POST['action']==='unconfirm') {

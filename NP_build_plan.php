@@ -1,10 +1,11 @@
 <?php
-// NP_build_plan.php — план сборки по заказу (верх — остатки после гофры, низ — сетка дней сборки)
+// NP_build_plan.php — план сборки (две бригады) + расчёт времени (часы) по норме смены
 
-$dsn = "mysql:host=127.0.0.1;dbname=plan_u5;charset=utf8mb4";
-$user = "root"; $pass = "";
+$dsn  = "mysql:host=127.0.0.1;dbname=plan_u5;charset=utf8mb4";
+$user = "root";
+$pass = "";
 
-// ============ AJAX save/load ============
+/* ===================== AJAX save/load ===================== */
 if (isset($_GET['action']) && in_array($_GET['action'], ['save','load'], true)) {
     header('Content-Type: application/json; charset=utf-8');
     try{
@@ -13,12 +14,13 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load'], true)) 
             PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC
         ]);
 
-        // авто-миграция build_plan
+        // auto-migrate: build_plan + brigade
         $pdo->exec("CREATE TABLE IF NOT EXISTS build_plan (
             id INT AUTO_INCREMENT PRIMARY KEY,
             order_number VARCHAR(50) NOT NULL,
             source_date DATE NOT NULL,
             plan_date   DATE NOT NULL,
+            brigade TINYINT(1) NOT NULL DEFAULT 1,
             filter TEXT NOT NULL,
             count INT NOT NULL,
             done TINYINT(1) NOT NULL DEFAULT 0,
@@ -27,8 +29,16 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load'], true)) 
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             KEY idx_order (order_number),
             KEY idx_plan_date (plan_date),
-            KEY idx_source (source_date)
+            KEY idx_source (source_date),
+            KEY idx_brigade (brigade)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // add brigade if missing
+        $hasBrig = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='build_plan' AND COLUMN_NAME='brigade'")->fetchColumn();
+        if (!$hasBrig) {
+            $pdo->exec("ALTER TABLE build_plan ADD brigade TINYINT(1) NOT NULL DEFAULT 1 AFTER plan_date");
+        }
 
         // orders.build_ready
         $hasBuildReadyCol = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
@@ -41,14 +51,19 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load'], true)) 
             $order = $_GET['order'] ?? '';
             if ($order==='') { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'no order']); exit; }
 
-            $st = $pdo->prepare("SELECT source_date, plan_date, filter, count FROM build_plan WHERE order_number=? ORDER BY plan_date, filter");
+            $st = $pdo->prepare("SELECT source_date, plan_date, brigade, filter, count 
+                                 FROM build_plan 
+                                 WHERE order_number=? 
+                                 ORDER BY plan_date, brigade, filter");
             $st->execute([$order]);
             $rows = $st->fetchAll();
 
             $plan = [];
             foreach($rows as $r){
                 $d = $r['plan_date'];
-                $plan[$d][] = [
+                $b = (string)((int)$r['brigade'] ?: 1);
+                if (!isset($plan[$d])) $plan[$d] = ['1'=>[], '2'=>[]];
+                $plan[$d][$b][] = [
                     'source_date'=>$r['source_date'],
                     'filter'=>$r['filter'],
                     'count'=>(int)$r['count']
@@ -58,38 +73,43 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load'], true)) 
         }
 
         if ($_GET['action']==='save') {
-            $raw = file_get_contents('php://input');
+            $raw  = file_get_contents('php://input');
             $data = json_decode($raw, true);
             if (!$data || !isset($data['order']) || !isset($data['plan'])) {
                 http_response_code(400); echo json_encode(['ok'=>false,'error'=>'bad payload']); exit;
             }
             $order = (string)$data['order'];
-            $plan  = $data['plan']; // { 'YYYY-MM-DD': [ {source_date, filter, count}, ... ] }
+            $plan  = $data['plan']; // { 'YYYY-MM-DD': { '1': [ {source_date, filter, count} ], '2': [ ... ] } }
 
             $pdo->beginTransaction();
             $pdo->prepare("DELETE FROM build_plan WHERE order_number=?")->execute([$order]);
 
-            $ins = $pdo->prepare("INSERT INTO build_plan(order_number,source_date,plan_date,filter,count) VALUES (?,?,?,?,?)");
+            $ins = $pdo->prepare("INSERT INTO build_plan(order_number,source_date,plan_date,brigade,filter,count) 
+                                  VALUES (?,?,?,?,?,?)");
             $rows = 0;
-            foreach ($plan as $day=>$items){
+
+            foreach ($plan as $day=>$byTeam){
                 if (!preg_match('~^\d{4}-\d{2}-\d{2}$~', $day)) continue;
-                if (!is_array($items)) continue;
-                foreach ($items as $it){
-                    $src = $it['source_date'] ?? null;
-                    $flt = $it['filter'] ?? '';
-                    $cnt = (int)($it['count'] ?? 0);
-                    if (!$src || !preg_match('~^\d{4}-\d{2}-\d{2}$~', $src)) continue;
-                    if ($cnt<=0 || $flt==='') continue;
-                    $ins->execute([$order, $src, $day, $flt, $cnt]);
-                    $rows++;
+                if (!is_array($byTeam)) continue;
+                foreach (['1','2'] as $team){
+                    if (empty($byTeam[$team]) || !is_array($byTeam[$team])) continue;
+                    foreach ($byTeam[$team] as $it){
+                        $src = $it['source_date'] ?? null;
+                        $flt = $it['filter'] ?? '';
+                        $cnt = (int)($it['count'] ?? 0);
+                        $brig= (int)$team;
+                        if (!$src || !preg_match('~^\d{4}-\d{2}-\d{2}$~', $src)) continue;
+                        if ($cnt<=0 || $flt==='') continue;
+                        $ins->execute([$order, $src, $day, $brig, $flt, $cnt]);
+                        $rows++;
+                    }
                 }
             }
 
-            // orders.build_ready
             $pdo->prepare("UPDATE orders SET build_ready=? WHERE order_number=?")->execute([$rows>0?1:0, $order]);
 
             $pdo->commit();
-            echo json_encode(['ok'=>true, 'rows'=>$rows]); exit;
+            echo json_encode(['ok'=>true,'rows'=>$rows]); exit;
         }
 
     } catch(Throwable $e){
@@ -99,7 +119,7 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load'], true)) 
     exit;
 }
 
-// ============ обычная страница ============
+/* ===================== обычная страница ===================== */
 $order = $_GET['order'] ?? '';
 if ($order==='') { http_response_code(400); exit('Укажите ?order=...'); }
 
@@ -109,16 +129,24 @@ try{
         PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC
     ]);
 
-    // источник: corrugation_plan (что пришло с гофры)
-    $src = $pdo->prepare("SELECT plan_date AS source_date, filter_label, SUM(`count`) AS planned
-                          FROM corrugation_plan
-                          WHERE order_number=?
-                          GROUP BY plan_date, filter_label
-                          ORDER BY plan_date, filter_label");
+    // источник: corrugation_plan + норма смены (build_complexity как "шт/смену")
+    $src = $pdo->prepare("
+        SELECT
+          cp.plan_date     AS source_date,
+          cp.filter_label  AS filter,
+          SUM(cp.count)    AS planned,
+          NULLIF(COALESCE(sfs.build_complexity, 0), 0) AS rate_per_shift
+        FROM corrugation_plan cp
+        LEFT JOIN salon_filter_structure sfs
+          ON sfs.filter = cp.filter_label
+        WHERE cp.order_number = ?
+        GROUP BY cp.plan_date, cp.filter_label
+        ORDER BY cp.plan_date, cp.filter_label
+    ");
     $src->execute([$order]);
     $rowsSrc = $src->fetchAll();
 
-    // уже разложено в сборку
+    // уже разложено (сумма по бригадам)
     $bp  = $pdo->prepare("SELECT source_date, filter, SUM(count) AS assigned
                           FROM build_plan WHERE order_number=?
                           GROUP BY source_date, filter");
@@ -129,45 +157,46 @@ try{
         $assignedMap[$r['source_date'].'|'.$r['filter']] = (int)$r['assigned'];
     }
 
-    // пул верхних «плашек»: по датам гофры
-    $pool = [];   // $pool[date] = [ {key, source_date, filter, available} ]
-    $srcDates = [];
+    // верхние плашки
+    $pool = []; $srcDates = [];
     foreach($rowsSrc as $r){
         $d = $r['source_date'];
-        $flt = $r['filter_label'];
+        $flt = $r['filter'];
         $planned = (int)$r['planned'];
         $used = (int)($assignedMap[$d.'|'.$flt] ?? 0);
         $avail = max(0, $planned - $used);
         $srcDates[$d] = true;
-        // стало (всегда добавляем, даже если 0):
-            $pool[$d][] = [
-                'key' => md5($d.'|'.$flt),
-                'source_date'=>$d,
-                'filter'=>$flt,
-                'available'=>$avail  // может быть 0
-            ];
+
+        $pool[$d][] = [
+            'key'         => md5($d.'|'.$flt),
+            'source_date' => $d,
+            'filter'      => $flt,
+            'available'   => $avail,
+            'rate'        => $r['rate_per_shift'] ? (int)$r['rate_per_shift'] : 0, // шт/смену (11.5 ч)
+        ];
     }
     $srcDates = array_keys($srcDates); sort($srcDates);
 
-    // предварительный план (что уже сохранено)
-    $prePlan = [];
-    $pre = $pdo->prepare("SELECT plan_date, source_date, filter, count
-                          FROM build_plan WHERE order_number=? ORDER BY plan_date, filter");
+    // предварительный план
+    $prePlan = []; // $prePlan[day]['1'][] , $prePlan[day]['2'][]
+    $pre = $pdo->prepare("SELECT plan_date, brigade, source_date, filter, count
+                          FROM build_plan WHERE order_number=? ORDER BY plan_date, brigade, filter");
     $pre->execute([$order]);
     while($r=$pre->fetch()){
-        $prePlan[$r['plan_date']][] = [
+        $d = $r['plan_date']; $b = (string)((int)$r['brigade'] ?: 1);
+        if (!isset($prePlan[$d])) $prePlan[$d] = ['1'=>[], '2'=>[]];
+        $prePlan[$d][$b][] = [
             'source_date'=>$r['source_date'],
             'filter'=>$r['filter'],
             'count'=>(int)$r['count']
         ];
     }
 
-    // какие дни показать внизу изначально
+    // какие дни показать
     $buildDays = array_keys($prePlan);
     sort($buildDays);
     if (!$buildDays) { $buildDays = $srcDates ?: []; }
     if (!$buildDays) {
-        // если вообще ничего — возьмём семь дней от сегодня
         $start = new DateTime();
         for($i=0;$i<7;$i++){ $buildDays[] = $start->format('Y-m-d'); $start->modify('+1 day'); }
     }
@@ -180,7 +209,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
 ?>
 <!doctype html>
 <meta charset="utf-8">
-<title>План сборки — заявка <?=h($order)?></title>
+<title>План сборки (2 бригады) — заявка <?=h($order)?></title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
     :root{ --line:#e5e7eb; --bg:#f7f9fc; --card:#fff; --muted:#6b7280; --accent:#2563eb; --ok:#16a34a; }
@@ -197,9 +226,8 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
     .muted{color:var(--muted)}
     .sub{font-size:12px;color:var(--muted)}
 
-    /* сетка на весь экран */
     .grid{display:grid;grid-template-columns:repeat(<?=count($srcDates)?:1?>,minmax(260px,1fr));gap:10px}
-    .gridDays{display:grid;grid-template-columns:repeat(<?=count($buildDays)?:1?>,minmax(220px,1fr));gap:10px}
+    .gridDays{display:grid;grid-template-columns:repeat(<?=count($buildDays)?:1?>,minmax(300px,1fr));gap:10px}
 
     .col{border-left:1px solid var(--line);padding-left:8px;min-height:200px}
     .col h4{margin:0 0 8px;font-weight:600}
@@ -207,29 +235,24 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
     /* верхние плашки */
     .pill{border:1px solid #dbe3f0;background:#eef6ff;border-radius:10px;padding:8px;margin:6px 0;display:flex;flex-direction:column;gap:6px}
     .pillTop{display:flex;align-items:center;gap:10px;justify-content:space-between}
-    .pillCtrls{display:none}
-    .pillBtn{display:none}
-    .qty{width:90px;padding:6px;border:1px solid #c9d4ea;border-radius:8px}
-
+    .qty{width:72px;padding:6px;border:1px solid #c9d4ea;border-radius:8px}
     .pillName{font-weight:600}
     .pillSub{font-size:12px;color:#374151}
-
-    .qty{width:72px;padding:6px;border:1px solid #c9d4ea;border-radius:8px}
-
-    .pillBtn:hover{filter:brightness(.97)}
     .pill.disabled{opacity:.45;filter:grayscale(.15);pointer-events:none}
 
-    /* низ — дни сборки */
-    .dropzone{min-height:48px;border:1px dashed var(--line);border-radius:8px;padding:6px}
+    /* низ — две бригады */
+    .brigWrap{display:grid;grid-template-columns:1fr;gap:6px}
+    .brig{border:1px dashed var(--line);border-radius:8px;padding:6px}
+    .brig h5{margin:0 0 6px;font-weight:700}
+    .dropzone{min-height:36px}
     .rowItem{display:flex;align-items:center;justify-content:space-between;background:#dff7c7;border:1px solid #bddda2;border-radius:8px;padding:6px 8px;margin:6px 0}
     .rowLeft{display:flex;flex-direction:column}
     .rm{border:1px solid #ccc;background:#fff;border-radius:8px;padding:2px 8px;cursor:pointer}
     .dayFoot{margin-top:6px;font-size:12px;color:#374151}
-    .tot{font-weight:700}
+    .tot,.hrsB,.hrs{font-weight:700}
 
-    /* модалка выбора дня */
     .modalWrap{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.35);z-index:1000}
-    .modal{background:#fff;border-radius:12px;border:1px solid var(--line);min-width:340px;max-width:560px;max-height:75vh;display:flex;flex-direction:column;overflow:hidden}
+    .modal{background:#fff;border-radius:12px;border:1px solid var(--line);min-width:360px;max-width:600px;max-height:75vh;display:flex;flex-direction:column;overflow:hidden}
     .modalHeader{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line)}
     .modalTitle{font-weight:600}
     .modalClose{border:1px solid #ccc;background:#f8f8f8;border-radius:8px;padding:4px 8px;cursor:pointer}
@@ -239,8 +262,10 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
     .dayBtn:hover{background:#ecf4ff}
     .dayHead{font-weight:600}
     .daySub{font-size:12px;color:#6b7280}
+    .teamSwitch{display:flex;gap:8px;margin-bottom:8px}
+    .teamBtn{border:1px solid #cbd5e1;background:#f8fafc;border-radius:8px;padding:6px 10px;cursor:pointer}
+    .teamBtn.active{outline:2px solid #2563eb}
 
-    /* добавление дней снизу */
     .rangeBar{display:flex;gap:8px;align-items:center;margin:8px 0 0}
     .rangeBar input{padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px}
 
@@ -248,12 +273,12 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
 </style>
 
 <div class="wrap">
-    <h2>План сборки — заявка <?=h($order)?></h2>
+    <h2>План сборки (две бригады) — заявка <?=h($order)?></h2>
 
-    <!-- ВЕРХ: остатки после гофры (по датам гофры) -->
+    <!-- ВЕРХ: остатки после гофры -->
     <div class="panel">
         <div class="head">
-            <div><b>Доступно к сборке (после гофры)</b> <span class="sub">выберите количество и отправьте в день сборки</span></div>
+            <div><b>Доступно к сборке (после гофры)</b> <span class="sub">клик по плашке — выбрать день и бригаду</span></div>
             <div class="muted">
                 <?php
                 $availCount=0; foreach($pool as $list){ foreach($list as $it){ $availCount+=$it['available']; } }
@@ -261,7 +286,6 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
                 ?>
             </div>
         </div>
-
         <div class="grid" id="topGrid">
             <?php foreach($srcDates as $d): ?>
                 <div class="col">
@@ -269,17 +293,20 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
                     <?php if (empty($pool[$d])): ?>
                         <div class="muted">нет остатков</div>
                     <?php else: foreach ($pool[$d] as $p): ?>
-
                         <div class="pill<?= ($p['available']<=0 ? ' disabled' : '') ?>"
                              data-key="<?=h($p['key'])?>"
                              data-source-date="<?=h($p['source_date'])?>"
                              data-filter="<?=h($p['filter'])?>"
                              data-avail="<?=$p['available']?>"
+                             data-rate="<?=$p['rate']?>"
                              title="Клик — добавить в день сборки">
                             <div class="pillTop">
                                 <div>
                                     <div class="pillName"><?=h($p['filter'])?></div>
-                                    <div class="pillSub">Доступно: <b class="av"><?=$p['available']?></b> шт</div>
+                                    <div class="pillSub">
+                                        Доступно: <b class="av"><?=$p['available']?></b> шт ·
+                                        Время: ~<b class="time">0.0</b> ч
+                                    </div>
                                 </div>
                                 <input class="qty" type="number" min="1" step="1"
                                        value="<?=max(1, (int)$p['available'])?>"
@@ -287,15 +314,13 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
                                        title="Количество">
                             </div>
                         </div>
-
-
                     <?php endforeach; endif; ?>
                 </div>
             <?php endforeach; ?>
         </div>
     </div>
 
-    <!-- НИЗ: дни сборки -->
+    <!-- НИЗ: дни сборки (две бригады) -->
     <div class="panel">
         <div class="head">
             <b>Сетка дней сборки</b>
@@ -310,8 +335,27 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
             <?php foreach($buildDays as $d): ?>
                 <div class="col" data-day="<?=h($d)?>">
                     <h4><?=h($d)?></h4>
-                    <div class="dropzone"></div>
-                    <div class="dayFoot">Итого за день: <span class="tot" data-tot="<?=h($d)?>">0</span> шт</div>
+                    <div class="brigWrap">
+                        <div class="brig">
+                            <h5>Бригада 1:
+                                <span class="totB" data-totb="<?=h($d)?>|1">0</span> шт ·
+                                Время: <span class="hrsB" data-hrsb="<?=h($d)?>|1">0.0</span> ч
+                            </h5>
+                            <div class="dropzone" data-day="<?=h($d)?>" data-team="1"></div>
+                        </div>
+                        <div class="brig">
+                            <h5>Бригада 2:
+                                <span class="totB" data-totb="<?=h($d)?>|2">0</span> шт ·
+                                Время: <span class="hrsB" data-hrsb="<?=h($d)?>|2">0.0</span> ч
+                            </h5>
+                            <div class="dropzone" data-day="<?=h($d)?>" data-team="2"></div>
+                        </div>
+                    </div>
+                    <div class="dayFoot">
+                        Итого за день:
+                        <span class="tot" data-tot-day="<?=h($d)?>">0</span> шт ·
+                        Время: <span class="hrs" data-hrs-day="<?=h($d)?>">0.0</span> ч
+                    </div>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -324,21 +368,24 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         </div>
 
         <div class="sub" style="margin-top:8px">
-            Удаляя позицию из дня сборки, её количество возвращается в «Доступно» наверху.
+            Удаляя позицию из дня/бригады, её количество возвращается в «Доступно» наверху.
         </div>
     </div>
 </div>
 
-<!-- Модальное окно выбора дня -->
+<!-- Модалка выбора дня/бригады -->
 <div class="modalWrap" id="datePicker">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dpTitle">
         <div class="modalHeader">
-            <div class="modalTitle" id="dpTitle">Выберите день сборки</div>
+            <div class="modalTitle" id="dpTitle">Выберите день и бригаду</div>
             <button class="modalClose" id="dpClose" title="Закрыть">×</button>
         </div>
         <div class="modalBody">
-            <div style="margin-bottom:8px">
-                <label>Количество: <input id="dpQty" type="number" min="1" step="1" value="1" style="padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;width:100px"></label>
+            <div class="teamSwitch">
+                <button class="teamBtn" id="team1">Бригада 1</button>
+                <button class="teamBtn" id="team2">Бригада 2</button>
+                <div style="flex:1"></div>
+                <label>Кол-во: <input id="dpQty" type="number" min="1" step="1" value="1" style="padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;width:100px"></label>
             </div>
             <div class="daysGrid" id="dpDays"></div>
         </div>
@@ -347,76 +394,100 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
 
 <script>
     const ORDER = <?= json_encode($order) ?>;
+    const SHIFT_HOURS = 11.5; // длительность смены, ч
 
     // ===== in-memory =====
-    const plan = new Map();             // day -> array of {source_date, filter, count}
-    const totals = new Map();           // day -> sum(count)
-    let lastDay = null;
+    // plan.get(day) => { '1': [ {source_date, filter, count, rate} ], '2': [...] }
+    const plan   = new Map();
+    // агрегаты по бригадам и дню (шт и часы)
+    const countsByTeam = new Map(); // {'1':cnt,'2':cnt,'sum':cnt}
+    const hoursByTeam  = new Map(); // {'1':hrs,'2':hrs,'sum':hrs}
 
-    // preload from PHP ($prePlan)
+    let lastDay  = null;
+    let lastTeam = '1';
+
     const prePlan = <?= json_encode($prePlan, JSON_UNESCAPED_UNICODE) ?>;
-    for (const day in prePlan){
-        plan.set(day, prePlan[day].map(x => ({...x})));
-    }
-    recalcTotalsAll();
 
-    // сохранить базовые доступности для «сброса»
+    // сохранить базовые доступности
     document.querySelectorAll('.pill').forEach(p=>{
         if (!p.dataset.avail0) p.dataset.avail0 = p.dataset.avail || '0';
     });
 
     // ===== helpers =====
-    function getAllDays(){
-        return [...document.querySelectorAll('#daysGrid .col[data-day]')].map(c=>c.dataset.day);
-    }
+    function cssEscape(s){ return String(s).replace(/["\\]/g, '\\$&'); }
+    function escapeHtml(s){ return (s??'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+    function fmtH(x){ return (Math.round((x||0)*10)/10).toFixed(1); }
+
     function ensureDay(day){
-        if(!plan.has(day)) plan.set(day, []);
-        // если колонки нет в DOM — создадим
+        if(!plan.has(day)) plan.set(day, {'1':[], '2':[]});
+        if(!countsByTeam.has(day)) countsByTeam.set(day, {'1':0,'2':0,'sum':0});
+        if(!hoursByTeam.has(day))  hoursByTeam.set(day,  {'1':0,'2':0,'sum':0});
+
+        // создать колонки в DOM при необходимости
         if (!document.querySelector(`.col[data-day="${cssEscape(day)}"]`)){
-            const col = document.createElement('div');
-            col.className = 'col'; col.dataset.day = day;
+            const col = document.createElement('div'); col.className='col'; col.dataset.day = day;
             col.innerHTML = `
                 <h4>${escapeHtml(day)}</h4>
-                <div class="dropzone"></div>
-                <div class="dayFoot">Итого за день: <span class="tot" data-tot="${escapeHtml(day)}">0</span> шт</div>
+                <div class="brigWrap">
+                    <div class="brig">
+                        <h5>Бригада 1:
+                            <span class="totB" data-totb="${escapeHtml(day)}|1">0</span> шт ·
+                            Время: <span class="hrsB" data-hrsb="${escapeHtml(day)}|1">0.0</span> ч
+                        </h5>
+                        <div class="dropzone" data-day="${escapeHtml(day)}" data-team="1"></div>
+                    </div>
+                    <div class="brig">
+                        <h5>Бригада 2:
+                            <span class="totB" data-totb="${escapeHtml(day)}|2">0</span> шт ·
+                            Время: <span class="hrsB" data-hrsb="${escapeHtml(day)}|2">0.0</span> ч
+                        </h5>
+                        <div class="dropzone" data-day="${escapeHtml(day)}" data-team="2"></div>
+                    </div>
+                </div>
+                <div class="dayFoot">
+                    Итого за день:
+                    <span class="tot" data-tot-day="${escapeHtml(day)}">0</span> шт ·
+                    Время: <span class="hrs" data-hrs-day="${escapeHtml(day)}">0.0</span> ч
+                </div>
             `;
             document.getElementById('daysGrid').appendChild(col);
         }
-        if (!totals.has(day)) totals.set(day, 0);
-        // обновим футер
-        const t = document.querySelector(`.tot[data-tot="${cssEscape(day)}"]`);
-        if (t) t.textContent = String(totals.get(day)||0);
+        refreshTotalsDOM(day);
     }
-    function incTotal(day, delta){
-        const t = (totals.get(day)||0) + delta;
-        totals.set(day, Math.max(0, t));
-        const el = document.querySelector(`.tot[data-tot="${cssEscape(day)}"]`);
-        if (el) el.textContent = String(totals.get(day) || 0);
-    }
-    function recalcTotalsAll(){
-        totals.clear();
-        getAllDays().forEach(d=> totals.set(d,0));
-        plan.forEach((arr,day)=>{
-            const s = arr.reduce((a,x)=>a+(x.count||0),0);
-            totals.set(day, s);
-        });
-        totals.forEach((v,day)=>{
-            const el = document.querySelector(`.tot[data-tot="${cssEscape(day)}"]`);
-            if (el) el.textContent = String(v||0);
-        });
-    }
-    function updateAvailForPill(pill, newAvail){
-        const avEl = pill.querySelector('.av');
-        if (avEl) avEl.textContent = String(newAvail);
 
-        const qty = pill.querySelector('.qty');
-        if (qty){
-            qty.max = String(newAvail);
-            qty.value = String(newAvail > 0 ? newAvail : 1);
-        }
-        pill.dataset.avail = String(newAvail);
-        pill.classList.toggle('disabled', newAvail<=0);
+    function refreshTotalsDOM(day){
+        const c = countsByTeam.get(day) || {'1':0,'2':0,'sum':0};
+        const h = hoursByTeam.get(day)  || {'1':0,'2':0,'sum':0};
+
+        const el1 = document.querySelector(`.totB[data-totb="${cssEscape(day)}|1"]`);
+        const el2 = document.querySelector(`.totB[data-totb="${cssEscape(day)}|2"]`);
+        const eh1 = document.querySelector(`.hrsB[data-hrsb="${cssEscape(day)}|1"]`);
+        const eh2 = document.querySelector(`.hrsB[data-hrsb="${cssEscape(day)}|2"]`);
+        const edC = document.querySelector(`.tot[data-tot-day="${cssEscape(day)}"]`);
+        const edH = document.querySelector(`.hrs[data-hrs-day="${cssEscape(day)}"]`);
+
+        if (el1) el1.textContent = String(c['1']||0);
+        if (el2) el2.textContent = String(c['2']||0);
+        if (eh1) eh1.textContent = fmtH(h['1']||0);
+        if (eh2) eh2.textContent = fmtH(h['2']||0);
+        if (edC) edC.textContent = String((c['1']||0)+(c['2']||0));
+        if (edH) edH.textContent = fmtH((h['1']||0)+(h['2']||0));
     }
+
+    function incTotals(day, team, deltaCount, deltaHours){
+        const c = countsByTeam.get(day) || {'1':0,'2':0,'sum':0};
+        c[team] = Math.max(0, (c[team]||0) + deltaCount);
+        c.sum   = (c['1']||0) + (c['2']||0);
+        countsByTeam.set(day, c);
+
+        const h = hoursByTeam.get(day) || {'1':0,'2':0,'sum':0};
+        h[team] = Math.max(0, (h[team]||0) + deltaHours);
+        h.sum   = (h['1']||0) + (h['2']||0);
+        hoursByTeam.set(day, h);
+
+        refreshTotalsDOM(day);
+    }
+
     function resetPillsToBase(){
         document.querySelectorAll('.pill').forEach(p=>{
             const base = +p.dataset.avail0 || 0;
@@ -424,11 +495,160 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         });
     }
 
-    // --- клики по плашке (добавление) ---
+    function updateAvailForPill(pill, newAvail){
+        const avEl = pill.querySelector('.av');
+        if (avEl) avEl.textContent = String(newAvail);
+        const qty = pill.querySelector('.qty');
+        if (qty){ qty.max = String(newAvail); qty.value = String(newAvail>0 ? newAvail : 1); }
+        pill.dataset.avail = String(newAvail);
+        pill.classList.toggle('disabled', newAvail<=0);
+        updatePillTime(pill);
+    }
+
+    function collectUsedFromPlan(){
+        const map = new Map(); // key = src|filter -> used (по штукам)
+        plan.forEach(byTeam=>{
+            ['1','2'].forEach(team=>{
+                (byTeam[team]||[]).forEach(r=>{
+                    const k = r.source_date + '|' + r.filter;
+                    map.set(k, (map.get(k)||0) + (r.count||0));
+                });
+            });
+        });
+        return map;
+    }
+
+    // ===== верхние плашки: пересчёт времени
+    function updatePillTime(pill){
+        const rate = +pill.dataset.rate || 0;          // шт/смену
+        const qty  = +(pill.querySelector('.qty')?.value || 0);
+        const hours = rate>0 ? (qty / rate) * SHIFT_HOURS : 0;
+        const tEl = pill.querySelector('.time');
+        if (tEl) tEl.textContent = fmtH(hours);
+    }
+    document.querySelectorAll('.pill').forEach(p=>{
+        const q = p.querySelector('.qty');
+        updatePillTime(p);
+        if (q) q.addEventListener('input', ()=> updatePillTime(p));
+    });
+
+    // ===== строки внизу =====
+    function addRowElement(day, team, src, flt, count, rate){
+        ensureDay(day);
+        const dz = document.querySelector(`.dropzone[data-day="${cssEscape(day)}"][data-team="${cssEscape(team)}"]`);
+        if (!dz) return;
+
+        const r = Math.max(0, +rate || 0);            // шт/смену
+        const rowHours = r>0 ? (count / r) * SHIFT_HOURS : 0;
+
+        plan.get(day)[team].push({source_date:src, filter:flt, count:count, rate:r});
+
+        const row = document.createElement('div');
+        row.className = 'rowItem';
+        row.dataset.day = day;
+        row.dataset.team = team;
+        row.dataset.sourceDate = src;
+        row.dataset.filter = flt;
+        row.dataset.count = count;
+        row.dataset.rate  = r;
+        row.dataset.hours = rowHours;
+        row.innerHTML = `
+            <div class="rowLeft">
+                <div><b>${escapeHtml(flt)}</b></div>
+                <div class="sub">
+                    Кол-во: <b class="cnt">${count}</b> шт ·
+                    Время: <b class="h">${fmtH(rowHours)}</b> ч
+                </div>
+            </div>
+            <button class="rm">×</button>
+        `;
+        dz.appendChild(row);
+        row.querySelector('.rm').onclick = ()=> removeRow(row);
+
+        incTotals(day, team, count, rowHours);
+    }
+
+    function removeRow(row){
+        const day = row.dataset.day;
+        const team= row.dataset.team;
+        const src = row.dataset.sourceDate;
+        const flt = row.dataset.filter;
+        const cnt = +row.dataset.count || 0;
+        const r   = +row.dataset.rate  || 0;
+        const hrs = +row.dataset.hours || 0;
+
+        // память
+        const arr = plan.get(day)?.[team] || [];
+        const i = arr.findIndex(x=> x.source_date===src && x.filter===flt && x.count===cnt && (x.rate||0)===r);
+        if (i>=0){ arr.splice(i,1); plan.get(day)[team] = arr; }
+
+        // вернуть доступность наверху
+        const sel = `.pill[data-source-date="${cssEscape(src)}"][data-filter="${cssEscape(flt)}"]`;
+        const pill = document.querySelector(sel);
+        if (pill){
+            const av = (+pill.dataset.avail||0) + cnt;
+            updateAvailForPill(pill, av);
+        }
+
+        incTotals(day, team, -cnt, -hrs);
+        row.remove();
+    }
+
+    // ===== модалка дня/бригады =====
+    const dpWrap  = document.getElementById('datePicker');
+    const dpDays  = document.getElementById('dpDays');
+    const dpQty   = document.getElementById('dpQty');
+    const dpClose = document.getElementById('dpClose');
+    const team1Btn= document.getElementById('team1');
+    const team2Btn= document.getElementById('team2');
+    let pending = null;
+
+    function setTeamActive(t){
+        lastTeam = (t==='2'?'2':'1');
+        team1Btn.classList.toggle('active', lastTeam==='1');
+        team2Btn.classList.toggle('active', lastTeam==='2');
+        // подписи «уже назначено» по выбранной бригаде (шт + ч)
+        const days = getAllDays();
+        dpDays.querySelectorAll('.dayBtn').forEach(btn=>{
+            const ds = btn.dataset.day;
+            const c  = (countsByTeam.get(ds)||{})[lastTeam] || 0;
+            const h  = (hoursByTeam.get(ds)||{})[lastTeam]  || 0;
+            btn.querySelector('.daySub').textContent = `Назначено (бригада ${lastTeam}): ${c} шт · ${fmtH(h)} ч`;
+        });
+    }
+    team1Btn.onclick = ()=> setTeamActive('1');
+    team2Btn.onclick = ()=> setTeamActive('2');
+
+    function getAllDays(){
+        return [...document.querySelectorAll('#daysGrid .col[data-day]')].map(c=>c.dataset.day);
+    }
+
+    function openDatePicker(pill, qty){
+        pending = {pill, qty};
+        dpQty.value = String(qty);
+        dpDays.innerHTML = '';
+
+        const days = getAllDays();
+        days.forEach(d=>{
+            const btn = document.createElement('button');
+            btn.type='button'; btn.className='dayBtn'; btn.dataset.day = d;
+            btn.innerHTML = `<div class="dayHead">${d}</div><div class="daySub"></div>`;
+            btn.onclick = ()=>{ addToDay(d, lastTeam, pending.pill, +dpQty.value || 1); closeDatePicker(); };
+            if (d===lastDay) btn.style.outline = '2px solid #2563eb';
+            dpDays.appendChild(btn);
+        });
+        dpWrap.style.display='flex';
+        setTeamActive(lastTeam);
+    }
+    function closeDatePicker(){ dpWrap.style.display='none'; pending=null; }
+    dpClose.onclick = closeDatePicker;
+    dpWrap.addEventListener('click', e=>{ if(e.target===dpWrap) closeDatePicker(); });
+    document.addEventListener('keydown', e=>{ if(e.key==='Escape' && dpWrap.style.display==='flex') closeDatePicker(); });
+
+    // ===== клики по верхним плашкам =====
     document.querySelectorAll('.pill').forEach(pill=>{
         pill.addEventListener('click', (e)=>{
             if (e.target.closest('.qty')) return;
-
             const avail = +pill.dataset.avail || 0;
             if (avail <= 0) return;
 
@@ -438,86 +658,24 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
             qty = Math.min(qty, avail);
 
             if (e.shiftKey && lastDay){
-                addToDay(lastDay, pill, qty);
+                addToDay(lastDay, lastTeam, pill, qty);
             } else {
                 openDatePicker(pill, qty);
             }
         });
     });
 
-    // ===== рендер сохранённого плана (с сервера при загрузке страницы) =====
-    (function renderPre(){
-        for (const day in prePlan){
-            ensureDay(day);
-            const dz = document.querySelector(`.col[data-day="${cssEscape(day)}"] .dropzone`);
-            if (!dz) continue;
-            for (const it of prePlan[day]){
-                addRowElement(dz, day, it.source_date, it.filter, it.count);
-            }
-        }
-    })();
-
-    // при инициализации надо уменьшить доступность в верхних плашках
-    (function applyAvailAfterPre(){
-        resetPillsToBase();
-        const used = collectUsedFromPlan();
-        document.querySelectorAll('.pill').forEach(p=>{
-            const key = p.dataset.sourceDate + '|' + p.dataset.filter;
-            const base = +p.dataset.avail0 || 0;
-            const rest = Math.max(0, base - (used.get(key)||0));
-            updateAvailForPill(p, rest);
-        });
-    })();
-
-    function collectUsedFromPlan(){
-        const map = new Map(); // key = src|filter -> used
-        plan.forEach(arr=>{
-            arr.forEach(r=>{
-                const k = r.source_date + '|' + r.filter;
-                map.set(k, (map.get(k)||0) + (r.count||0));
-            });
-        });
-        return map;
-    }
-
-    // ===== создание строки в дне =====
-    function addRowElement(dz, day, src, flt, count){
-        // в память
-        ensureDay(day);
-        plan.get(day).push({source_date:src, filter:flt, count:count});
-
-        // в DOM
-        const row = document.createElement('div');
-        row.className = 'rowItem';
-        row.dataset.day = day;
-        row.dataset.sourceDate = src;
-        row.dataset.filter = flt;
-        row.dataset.count = count;
-        row.innerHTML = `
-            <div class="rowLeft">
-                <div><b>${escapeHtml(flt)}</b></div>
-                <div class="sub">Источник: ${escapeHtml(src)} · Кол-во: <b class="cnt">${count}</b> шт</div>
-            </div>
-            <button class="rm">×</button>
-        `;
-        dz.appendChild(row);
-        row.querySelector('.rm').onclick = ()=> removeRow(row);
-
-        incTotal(day, count);
-    }
-
-    // ===== добавление в день =====
-    function addToDay(day, pill, qty){
+    // ===== add to day =====
+    function addToDay(day, team, pill, qty){
         const avail = +pill.dataset.avail || 0;
-        if (qty<=0 || avail<=0){ return; }
+        if (qty<=0 || avail<=0) return;
         const take = Math.min(qty, avail);
 
-        const src = pill.dataset.sourceDate;
-        const flt = pill.dataset.filter;
+        const src  = pill.dataset.sourceDate;
+        const flt  = pill.dataset.filter;
+        const rate = parseInt(pill.dataset.rate || '0', 10) || 0; // шт/смену
 
-        const dz = document.querySelector(`.col[data-day="${cssEscape(day)}"] .dropzone`);
-        ensureDay(day);
-        addRowElement(dz, day, src, flt, take);
+        addRowElement(day, team, src, flt, take, rate);
 
         const rest = avail - take;
         updateAvailForPill(pill, rest);
@@ -525,56 +683,32 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         lastDay = day;
     }
 
-    function removeRow(row){
-        const day = row.dataset.day;
-        const src = row.dataset.sourceDate;
-        const flt = row.dataset.filter;
-        const cnt = +row.dataset.count || 0;
-
-        // удалить из plan (по одному совпадению)
-        const arr = plan.get(day) || [];
-        const i = arr.findIndex(x=> x.source_date===src && x.filter===flt && x.count===cnt);
-        if (i>=0){ arr.splice(i,1); plan.set(day, arr); }
-
-        // вернуть в доступность
-        const selector = `.pill[data-source-date="${cssEscape(src)}"][data-filter="${cssEscape(flt)}"]`;
-        const pill = document.querySelector(selector);
-        if (pill){
-            const av = (+pill.dataset.avail||0) + cnt;
-            updateAvailForPill(pill, av);
-        }
-
-        incTotal(day, -cnt);
-        row.remove();
-    }
-
-    // ===== модалка выбора дня =====
-    const dpWrap  = document.getElementById('datePicker');
-    const dpDays  = document.getElementById('dpDays');
-    const dpQty   = document.getElementById('dpQty');
-    const dpClose = document.getElementById('dpClose');
-    let pending = null;
-
-    function openDatePicker(pill, qty){
-        pending = {pill, qty};
-        dpQty.value = String(qty);
-        dpDays.innerHTML = '';
-        const days = getAllDays();
-        days.forEach(d=>{
-            const s = totals.get(d) || 0;
-            const btn = document.createElement('button');
-            btn.type='button'; btn.className='dayBtn';
-            btn.innerHTML = `<div class="dayHead">${d}</div><div class="daySub">Уже назначено: ${s} шт</div>`;
-            if (d===lastDay) btn.style.outline = '2px solid #2563eb';
-            btn.onclick = ()=>{ addToDay(d, pending.pill, +dpQty.value || 1); closeDatePicker(); };
-            dpDays.appendChild(btn);
+    // ===== pre-render saved plan from PHP =====
+    (function renderPre(){
+        Object.keys(prePlan||{}).forEach(day=>{
+            ensureDay(day);
+            ['1','2'].forEach(team=>{
+                (prePlan[day][team]||[]).forEach(it=>{
+                    // норму берём из плашки; если нет — 0 (посчитается как 0.0 ч)
+                    const pill = document.querySelector(`.pill[data-source-date="${cssEscape(it.source_date)}"][data-filter="${cssEscape(it.filter)}"]`);
+                    const rate = pill ? (parseInt(pill.dataset.rate||'0',10)||0) : 0;
+                    addRowElement(day, team, it.source_date, it.filter, +it.count||0, rate);
+                });
+            });
+            lastDay = day;
         });
-        dpWrap.style.display='flex';
-    }
-    function closeDatePicker(){ dpWrap.style.display='none'; pending=null; }
-    dpClose.onclick = closeDatePicker;
-    dpWrap.addEventListener('click', e=>{ if(e.target===dpWrap) closeDatePicker(); });
-    document.addEventListener('keydown', e=>{ if(e.key==='Escape' && dpWrap.style.display==='flex') closeDatePicker(); });
+    })();
+
+    // при инициализации — скорректировать доступность
+    (function applyAvailAfterPre(){
+        const used = collectUsedFromPlan();
+        document.querySelectorAll('.pill').forEach(p=>{
+            const base = +p.dataset.avail0 || 0;
+            const key  = p.dataset.sourceDate + '|' + p.dataset.filter;
+            const rest = Math.max(0, base - (used.get(key)||0));
+            updateAvailForPill(p, rest);
+        });
+    })();
 
     // ===== добавление диапазона дней =====
     const btnAddRange = document.getElementById('btnAddRange');
@@ -604,9 +738,10 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
     // ===== SAVE =====
     document.getElementById('btnSave').addEventListener('click', async ()=>{
         const payload = {};
-        plan.forEach((arr,day)=>{
-            if (!arr || !arr.length) return;
-            payload[day] = arr.map(x=>({source_date:x.source_date, filter:x.filter, count:x.count}));
+        plan.forEach((byTeam,day)=>{
+            const t1 = (byTeam['1']||[]).map(x=>({source_date:x.source_date, filter:x.filter, count:x.count}));
+            const t2 = (byTeam['2']||[]).map(x=>({source_date:x.source_date, filter:x.filter, count:x.count}));
+            if (t1.length || t2.length) payload[day] = {'1':t1, '2':t2};
         });
 
         try{
@@ -625,7 +760,6 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
 
     // ===== LOAD =====
     document.getElementById('btnLoad').addEventListener('click', loadPlanFromDB);
-
     async function loadPlanFromDB(){
         try{
             const url = location.pathname + '?action=load&order=' + encodeURIComponent(ORDER);
@@ -638,34 +772,32 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
             }
             if(!data.ok) throw new Error(data.error||'Ошибка загрузки');
 
-            // 1) очистить низ и память
-            plan.clear();
-            totals.clear();
+            // очистка
+            plan.clear(); countsByTeam.clear(); hoursByTeam.clear();
             document.querySelectorAll('#daysGrid .dropzone').forEach(dz=>dz.innerHTML='');
-            document.querySelectorAll('#daysGrid .tot').forEach(el=>el.textContent='0');
-
-            // 2) сбросить верхние плашки к базовой доступности
+            document.querySelectorAll('.totB').forEach(el=>el.textContent='0');
+            document.querySelectorAll('.hrsB').forEach(el=>el.textContent='0.0');
+            document.querySelectorAll('.tot').forEach(el=>el.textContent='0');
+            document.querySelectorAll('.hrs').forEach(el=>el.textContent='0.0');
             resetPillsToBase();
 
-            // 3) убедиться, что есть колонки для всех дней из ответа
-            const days = Object.keys(data.plan||{});
-            days.sort();
+            const days = Object.keys(data.plan||{}).sort();
             days.forEach(d=> ensureDay(d));
 
-            // 4) заполнить дни и посчитать использование
-            const used = new Map(); // key = src|filter -> used
+            const used = new Map();
             for (const day of days){
-                const dz = document.querySelector(`.col[data-day="${cssEscape(day)}"] .dropzone`);
-                const items = data.plan[day]||[];
-                for (const it of items){
-                    addRowElement(dz, day, it.source_date, it.filter, +it.count||0);
-                    const k = it.source_date + '|' + it.filter;
-                    used.set(k, (used.get(k)||0) + (+it.count||0));
-                }
-                lastDay = day; // последний из загруженных — для Shift-добавления
+                ['1','2'].forEach(team=>{
+                    (data.plan[day][team]||[]).forEach(it=>{
+                        const pill = document.querySelector(`.pill[data-source-date="${cssEscape(it.source_date)}"][data-filter="${cssEscape(it.filter)}"]`);
+                        const rate = pill ? (parseInt(pill.dataset.rate||'0',10)||0) : 0;
+                        addRowElement(day, team, it.source_date, it.filter, +it.count||0, rate);
+                        const k = it.source_date + '|' + it.filter;
+                        used.set(k, (used.get(k)||0) + (+it.count||0));
+                    });
+                });
+                lastDay = day;
             }
 
-            // 5) уменьшить доступности наверху
             document.querySelectorAll('.pill').forEach(p=>{
                 const base = +p.dataset.avail0 || 0;
                 const key  = p.dataset.sourceDate + '|' + p.dataset.filter;
@@ -678,11 +810,4 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
             alert('Не удалось загрузить: '+e.message);
         }
     }
-
-    // ===== utils =====
-    function escapeHtml(s){ return (s??'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
-    function cssEscape(s){ return String(s).replace(/["\\]/g, '\\$&'); }
-
-    // Пересчёт тоталов после начального рендера
-    recalcTotalsAll();
 </script>

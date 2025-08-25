@@ -184,6 +184,7 @@ sort($dates);
                 <button class="btn" id="btnAddDay" title="Добавить этот день внизу">+</button>
             </div>
             <button class="btn" id="btnSave" disabled>Сохранить план</button>
+            <button type="button" class="btn btn" onclick="window.location.href='NP_cut_index.php'">Вернуться</button>
         </div>
 
         <div class="gridBot" id="planGrid"></div>

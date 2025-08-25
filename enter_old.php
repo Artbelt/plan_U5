@@ -327,7 +327,7 @@ if ($result->num_rows === 0) { echo "В базе нет ни одной заяв
 echo '<form action="show_order.php" method="post">';
 while ($orders_data = $result->fetch_assoc()){
     if ( $orders_data['hide'] != 1){
-        echo "<input type='submit' name='order_number' value=".$orders_data['order_number']." style=\"height: 20px; width: 115px\">";
+        echo "<input type='submit' name='order_number' value=".$orders_data['order_number']." style=\"height: 20px; width:230px\">";
 
     }
 }

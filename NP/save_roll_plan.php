@@ -1,28 +1,19 @@
 <?php
-// NP/save_roll_plan.php
+// NP/save_roll_plan.php — сохраняет план раскроя в roll_plans
+// Ожидает JSON: { order: "20-23-25", plan: { "YYYY-MM-DD": [1,2,3], ... } }
+// Возвращает: текст "ok" либо "error: ..."
+
 header('Content-Type: text/plain; charset=utf-8');
 
-try{
+try {
     $pdo = new PDO("mysql:host=127.0.0.1;dbname=plan_u5;charset=utf8mb4", "root", "", [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
 
-    // 1) Выбираем рабочую таблицу: предпочитаем roll_plans, иначе roll_plan. Если нет ни одной — создаём roll_plans.
-    $tbl = null;
-    $stmt = $pdo->query("
-        SELECT TABLE_NAME
-        FROM information_schema.TABLES
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('roll_plans','roll_plan')
-        ORDER BY FIELD(TABLE_NAME,'roll_plans','roll_plan')  -- roll_plans приоритетнее
-        LIMIT 1
-    ");
-    $row = $stmt->fetch();
-    if ($row) {
-        $tbl = $row['TABLE_NAME'];
-    } else {
-        $tbl = 'roll_plans';
-        $pdo->exec("CREATE TABLE IF NOT EXISTS `roll_plans` (
+    // Таблица назначений (множественное число!)
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS roll_plans (
             id INT AUTO_INCREMENT PRIMARY KEY,
             order_number VARCHAR(50) NOT NULL,
             bale_id INT NOT NULL,
@@ -30,66 +21,67 @@ try{
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY uq_order_bale (order_number, bale_id),
             KEY idx_date (work_date)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    // Столбец orders.plan_ready — на всякий случай
+    $hasPlanReady = $pdo->query("
+        SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME='orders' AND COLUMN_NAME='plan_ready'
+    ")->fetchColumn();
+    if (!$hasPlanReady) {
+        $pdo->exec("ALTER TABLE orders ADD plan_ready TINYINT(1) NOT NULL DEFAULT 0");
     }
 
-    // 2) Получаем данные
     $raw = file_get_contents('php://input');
+    if ($raw === '' || $raw === false) { http_response_code(400); exit("error: empty body"); }
+
     $data = json_decode($raw, true);
-    if (!$data || !isset($data['order']) || !isset($data['plan'])) {
-        http_response_code(400); exit("bad payload");
+    if (!is_array($data)) { http_response_code(400); exit("error: bad json"); }
+
+    if (!isset($data['order']) || !isset($data['plan']) || !is_array($data['plan'])) {
+        http_response_code(400); exit("error: bad payload");
     }
-    $order = (string)$data['order'];
-    $plan  = is_array($data['plan']) ? $data['plan'] : [];
+
+    $order = trim((string)$data['order']);
+    if ($order === '') { http_response_code(400); exit("error: empty order"); }
+
+    $plan = $data['plan'];
+
+    // Нормализуем: для каждой бухты оставляем ОДНУ дату (последняя побеждает)
+    // Это защищает от дублей и падения на UNIQUE (order_number, bale_id)
+    $assign = []; // bale_id => work_date
+    foreach ($plan as $date => $ids) {
+        if (!preg_match('~^\d{4}-\d{2}-\d{2}$~', $date)) continue;
+        if (!is_array($ids)) continue;
+        foreach ($ids as $bid) {
+            $bid = (int)$bid;
+            if ($bid <= 0) continue;
+            $assign[$bid] = $date;  // последняя запись перезапишет прежнюю
+        }
+    }
 
     $pdo->beginTransaction();
 
-    // 3) Чистим старый план этой заявки
-    $del = $pdo->prepare("DELETE FROM `$tbl` WHERE order_number=?");
-    $del->execute([$order]);
+    // Удаляем прежние назначения этой заявки
+    $pdo->prepare("DELETE FROM roll_plans WHERE order_number=?")->execute([$order]);
 
-    // 4) Вставляем новый план
-    $ins = $pdo->prepare("INSERT INTO `$tbl` (order_number, bale_id, work_date) VALUES (?,?,?)");
+    // Вставляем новые
+    $ins = $pdo->prepare("INSERT INTO roll_plans (order_number, bale_id, work_date) VALUES (?,?,?)");
     $rows = 0;
-    foreach ($plan as $date => $baleIds) {
-        if (!preg_match('~^\d{4}-\d{2}-\d{2}$~', $date)) continue;   // защита формата даты
-        if (!is_array($baleIds)) continue;
-        foreach ($baleIds as $bid) {
-            $bid = (int)$bid;
-            if ($bid <= 0) continue;
-            $ins->execute([$order, $bid, $date]);
-            $rows++;
-        }
+    foreach ($assign as $bid => $date) {
+        $ins->execute([$order, $bid, $date]);
+        $rows++;
     }
 
-    // 5) Обновляем orders.plan_ready, НО только если таблица orders реально есть
-    $hasOrders = (bool)$pdo->query("SELECT COUNT(*) c FROM information_schema.TABLES
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME='orders'")->fetchColumn();
-
-    if ($hasOrders) {
-        // Добавим колонку plan_ready при необходимости
-        $hasPlanReadyCol = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
-            WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='orders' AND COLUMN_NAME='plan_ready'")->fetchColumn();
-        if (!$hasPlanReadyCol) {
-            $pdo->exec("ALTER TABLE orders ADD plan_ready TINYINT(1) NOT NULL DEFAULT 0");
-        }
-
-        $upd = $pdo->prepare("UPDATE orders SET plan_ready=? WHERE order_number=?");
-        $upd->execute([$rows > 0 ? 1 : 0, $order]);
-    }
-    // Если таблицы orders нет — просто пропускаем этот шаг (не ломаем сохранение)
+    // Флаг готовности
+    $pdo->prepare("UPDATE orders SET plan_ready=? WHERE order_number=?")->execute([$rows > 0 ? 1 : 0, $order]);
 
     $pdo->commit();
     echo "ok";
-}
-catch (PDOException $e){
+} catch (Throwable $e) {
     if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
+    // вернём текст ошибки — фронт его покажет
     http_response_code(500);
-    // более развёрнутый ответ, поможет понять первопричину
-    echo "error: [SQLSTATE {$e->getCode()}] ".$e->getMessage();
-}
-catch (Throwable $e){
-    if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
-    http_response_code(500);
-    echo "error: ".$e->getMessage();
+    echo "error: " . $e->getMessage();
 }

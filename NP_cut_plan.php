@@ -20,13 +20,30 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save_plan','load_plan'
             $bales  = $payload['bales'];
 
             $pdo->beginTransaction();
+
+            // авто-миграция полей статусов
+            $hasCutReady = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='orders' AND COLUMN_NAME='cut_ready'")->fetchColumn();
+            if (!$hasCutReady) {
+                $pdo->exec("ALTER TABLE orders ADD cut_ready TINYINT(1) NOT NULL DEFAULT 0");
+            }
+            $hasCutConfirmed = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='orders' AND COLUMN_NAME='cut_confirmed'")->fetchColumn();
+            if (!$hasCutConfirmed) {
+                $pdo->exec("ALTER TABLE orders ADD cut_confirmed TINYINT(1) NOT NULL DEFAULT 0");
+            }
+
+            // очистка старого раскроя
             $pdo->prepare("DELETE FROM cut_plans WHERE order_number=?")->execute([$order]);
 
+            // вставки нового раскроя
             $ins = $pdo->prepare("
-              INSERT INTO cut_plans
-                (order_number,bale_id,strip_no,material,filter,width,height,length,format,source,fact_length)
-              VALUES (?,?,?,?,?,?,?,?,?,?,?)
-            ");
+      INSERT INTO cut_plans
+        (order_number,bale_id,strip_no,material,filter,width,height,length,format,source,fact_length)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    ");
+
+            $rowsInserted = 0;
             foreach ($bales as $i=>$b) {
                 $baleNo = $i+1;
                 $mat    = (string)$b['mat'];
@@ -46,11 +63,18 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save_plan','load_plan'
                         !empty($s['rowEl']) ? 'order' : 'assort',
                         $fact
                     ]);
+                    $rowsInserted++;
                 }
             }
+
+            // статусы заявки: раскрой готов/не готов, подтверждение сбрасываем
+            $stUpd = $pdo->prepare("UPDATE orders SET cut_ready=?, cut_confirmed=? WHERE order_number=?");
+            $stUpd->execute([$rowsInserted > 0 ? 1 : 0, 0, $order]);
+
             $pdo->commit();
-            echo json_encode(['ok'=>true]); exit;
+            echo json_encode(['ok'=>true, 'rows'=>$rowsInserted]); exit;
         }
+
 
         if ($_GET['action']==='load_plan') {
             $order = $_GET['order_number'] ?? '';

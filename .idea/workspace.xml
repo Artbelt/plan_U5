@@ -4,36 +4,24 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="Реализовано сохранение в модуле раскроя">
-      <change afterPath="$PROJECT_DIR$/NP/confirm_cut.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NP/get_roll_plan.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NP/load_corrugation_plan.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NP/save_corrugation_plan.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NP/save_roll_plan.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NP_build_plan.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NP_corrugation_plan.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NP_cut_index.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NP_roll_plan.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NP_view_corrugation_plan.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NP_view_production_plan.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5047-2.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5048-2.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5067-2.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5072-2.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5091-2.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5095-2.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5097-2.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5100.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5101.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5137.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/photo/AF5273.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/production_plans.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/view_production_plan.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/view_production_plan_light.php" afterDir="false" />
+    <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="добавлен план сборки">
+      <change afterPath="$PROJECT_DIR$/new_order.php" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/residual_create.php" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/view_salon_filter_params.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/NP/confirm_cut.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP/confirm_cut.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/NP/get_roll_plan.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP/get_roll_plan.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/NP/save_roll_plan.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP/save_roll_plan.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/NP_build_plan.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_build_plan.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/NP_corrugation_plan.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_corrugation_plan.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/NP_cut_index.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_cut_index.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/NP_cut_plan.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_cut_plan.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/NP_roll_plan.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_roll_plan.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/add_salon_filter_into_db.php" beforeDir="false" afterPath="$PROJECT_DIR$/add_salon_filter_into_db.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/enter.php" beforeDir="false" afterPath="$PROJECT_DIR$/enter.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test.php" beforeDir="false" afterPath="$PROJECT_DIR$/test.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/enter_old.php" beforeDir="false" afterPath="$PROJECT_DIR$/enter_old.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/tools.php" beforeDir="false" afterPath="$PROJECT_DIR$/tools/tools.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/view_production_plan.php" beforeDir="false" afterPath="$PROJECT_DIR$/view_production_plan.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -149,7 +137,7 @@
       <workItem from="1753078037561" duration="1941000" />
       <workItem from="1753162550199" duration="628000" />
       <workItem from="1755165694246" duration="9409000" />
-      <workItem from="1755233698449" duration="56123000" />
+      <workItem from="1755233698449" duration="80984000" />
     </task>
     <task id="LOCAL-00001" summary="Добавлено окно просмотра параметров изделия">
       <created>1752823327851</created>
@@ -207,7 +195,14 @@
       <option name="project" value="LOCAL" />
       <updated>1755260798684</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="добавлен план сборки">
+      <created>1755756520963</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1755756520963</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -219,6 +214,7 @@
     <MESSAGE value="Добавлен модуль раскроя" />
     <MESSAGE value="Улучшен модуль раскроя" />
     <MESSAGE value="Реализовано сохранение в модуле раскроя" />
-    <option name="LAST_COMMIT_MESSAGE" value="Реализовано сохранение в модуле раскроя" />
+    <MESSAGE value="добавлен план сборки" />
+    <option name="LAST_COMMIT_MESSAGE" value="добавлен план сборки" />
   </component>
 </project>

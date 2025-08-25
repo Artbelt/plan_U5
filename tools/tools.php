@@ -129,6 +129,13 @@ function show_weekly_production(){
     }
 
 }
+/** Выборка имен фильтров */
+function get_all_filters() {
+    // Замените на вашу реальную логику получения данных
+    $pdo = get_connection();
+    $stmt = $pdo->query("SELECT id, filter_name FROM salon_filters ORDER BY filter_name");
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 
 /** Отображение выпуска продукции за месяц */
 function show_monthly_production(){
@@ -341,6 +348,7 @@ function show_order($order_number){
     }
     return $result; // Выход из функции, дальше какая-то лажа
 
+
 //************************************************** надо разобраться, тут какая-то лажа получилась*********************************//
     /** Формируем шапку таблицы для вывода заявки */
     echo "<table style='border: 1px solid black; border-collapse: collapse; font-size: 14px;'>
@@ -371,6 +379,7 @@ function show_order($order_number){
 
     echo "</table>";
 //************************************************** конец лажи где надо разобраться********************************************//
+
 
 }
 

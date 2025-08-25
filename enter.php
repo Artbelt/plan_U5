@@ -28,6 +28,8 @@
 </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+<body>
+
 
 
 <?php
@@ -161,9 +163,9 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))){
 <title>U5</title>
 
 <table  width=100% height=100% style='background-color: #6495ed' >
-<tr height='10%' align='center' style='background-color: #dedede'><td width='20%' >Подразделение: <?php $workshop?>
+<tr height='10%' align='center' style='background-color: #dedede'><td width='20%'>Подразделение: <?php echo $workshop; ?>
 </td><td width='80%'><!--#application_name=--><br>  <br></td>
-<td >Пользователь: $user<br><a href='logout.php'>выход из системы</a></td></tr>
+<td >Пользователь: <?php echo $user; ?><br><a href='logout.php'>выход из системы</a></td></tr>
 <tr height='10%' align='center' ><td colspan='3'>#attention block<br>
 
 /** Раздел объявлений */
@@ -205,14 +207,18 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))){
         ."</form>"
     */
         /** Добавление полной информации по фильтру  */
-        . "<form action='add_salon_filter_into_db.php' method='post'>"
+        . "<form action='add_salon_filter_into_db.php' method='post' target='_blank'>"
         ."<input type='hidden' name='workshop' value='$workshop'>"
-        ."<input type='submit'  value='добавить фильтр в БД(full)'  style=\"height: 20px; width: 220px\">"
+        ."<input type='submit'  value='Добавить фильтр в БД(full)'  style=\"height: 20px; width: 220px\">"
+        ."</form>"
+        . "<form action='view_salon_filter_params.php' method='post' target='_blank'>"
+        ."<input type='hidden' name='workshop' value='$workshop'>"
+        ."<input type='submit'  value='Просмотреть параметры фильтра'  style=\"height: 20px; width: 220px\">"
         ."</form>"
 
-        ."<form action='add_filter_properties_into_db.php' method='post'>"
+        ."<form action='add_filter_properties_into_db.php' method='post' target='_blank'>"
         ."<input type='hidden' name='workshop' value='$workshop'>"
-        ."<input type='submit'  value='изменить параметры фильтра'  style=\"height: 20px; width: 220px\">"
+        ."<input type='submit'  value='Изменить параметры фильтра'  style=\"height: 20px; width: 220px\">"
         ."</form>"
 
         ?>
@@ -335,8 +341,55 @@ while ($orders_data = $result->fetch_assoc()){
 echo '</form>';
 
 /** Блок распланированных заявок  */
-echo "Распланированные заявки";
-echo "<form action='planning_manager.php' method='post'>"
+echo "Управление заявками";
+
+?>
+
+        <section class="card" style="margin-top:16px">
+            <button type="button" class="btn" id="btn-create-resid" style="width:220px"> Создать заявку для остатков </button>
+            <span class="muted" id="resid-hint"></span>
+        </section>
+
+        <script>
+            document.getElementById('btn-create-resid').addEventListener('click', async () => {
+                const btn = document.getElementById('btn-create-resid');
+                const hint = document.getElementById('resid-hint');
+                btn.disabled = true; hint.textContent = 'Создаю...';
+
+                try {
+                    const res = await fetch('residual_create.php', {
+                        method:'POST',
+                        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+                        body: new URLSearchParams({workshop:'U5'}).toString()
+                    });
+
+                    const text = await res.text(); // читаем как текст
+                    let data;
+                    try { data = JSON.parse(text); } catch { throw new Error('Сервер вернул не-JSON: ' + text.slice(0,200)); }
+
+                    if (!data.ok) throw new Error(data.error || 'Ошибка');
+
+                    hint.textContent = (data.created ? 'Создана' : 'Уже существует') + ' заявка: ' + data.order_number;
+                } catch(e) {
+                    hint.textContent = 'Ошибка: ' + e.message;
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+
+        </script>
+
+
+        <?php
+
+
+
+
+echo "<form action='new_order.php' method='post' target='_blank'>"
+    ."<input type='submit' value='Создать заявку вручную' style='height: 20px; width: 220px'>"
+    ."</form>";
+
+echo "<form action='planning_manager.php' method='post' target='_blank'>"
     ."<input type='submit' value='Менеджер планирования (старый)' style='height: 20px; width: 220px'>"
     ."</form>";
 echo "<form action='NP_cut_index.php' method='post' target='_blank'>"
@@ -363,47 +416,5 @@ $mysqli->close();
 
 
 ?>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Получение JSON данных с сервера
-        const productionData = <?php $data = json_encode($data); ?>;
 
-        // Преобразуем JSON данные в формат, пригодный для Chart.js
-        const labels = productionData.map(item => item.date_of_production);
-        const data = productionData.map(item => parseInt(item.total_filters_produced, 10));
-
-        // Настройки для графика
-        const ctx = document.getElementById('productionChart').getContext('2d');
-        const productionChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Произведено фильтров',
-                    data: data,
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Дата производства'
-                        }
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Количество произведенных фильтров'
-                        },
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-    });
-</script>
 </body>
