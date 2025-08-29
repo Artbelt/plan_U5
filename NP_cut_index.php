@@ -216,7 +216,9 @@ try{
                     <?php elseif (!empty($o['build_ready'])): ?>
                         <div class="done">✅ Готово</div>
                         <div class="stack">
-                            <a class="btn-secondary" target="_blank" href="view_production_plan.php?order=<?= urlencode($ord) ?>">Просмотр</a>
+                            <a class="btn-secondary" target="_blank" href="view_production_plan.php?order=<?= urlencode($ord) ?>">Просмотр плана</a>
+
+                            <a class="btn-print" target="_blank" href="NP_build_tasks.php?order=<?= urlencode($ord) ?>">Просмотр задания</a>
                         </div>
                     <?php else: ?>
                         <div class="stack">

@@ -213,6 +213,15 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
     :root{ --line:#e5e7eb; --bg:#f7f9fc; --card:#fff; --muted:#6b7280; --accent:#2563eb; --ok:#16a34a; }
+    :root{
+        /* ... твои переменные ... */
+        --brig1-bg: #faf0da; /* бледно-жёлтый */
+        --brig1-bd:#F3E8A1;
+        --brig2-bg:#EEF5FF; /* бледно-синий */
+        --brig2-bd:#CFE0FF;
+    }
+    .brig.brig1{ background:var(--brig1-bg); border-color:var(--brig1-bd); }
+    .brig.brig2{ background:var(--brig2-bg); border-color:var(--brig2-bd); }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);font:13px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111; user-select:none;}
     h2{margin:18px 10px 6px}
@@ -248,6 +257,10 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
     .rowItem{display:flex;align-items:center;justify-content:space-between;background:#dff7c7;border:1px solid #bddda2;border-radius:8px;padding:6px 8px;margin:6px 0}
     .rowLeft{display:flex;flex-direction:column}
     .rm{border:1px solid #ccc;background:#fff;border-radius:8px;padding:2px 8px;cursor:pointer}
+    .mv{border:1px solid #ccc;background:#fff;border-radius:8px;padding:2px 6px;cursor:pointer}
+    .mv:disabled{opacity:.5;cursor:not-allowed}
+    .rowCtrls{display:flex;align-items:center;gap:6px}
+
     .dayFoot{margin-top:6px;font-size:12px;color:#374151}
     .tot,.hrsB,.hrs{font-weight:700}
 
@@ -336,14 +349,14 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
                 <div class="col" data-day="<?=h($d)?>">
                     <h4><?=h($d)?></h4>
                     <div class="brigWrap">
-                        <div class="brig">
+                        <div class="brig brig1">
                             <h5>Бригада 1:
                                 <span class="totB" data-totb="<?=h($d)?>|1">0</span> шт ·
                                 Время: <span class="hrsB" data-hrsb="<?=h($d)?>|1">0.0</span> ч
                             </h5>
                             <div class="dropzone" data-day="<?=h($d)?>" data-team="1"></div>
                         </div>
-                        <div class="brig">
+                        <div class="brig brig2">
                             <h5>Бригада 2:
                                 <span class="totB" data-totb="<?=h($d)?>|2">0</span> шт ·
                                 Время: <span class="hrsB" data-hrsb="<?=h($d)?>|2">0.0</span> ч
@@ -427,28 +440,28 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         if (!document.querySelector(`.col[data-day="${cssEscape(day)}"]`)){
             const col = document.createElement('div'); col.className='col'; col.dataset.day = day;
             col.innerHTML = `
-                <h4>${escapeHtml(day)}</h4>
-                <div class="brigWrap">
-                    <div class="brig">
-                        <h5>Бригада 1:
-                            <span class="totB" data-totb="${escapeHtml(day)}|1">0</span> шт ·
-                            Время: <span class="hrsB" data-hrsb="${escapeHtml(day)}|1">0.0</span> ч
-                        </h5>
-                        <div class="dropzone" data-day="${escapeHtml(day)}" data-team="1"></div>
-                    </div>
-                    <div class="brig">
-                        <h5>Бригада 2:
-                            <span class="totB" data-totb="${escapeHtml(day)}|2">0</span> шт ·
-                            Время: <span class="hrsB" data-hrsb="${escapeHtml(day)}|2">0.0</span> ч
-                        </h5>
-                        <div class="dropzone" data-day="${escapeHtml(day)}" data-team="2"></div>
-                    </div>
+              <h4>${escapeHtml(day)}</h4>
+              <div class="brigWrap">
+                <div class="brig brig1">
+                  <h5>Бригада 1:
+                    <span class="totB" data-totb="${escapeHtml(day)}|1">0</span> шт ·
+                    Время: <span class="hrsB" data-hrsb="${escapeHtml(day)}|1">0.0</span> ч
+                  </h5>
+                  <div class="dropzone" data-day="${escapeHtml(day)}" data-team="1"></div>
                 </div>
-                <div class="dayFoot">
-                    Итого за день:
-                    <span class="tot" data-tot-day="${escapeHtml(day)}">0</span> шт ·
-                    Время: <span class="hrs" data-hrs-day="${escapeHtml(day)}">0.0</span> ч
+                <div class="brig brig2">
+                  <h5>Бригада 2:
+                    <span class="totB" data-totb="${escapeHtml(day)}|2">0</span> шт ·
+                    Время: <span class="hrsB" data-hrsb="${escapeHtml(day)}|2">0.0</span> ч
+                  </h5>
+                  <div class="dropzone" data-day="${escapeHtml(day)}" data-team="2"></div>
                 </div>
+              </div>
+              <div class="dayFoot">
+                Итого за день:
+                <span class="tot" data-tot-day="${escapeHtml(day)}">0</span> шт ·
+                Время: <span class="hrs" data-hrs-day="${escapeHtml(day)}">0.0</span> ч
+              </div>
             `;
             document.getElementById('daysGrid').appendChild(col);
         }
@@ -553,17 +566,25 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         row.dataset.rate  = r;
         row.dataset.hours = rowHours;
         row.innerHTML = `
-            <div class="rowLeft">
-                <div><b>${escapeHtml(flt)}</b></div>
-                <div class="sub">
-                    Кол-во: <b class="cnt">${count}</b> шт ·
-                    Время: <b class="h">${fmtH(rowHours)}</b> ч
-                </div>
+        <div class="rowLeft">
+            <div><b>${escapeHtml(flt)}</b></div>
+            <div class="sub">
+                Кол-во: <b class="cnt">${count}</b> шт ·
+                Время: <b class="h">${fmtH(rowHours)}</b> ч
             </div>
-            <button class="rm">×</button>
-        `;
-        dz.appendChild(row);
-        row.querySelector('.rm').onclick = ()=> removeRow(row);
+        </div>
+        <div class="rowCtrls">
+            <button class="mv mvL" title="Сместить на день влево">◀</button>
+            <button class="mv mvR" title="Сместить на день вправо">▶</button>
+            <button class="rm" title="Удалить">×</button>
+        </div>
+    `;
+            dz.appendChild(row);
+
+            row.querySelector('.rm').onclick  = ()=> removeRow(row);
+            row.querySelector('.mvL').onclick = ()=> moveRow(row, -1);
+            row.querySelector('.mvR').onclick = ()=> moveRow(row, +1);
+
 
         incTotals(day, team, count, rowHours);
     }
@@ -593,6 +614,57 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         incTotals(day, team, -cnt, -hrs);
         row.remove();
     }
+
+    function moveRow(row, dir){
+        // dir = -1 (влево) или +1 (вправо)
+        const days = getAllDays();
+        const curDay = row.dataset.day;
+        const i = days.indexOf(curDay);
+        if (i < 0) return;
+
+        const j = i + (dir < 0 ? -1 : 1);
+        if (j < 0 || j >= days.length) return; // крайние колонки — не куда двигать
+
+        const newDay = days[j];
+        const team   = row.dataset.team;
+
+        // данные строки
+        const src = row.dataset.sourceDate;
+        const flt = row.dataset.filter;
+        const cnt = +row.dataset.count || 0;
+        const r   = +row.dataset.rate  || 0;
+        const hrs = +row.dataset.hours || 0;
+
+        // убрать из плана текущего дня
+        const arr = plan.get(curDay)?.[team] || [];
+        const idx = arr.findIndex(x =>
+            x.source_date === src &&
+            x.filter      === flt &&
+            x.count       === cnt &&
+            (x.rate||0)   === r
+        );
+        if (idx >= 0){
+            arr.splice(idx,1);
+            plan.get(curDay)[team] = arr;
+        }
+
+        // добавить в новый день (создать, если нет)
+        ensureDay(newDay);
+        plan.get(newDay)[team].push({source_date:src, filter:flt, count:cnt, rate:r});
+
+        // переставить DOM
+        const dzNew = document.querySelector(`.dropzone[data-day="${cssEscape(newDay)}"][data-team="${cssEscape(team)}"]`);
+        if (dzNew) dzNew.appendChild(row);
+
+        // обновить итоговые показатели
+        incTotals(curDay, team, -cnt, -hrs);
+        incTotals(newDay, team, +cnt, +hrs);
+
+        // обновить метку дня у строки и "последний день" для шифт-клика
+        row.dataset.day = newDay;
+        lastDay = newDay;
+    }
+
 
     // ===== модалка дня/бригады =====
     const dpWrap  = document.getElementById('datePicker');
