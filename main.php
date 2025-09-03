@@ -185,10 +185,19 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))){
                                 ."Дополнения:<p>"
                                 ."<form action='BOX_CREATOR.htm' method='post'><input type='submit' value='Расчет коробок'  style=\"height: 20px; width: 220px\"></form>"
                                 ."<form action='BOX_CREATOR_2.htm' method='post'><input type='submit' value='Максимальное количество'  style=\"height: 20px; width: 220px\"></form>"
-                            ?>
+                        ?>
+                        Мониториг:  <p>
+                        <form action='NP_monitor.php' method='post' target="_blank"><input type='submit' value='Мониторинг'  style="height: 20px; width: 220px"></form>
 
+                        <form action="worker_modules/tasks_corrugation.php" method="post" target="_blank">
+                              <input type="submit" value="Модуль оператора ГМ" style="height: 20px; width: 220px">
+                        </form>
+                        <form action="worker_modules/tasks_cut.php" method="post" target="_blank">
+                            <input type="submit" value="Модуль оператора бумагорезки" style="height: 20px; width: 220px">
+                        <p>
+                        Табель:  <p>
                         <form action="http://localhost/timekeeping/U5/index.php" method="post" target="_blank">
-                            <input type="submit" value="Табель У5" style="height: 20px; width: 220px; background-color: red; color: white; border: none; cursor: pointer;">
+                            <input type="submit" value="Табель У5" style="height: 20px; width: 220px" disabled>
                         </form>
 
                         <?php

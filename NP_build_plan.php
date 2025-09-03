@@ -1,12 +1,16 @@
 <?php
-// NP_build_plan.php — план сборки (две бригады) + расчёт времени (часы) по норме смены
+// NP_build_plan.php — план сборки салонных фильтров (2 бригады)
+// Часы считаются по норме (build_complexity, шт/смену):
+//   часы = (count / rate_per_shift) * SHIFT_HOURS
+// Время других заявок в этот же день/бригаду включается прямо в «Время».
 
 $dsn  = "mysql:host=127.0.0.1;dbname=plan_u5;charset=utf8mb4";
 $user = "root";
 $pass = "";
+$SHIFT_HOURS = 11.5;
 
-/* ===================== AJAX save/load ===================== */
-if (isset($_GET['action']) && in_array($_GET['action'], ['save','load'], true)) {
+/* ===================== AJAX save/load/busy ===================== */
+if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy'], true)) {
     header('Content-Type: application/json; charset=utf-8');
     try{
         $pdo = new PDO($dsn,$user,$pass,[
@@ -14,7 +18,7 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load'], true)) 
             PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC
         ]);
 
-        // auto-migrate: build_plan + brigade
+        // auto-migrate: build_plan (+ brigade)
         $pdo->exec("CREATE TABLE IF NOT EXISTS build_plan (
             id INT AUTO_INCREMENT PRIMARY KEY,
             order_number VARCHAR(50) NOT NULL,
@@ -33,7 +37,7 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load'], true)) 
             KEY idx_brigade (brigade)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
-        // add brigade if missing
+        // add brigade column if missing
         $hasBrig = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
             WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='build_plan' AND COLUMN_NAME='brigade'")->fetchColumn();
         if (!$hasBrig) {
@@ -47,6 +51,7 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load'], true)) 
             $pdo->exec("ALTER TABLE orders ADD build_ready TINYINT(1) NOT NULL DEFAULT 0");
         }
 
+        /* -------- load -------- */
         if ($_GET['action']==='load') {
             $order = $_GET['order'] ?? '';
             if ($order==='') { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'no order']); exit; }
@@ -72,6 +77,7 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load'], true)) 
             echo json_encode(['ok'=>true,'plan'=>$plan]); exit;
         }
 
+        /* -------- save -------- */
         if ($_GET['action']==='save') {
             $raw  = file_get_contents('php://input');
             $data = json_decode($raw, true);
@@ -87,7 +93,6 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load'], true)) 
             $ins = $pdo->prepare("INSERT INTO build_plan(order_number,source_date,plan_date,brigade,filter,count) 
                                   VALUES (?,?,?,?,?,?)");
             $rows = 0;
-
             foreach ($plan as $day=>$byTeam){
                 if (!preg_match('~^\d{4}-\d{2}-\d{2}$~', $day)) continue;
                 if (!is_array($byTeam)) continue;
@@ -107,11 +112,49 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load'], true)) 
             }
 
             $pdo->prepare("UPDATE orders SET build_ready=? WHERE order_number=?")->execute([$rows>0?1:0, $order]);
-
             $pdo->commit();
             echo json_encode(['ok'=>true,'rows'=>$rows]); exit;
         }
 
+        /* -------- busy (часы других заявок) -------- */
+        if ($_GET['action']==='busy') {
+            $order = $_GET['order'] ?? '';
+            $payload = [];
+            if ($_SERVER['REQUEST_METHOD']==='POST') {
+                $raw = file_get_contents('php://input');
+                $payload = json_decode($raw, true) ?: [];
+            }
+            $days = $payload['days'] ?? ($_GET['days'] ?? []);
+            if (is_string($days)) $days = explode(',', $days);
+            $days = array_values(array_filter(array_unique(array_map('trim', (array)$days)), fn($d)=>preg_match('~^\d{4}-\d{2}-\d{2}$~',$d)));
+
+            if (!$order || !$days) { echo json_encode(['ok'=>true,'data'=>[]]); exit; }
+
+            $ph = implode(',', array_fill(0, count($days), '?'));
+            $q  = $pdo->prepare("
+                SELECT bp.plan_date, bp.brigade, bp.count,
+                       NULLIF(COALESCE(sfs.build_complexity,0),0) AS rate_per_shift
+                FROM build_plan bp
+                LEFT JOIN salon_filter_structure sfs ON sfs.filter = bp.filter
+                WHERE bp.order_number <> ?
+                  AND bp.plan_date IN ($ph)
+            ");
+            $params = array_merge([$order], $days);
+            $q->execute($params);
+
+            $out = []; // [$day][1|2] => hours
+            while ($r = $q->fetch()){
+                $d = $r['plan_date']; $b = (int)($r['brigade'] ?: 1);
+                $cnt = (int)$r['count']; $rate = (int)$r['rate_per_shift'];
+                $hrs = $rate>0 ? ($cnt/$rate)*$SHIFT_HOURS : 0.0;
+                if (!isset($out[$d])) $out[$d] = [1=>0.0,2=>0.0];
+                $out[$d][$b] += $hrs;
+            }
+            foreach ($out as $d=>$bb){ $out[$d][1] = round($bb[1],1); $out[$d][2] = round($bb[2],1); }
+            echo json_encode(['ok'=>true,'data'=>$out]); exit;
+        }
+
+        echo json_encode(['ok'=>false,'error'=>'unknown action']); exit;
     } catch(Throwable $e){
         if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
         http_response_code(500); echo json_encode(['ok'=>false,'error'=>$e->getMessage()]); exit;
@@ -122,6 +165,9 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load'], true)) 
 /* ===================== обычная страница ===================== */
 $order = $_GET['order'] ?? '';
 if ($order==='') { http_response_code(400); exit('Укажите ?order=...'); }
+
+function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8'); }
+function fmt1($x){ return number_format((float)$x, 1, '.', ''); }
 
 try{
     $pdo = new PDO($dsn,$user,$pass,[
@@ -146,7 +192,7 @@ try{
     $src->execute([$order]);
     $rowsSrc = $src->fetchAll();
 
-    // уже разложено (сумма по бригадам)
+    // уже разложено (сумма по бригадам) — чтобы посчитать «Доступно» сверху
     $bp  = $pdo->prepare("SELECT source_date, filter, SUM(count) AS assigned
                           FROM build_plan WHERE order_number=?
                           GROUP BY source_date, filter");
@@ -177,7 +223,7 @@ try{
     }
     $srcDates = array_keys($srcDates); sort($srcDates);
 
-    // предварительный план
+    // предварительный план текущей заявки
     $prePlan = []; // $prePlan[day]['1'][] , $prePlan[day]['2'][]
     $pre = $pdo->prepare("SELECT plan_date, brigade, source_date, filter, count
                           FROM build_plan WHERE order_number=? ORDER BY plan_date, brigade, filter");
@@ -201,11 +247,45 @@ try{
         for($i=0;$i<7;$i++){ $buildDays[] = $start->format('Y-m-d'); $start->modify('+1 day'); }
     }
 
-} catch(Throwable $e){
-    http_response_code(500); echo 'Ошибка: '.htmlspecialchars($e->getMessage()); exit;
-}
+    /* === стартовая занятость от других заявок на те же дни (по бригаде) === */
+    $busyByDayBrig = []; // [$day][1|2] = ['cnt'=>int,'hrs'=>float]
+    if ($buildDays) {
+        $ph = implode(',', array_fill(0, count($buildDays), '?'));
+        $q  = $pdo->prepare("
+            SELECT bp.plan_date, bp.brigade, bp.filter, bp.count,
+                   NULLIF(COALESCE(sfs.build_complexity,0),0) AS rate_per_shift
+            FROM build_plan bp
+            LEFT JOIN salon_filter_structure sfs ON sfs.filter = bp.filter
+            WHERE bp.order_number <> ?
+              AND bp.plan_date IN ($ph)
+        ");
+        $params = array_merge([$order], $buildDays);
+        $q->execute($params);
+        while ($row = $q->fetch()) {
+            $d = $row['plan_date'];
+            $b = (int)($row['brigade'] ?: 1);
+            $cnt = (int)$row['count'];
+            $rate = (int)$row['rate_per_shift'];
+            $hrs = ($rate > 0) ? ($cnt / $rate) * $SHIFT_HOURS : 0.0;
 
-function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8'); }
+            if (!isset($busyByDayBrig[$d])) $busyByDayBrig[$d] = [1=>['cnt'=>0,'hrs'=>0.0], 2=>['cnt'=>0,'hrs'=>0.0]];
+            $busyByDayBrig[$d][$b]['cnt'] += $cnt;
+            $busyByDayBrig[$d][$b]['hrs'] += $hrs;
+        }
+    }
+
+    // подготовим стартовую карту для JS
+    $busyInit = [];
+    foreach ($busyByDayBrig as $d => $bb) {
+        $busyInit[$d] = [
+            1 => round(($bb[1]['hrs'] ?? 0), 1),
+            2 => round(($bb[2]['hrs'] ?? 0), 1),
+        ];
+    }
+
+} catch(Throwable $e){
+    http_response_code(500); echo 'Ошибка: '.h($e->getMessage()); exit;
+}
 ?>
 <!doctype html>
 <meta charset="utf-8">
@@ -213,13 +293,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
     :root{ --line:#e5e7eb; --bg:#f7f9fc; --card:#fff; --muted:#6b7280; --accent:#2563eb; --ok:#16a34a; }
-    :root{
-        /* ... твои переменные ... */
-        --brig1-bg: #faf0da; /* бледно-жёлтый */
-        --brig1-bd:#F3E8A1;
-        --brig2-bg:#EEF5FF; /* бледно-синий */
-        --brig2-bd:#CFE0FF;
-    }
+    :root{ --brig1-bg:#faf0da; --brig1-bd:#F3E8A1; --brig2-bg:#EEF5FF; --brig2-bd:#CFE0FF; }
     .brig.brig1{ background:var(--brig1-bg); border-color:var(--brig1-bd); }
     .brig.brig2{ background:var(--brig2-bg); border-color:var(--brig2-bd); }
     *{box-sizing:border-box}
@@ -259,30 +333,10 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
     .rm{border:1px solid #ccc;background:#fff;border-radius:8px;padding:2px 8px;cursor:pointer}
     .mv{border:1px solid #ccc;background:#fff;border-radius:8px;padding:2px 6px;cursor:pointer}
     .mv:disabled{opacity:.5;cursor:not-allowed}
-    .rowCtrls{display:flex;align-items:center;gap:6px}
+    .rowCtrls{display:flex;gap:6px;flex-wrap:wrap}
 
     .dayFoot{margin-top:6px;font-size:12px;color:#374151}
     .tot,.hrsB,.hrs{font-weight:700}
-
-    .modalWrap{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.35);z-index:1000}
-    .modal{background:#fff;border-radius:12px;border:1px solid var(--line);min-width:360px;max-width:600px;max-height:75vh;display:flex;flex-direction:column;overflow:hidden}
-    .modalHeader{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line)}
-    .modalTitle{font-weight:600}
-    .modalClose{border:1px solid #ccc;background:#f8f8f8;border-radius:8px;padding:4px 8px;cursor:pointer}
-    .modalBody{padding:10px;overflow:auto}
-    .daysGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-    .dayBtn{display:flex;flex-direction:column;gap:4px;padding:10px;border:1px solid #d9e2f1;border-radius:10px;background:#f4f8ff;cursor:pointer;text-align:left}
-    .dayBtn:hover{background:#ecf4ff}
-    .dayHead{font-weight:600}
-    .daySub{font-size:12px;color:#6b7280}
-    .teamSwitch{display:flex;gap:8px;margin-bottom:8px}
-    .teamBtn{border:1px solid #cbd5e1;background:#f8fafc;border-radius:8px;padding:6px 10px;cursor:pointer}
-    .teamBtn.active{outline:2px solid #2563eb}
-
-    .rangeBar{display:flex;gap:8px;align-items:center;margin:8px 0 0}
-    .rangeBar input{padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px}
-
-    @media (max-width:560px){ .daysGrid{grid-template-columns:1fr;} .modal{min-width:300px;max-width:92vw;} }
 </style>
 
 <div class="wrap">
@@ -381,38 +435,40 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         </div>
 
         <div class="sub" style="margin-top:8px">
-            Удаляя позицию из дня/бригады, её количество возвращается в «Доступно» наверху.
+            Удаляя позицию из дня/бригады, её количество возвращается в «Доступно» наверху. «Время» включает наши часы и часы других заявок на ту же дату и бригаду.
         </div>
     </div>
 </div>
 
 <!-- Модалка выбора дня/бригады -->
-<div class="modalWrap" id="datePicker">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dpTitle">
-        <div class="modalHeader">
-            <div class="modalTitle" id="dpTitle">Выберите день и бригаду</div>
-            <button class="modalClose" id="dpClose" title="Закрыть">×</button>
+<div class="modalWrap" id="datePicker" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.35);z-index:1000">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dpTitle" style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;min-width:360px;max-width:600px;max-height:75vh;display:flex;flex-direction:column;overflow:hidden">
+        <div class="modalHeader" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #e5e7eb">
+            <div class="modalTitle" id="dpTitle" style="font-weight:600">Выберите день и бригаду</div>
+            <button class="modalClose" id="dpClose" title="Закрыть" style="border:1px solid #ccc;background:#f8f8f8;border-radius:8px;padding:4px 8px;cursor:pointer">×</button>
         </div>
-        <div class="modalBody">
-            <div class="teamSwitch">
-                <button class="teamBtn" id="team1">Бригада 1</button>
-                <button class="teamBtn" id="team2">Бригада 2</button>
+        <div class="modalBody" style="padding:10px;overflow:auto">
+            <div class="teamSwitch" style="display:flex;gap:8px;margin-bottom:8px">
+                <button class="teamBtn" id="team1" style="border:1px solid #cbd5e1;background:#f8fafc;border-radius:8px;padding:6px 10px;cursor:pointer">Бригада 1</button>
+                <button class="teamBtn" id="team2" style="border:1px solid #cbd5e1;background:#f8fafc;border-radius:8px;padding:6px 10px;cursor:pointer">Бригада 2</button>
                 <div style="flex:1"></div>
-                <label>Кол-во: <input id="dpQty" type="number" min="1" step="1" value="1" style="padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;width:100px"></label>
+                <label>Кол-во:
+                    <input id="dpQty" type="number" min="1" step="1" value="1" style="padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;width:100px">
+                </label>
             </div>
-            <div class="daysGrid" id="dpDays"></div>
+            <div class="daysGrid" id="dpDays" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px"></div>
         </div>
     </div>
 </div>
 
 <script>
     const ORDER = <?= json_encode($order) ?>;
-    const SHIFT_HOURS = 11.5; // длительность смены, ч
+    const SHIFT_HOURS = <?= json_encode($SHIFT_HOURS) ?>; // 11.5 ч
 
     // ===== in-memory =====
     // plan.get(day) => { '1': [ {source_date, filter, count, rate} ], '2': [...] }
     const plan   = new Map();
-    // агрегаты по бригадам и дню (шт и часы)
+    // агрегаты только по нашей заявке (шт и часы)
     const countsByTeam = new Map(); // {'1':cnt,'2':cnt,'sum':cnt}
     const hoursByTeam  = new Map(); // {'1':hrs,'2':hrs,'sum':hrs}
 
@@ -421,7 +477,16 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
 
     const prePlan = <?= json_encode($prePlan, JSON_UNESCAPED_UNICODE) ?>;
 
-    // сохранить базовые доступности
+    // стартовая занятость от других заявок (часы)
+    const BUSY_INIT = <?= json_encode($busyInit, JSON_UNESCAPED_UNICODE) ?>;
+    // busyHours: Map(day -> {'1':hours, '2':hours})
+    const busyHours = new Map();
+    Object.keys(BUSY_INIT || {}).forEach(d => {
+        busyHours.set(d, {'1': BUSY_INIT[d][1] || 0, '2': BUSY_INIT[d][2] || 0});
+    });
+    function getBusy(day, team){ return ((busyHours.get(day) || {})[team] || 0); }
+
+    // сохранить базовые доступности для плашек
     document.querySelectorAll('.pill').forEach(p=>{
         if (!p.dataset.avail0) p.dataset.avail0 = p.dataset.avail || '0';
     });
@@ -430,13 +495,34 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
     function cssEscape(s){ return String(s).replace(/["\\]/g, '\\$&'); }
     function escapeHtml(s){ return (s??'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
     function fmtH(x){ return (Math.round((x||0)*10)/10).toFixed(1); }
+    function getAllDays(){
+        return [...document.querySelectorAll('#daysGrid .col[data-day]')].map(c=>c.dataset.day);
+    }
+
+    async function fetchBusyForDays(daysArr){
+        if (!Array.isArray(daysArr) || !daysArr.length) return;
+        try{
+            const res  = await fetch(location.pathname+'?action=busy&order='+encodeURIComponent(ORDER),{
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({days: daysArr})
+            });
+            const data = await res.json();
+            if (!data.ok) return;
+            const map = data.data || {};
+            daysArr.forEach(d=>{
+                const v = map[d] || {1:0,2:0};
+                busyHours.set(d, {'1': +v[1] || 0, '2': +v[2] || 0});
+                refreshTotalsDOM(d);   // сразу обновляем UI
+            });
+        }catch(e){ /* молча игнорируем */ }
+    }
 
     function ensureDay(day){
         if(!plan.has(day)) plan.set(day, {'1':[], '2':[]});
         if(!countsByTeam.has(day)) countsByTeam.set(day, {'1':0,'2':0,'sum':0});
         if(!hoursByTeam.has(day))  hoursByTeam.set(day,  {'1':0,'2':0,'sum':0});
 
-        // создать колонки в DOM при необходимости
+        // создать колонку в DOM при необходимости
         if (!document.querySelector(`.col[data-day="${cssEscape(day)}"]`)){
             const col = document.createElement('div'); col.className='col'; col.dataset.day = day;
             col.innerHTML = `
@@ -464,6 +550,11 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
               </div>
             `;
             document.getElementById('daysGrid').appendChild(col);
+
+            // инициализация занятости — 0 до ответа сервера
+            if (!busyHours.has(day)) busyHours.set(day, {'1':0,'2':0});
+            // подтянем «занятость других» с сервера
+            fetchBusyForDays([day]);
         }
         refreshTotalsDOM(day);
     }
@@ -471,6 +562,9 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
     function refreshTotalsDOM(day){
         const c = countsByTeam.get(day) || {'1':0,'2':0,'sum':0};
         const h = hoursByTeam.get(day)  || {'1':0,'2':0,'sum':0};
+
+        const busy1 = getBusy(day, '1');
+        const busy2 = getBusy(day, '2');
 
         const el1 = document.querySelector(`.totB[data-totb="${cssEscape(day)}|1"]`);
         const el2 = document.querySelector(`.totB[data-totb="${cssEscape(day)}|2"]`);
@@ -481,10 +575,10 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
 
         if (el1) el1.textContent = String(c['1']||0);
         if (el2) el2.textContent = String(c['2']||0);
-        if (eh1) eh1.textContent = fmtH(h['1']||0);
-        if (eh2) eh2.textContent = fmtH(h['2']||0);
-        if (edC) edC.textContent = String((c['1']||0)+(c['2']||0));
-        if (edH) edH.textContent = fmtH((h['1']||0)+(h['2']||0));
+        if (eh1) eh1.textContent = fmtH((h['1']||0) + busy1);
+        if (eh2) eh2.textContent = fmtH((h['2']||0) + busy2);
+        if (edC) edC.textContent = String((c['1']||0) + (c['2']||0));
+        if (edH) edH.textContent = fmtH(((h['1']||0) + busy1) + ((h['2']||0) + busy2));
     }
 
     function incTotals(day, team, deltaCount, deltaHours){
@@ -531,7 +625,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         return map;
     }
 
-    // ===== верхние плашки: пересчёт времени
+    // верхние плашки: пересчёт времени
     function updatePillTime(pill){
         const rate = +pill.dataset.rate || 0;          // шт/смену
         const qty  = +(pill.querySelector('.qty')?.value || 0);
@@ -578,13 +672,12 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
             <button class="mv mvR" title="Сместить на день вправо">▶</button>
             <button class="rm" title="Удалить">×</button>
         </div>
-    `;
-            dz.appendChild(row);
+        `;
+        dz.appendChild(row);
 
-            row.querySelector('.rm').onclick  = ()=> removeRow(row);
-            row.querySelector('.mvL').onclick = ()=> moveRow(row, -1);
-            row.querySelector('.mvR').onclick = ()=> moveRow(row, +1);
-
+        row.querySelector('.rm').onclick  = ()=> removeRow(row);
+        row.querySelector('.mvL').onclick = ()=> moveRow(row, -1);
+        row.querySelector('.mvR').onclick = ()=> moveRow(row, +1);
 
         incTotals(day, team, count, rowHours);
     }
@@ -598,14 +691,11 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         const r   = +row.dataset.rate  || 0;
         const hrs = +row.dataset.hours || 0;
 
-        // память
         const arr = plan.get(day)?.[team] || [];
         const i = arr.findIndex(x=> x.source_date===src && x.filter===flt && x.count===cnt && (x.rate||0)===r);
         if (i>=0){ arr.splice(i,1); plan.get(day)[team] = arr; }
 
-        // вернуть доступность наверху
-        const sel = `.pill[data-source-date="${cssEscape(src)}"][data-filter="${cssEscape(flt)}"]`;
-        const pill = document.querySelector(sel);
+        const pill = document.querySelector(`.pill[data-source-date="${cssEscape(src)}"][data-filter="${cssEscape(flt)}"]`);
         if (pill){
             const av = (+pill.dataset.avail||0) + cnt;
             updateAvailForPill(pill, av);
@@ -623,12 +713,11 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         if (i < 0) return;
 
         const j = i + (dir < 0 ? -1 : 1);
-        if (j < 0 || j >= days.length) return; // крайние колонки — не куда двигать
+        if (j < 0 || j >= days.length) return; // крайние колонки — некуда двигать
 
         const newDay = days[j];
         const team   = row.dataset.team;
 
-        // данные строки
         const src = row.dataset.sourceDate;
         const flt = row.dataset.filter;
         const cnt = +row.dataset.count || 0;
@@ -648,7 +737,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
             plan.get(curDay)[team] = arr;
         }
 
-        // добавить в новый день (создать, если нет)
+        // добавить в новый день
         ensureDay(newDay);
         plan.get(newDay)[team].push({source_date:src, filter:flt, count:cnt, rate:r});
 
@@ -656,15 +745,13 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         const dzNew = document.querySelector(`.dropzone[data-day="${cssEscape(newDay)}"][data-team="${cssEscape(team)}"]`);
         if (dzNew) dzNew.appendChild(row);
 
-        // обновить итоговые показатели
+        // обновить итоги
         incTotals(curDay, team, -cnt, -hrs);
         incTotals(newDay, team, +cnt, +hrs);
 
-        // обновить метку дня у строки и "последний день" для шифт-клика
         row.dataset.day = newDay;
         lastDay = newDay;
     }
-
 
     // ===== модалка дня/бригады =====
     const dpWrap  = document.getElementById('datePicker');
@@ -679,7 +766,6 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         lastTeam = (t==='2'?'2':'1');
         team1Btn.classList.toggle('active', lastTeam==='1');
         team2Btn.classList.toggle('active', lastTeam==='2');
-        // подписи «уже назначено» по выбранной бригаде (шт + ч)
         const days = getAllDays();
         dpDays.querySelectorAll('.dayBtn').forEach(btn=>{
             const ds = btn.dataset.day;
@@ -691,10 +777,6 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
     team1Btn.onclick = ()=> setTeamActive('1');
     team2Btn.onclick = ()=> setTeamActive('2');
 
-    function getAllDays(){
-        return [...document.querySelectorAll('#daysGrid .col[data-day]')].map(c=>c.dataset.day);
-    }
-
     function openDatePicker(pill, qty){
         pending = {pill, qty};
         dpQty.value = String(qty);
@@ -704,7 +786,8 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         days.forEach(d=>{
             const btn = document.createElement('button');
             btn.type='button'; btn.className='dayBtn'; btn.dataset.day = d;
-            btn.innerHTML = `<div class="dayHead">${d}</div><div class="daySub"></div>`;
+            btn.style.cssText='display:flex;flex-direction:column;gap:4px;padding:10px;border:1px solid #d9e2f1;border-radius:10px;background:#f4f8ff;cursor:pointer;text-align:left';
+            btn.innerHTML = `<div class="dayHead" style="font-weight:600">${d}</div><div class="daySub" style="font-size:12px;color:#6b7280"></div>`;
             btn.onclick = ()=>{ addToDay(d, lastTeam, pending.pill, +dpQty.value || 1); closeDatePicker(); };
             if (d===lastDay) btn.style.outline = '2px solid #2563eb';
             dpDays.appendChild(btn);
@@ -717,7 +800,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
     dpWrap.addEventListener('click', e=>{ if(e.target===dpWrap) closeDatePicker(); });
     document.addEventListener('keydown', e=>{ if(e.key==='Escape' && dpWrap.style.display==='flex') closeDatePicker(); });
 
-    // ===== клики по верхним плашкам =====
+    // клики по верхним плашкам
     document.querySelectorAll('.pill').forEach(pill=>{
         pill.addEventListener('click', (e)=>{
             if (e.target.closest('.qty')) return;
@@ -737,7 +820,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         });
     });
 
-    // ===== add to day =====
+    // add to day
     function addToDay(day, team, pill, qty){
         const avail = +pill.dataset.avail || 0;
         if (qty<=0 || avail<=0) return;
@@ -755,13 +838,12 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         lastDay = day;
     }
 
-    // ===== pre-render saved plan from PHP =====
+    // pre-render сохранённого плана
     (function renderPre(){
         Object.keys(prePlan||{}).forEach(day=>{
             ensureDay(day);
             ['1','2'].forEach(team=>{
                 (prePlan[day][team]||[]).forEach(it=>{
-                    // норму берём из плашки; если нет — 0 (посчитается как 0.0 ч)
                     const pill = document.querySelector(`.pill[data-source-date="${cssEscape(it.source_date)}"][data-filter="${cssEscape(it.filter)}"]`);
                     const rate = pill ? (parseInt(pill.dataset.rate||'0',10)||0) : 0;
                     addRowElement(day, team, it.source_date, it.filter, +it.count||0, rate);
@@ -771,7 +853,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         });
     })();
 
-    // при инициализации — скорректировать доступность
+    // скорректировать доступность после пререндеринга
     (function applyAvailAfterPre(){
         const used = collectUsedFromPlan();
         document.querySelectorAll('.pill').forEach(p=>{
@@ -782,7 +864,10 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         });
     })();
 
-    // ===== добавление диапазона дней =====
+    // подтянуть «другие часы» на стартовые дни (то, что отрисовал PHP)
+    fetchBusyForDays(getAllDays());
+
+    // добавление диапазона дней
     const btnAddRange = document.getElementById('btnAddRange');
     const rangeBar    = document.getElementById('rangeBar');
     const btnDoRange  = document.getElementById('btnDoRange');
@@ -800,14 +885,17 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         const n = Math.max(1, parseInt(document.getElementById('rangeDays').value||'1',10));
         if (!start) return;
         const base = new Date(start+'T00:00:00');
+        const added = [];
         for(let i=0;i<n;i++){
             const d = new Date(base); d.setDate(base.getDate()+i);
             const ds = d.toISOString().slice(0,10);
             ensureDay(ds);
+            added.push(ds);
         }
+        fetchBusyForDays(added);
     };
 
-    // ===== SAVE =====
+    // SAVE
     document.getElementById('btnSave').addEventListener('click', async ()=>{
         const payload = {};
         plan.forEach((byTeam,day)=>{
@@ -830,7 +918,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
         }
     });
 
-    // ===== LOAD =====
+    // LOAD
     document.getElementById('btnLoad').addEventListener('click', loadPlanFromDB);
     async function loadPlanFromDB(){
         try{
@@ -876,6 +964,9 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
                 const rest = Math.max(0, base - (used.get(key)||0));
                 updateAvailForPill(p, rest);
             });
+
+            // подтянуть занятость по дням и обновить «Время»
+            fetchBusyForDays(days);
 
             alert('План сборки загружен.');
         }catch(e){

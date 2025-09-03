@@ -100,7 +100,6 @@ $period = new DatePeriod($start, new DateInterval('P1D'), $end);
 $carryInfo = []; // [$date][$base] = ['carry_in'=>k, 'miss_today'=>m]
 
 foreach ($planMap + $factMap as $base => $_) {
-    // гарантируем массивы
     if (!isset($planMap[$base])) $planMap[$base] = [];
     if (!isset($factMap[$base])) $factMap[$base] = [];
 
@@ -115,9 +114,7 @@ foreach ($planMap + $factMap as $base => $_) {
             $carryIn = min($fact - $plan, $deficitPrev);
         }
 
-        $missToday = max(0, $plan - $fact); // дефицит, появившийся сегодня (без учёта будущих)
-        // обновляем общий дефицит на следующий день:
-        // сначала погашаем прошлый дефицит переносом, затем добавляем недовыполнение сегодняшнего дня
+        $missToday = max(0, $plan - $fact);
         $deficitPrev = max(0, $deficitPrev - $carryIn) + $missToday;
 
         if ($carryIn > 0 || $missToday > 0) {
@@ -138,10 +135,9 @@ function sumFactForDayMap($map){ $s=0; foreach($map as $v) $s+=(int)$v; return $
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>План и факт сборки — переносы | Заявка № <?= htmlspecialchars($order) ?></title>
     <style>
-
         :root{
             --bg:#f6f7fb; --card:#fff; --text:#111827; --muted:#6b7280; --line:#e5e7eb;
-            --ok:#16a34a; --warn:#d97706; --bad:#dc2626; --accent:#2563eb;
+            --ok:#16a34a; --warn:#d97706; --bad:#dc2626; --accent:#2563eb; --hl:#fef3c7; --hlborder:#facc15;
         }
         *{box-sizing:border-box}
         body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:16px;font-size:14px}
@@ -156,8 +152,9 @@ function sumFactForDayMap($map){ $s=0; foreach($map as $v) $s+=(int)$v; return $
         .date{font-weight:700;color:#16a34a;white-space:nowrap}
         .muted{color:var(--muted)}
         ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:4px}
-        li{padding:4px 6px;border-radius:8px;background:#fafafa;border:1px solid var(--line)}
+        li{padding:4px 6px;border-radius:8px;background:#fafafa;border:1px solid var(--line); transition:background-color .15s, box-shadow .15s, border-color .15s}
         li .row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+        li strong{cursor:pointer}
         .tag{font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);background:#fff}
         .ok{color:var(--ok);border-color:#c9f2d9;background:#f1f9f4}
         .warn{color:var(--warn);border-color:#fde7c3;background:#fff9ed}
@@ -166,6 +163,18 @@ function sumFactForDayMap($map){ $s=0; foreach($map as $v) $s+=(int)$v; return $
         .totals{font-size:12px;color:#374151;display:flex;justify-content:space-between;gap:8px}
         .bar{height:6px;background:#eef2ff;border-radius:999px;overflow:hidden;border:1px solid #dfe3ff}
         .bar > span{display:block;height:100%;background:#60a5fa}
+
+        /* Подсветка всех вхождений одного фильтра */
+        li.highlight-same{
+            background:var(--hl);
+            border-color:var(--hlborder);
+            box-shadow:0 0 0 2px rgba(250,204,21,.35) inset;
+        }
+        li.highlight-same strong{
+            text-decoration:underline;
+            text-underline-offset:2px;
+        }
+
         @media(max-width:900px){.calendar{grid-template-columns:repeat(3,1fr)}}
         @media(max-width:600px){.calendar{grid-template-columns:repeat(2,1fr)}}
         @media print{
@@ -190,8 +199,6 @@ function sumFactForDayMap($map){ $s=0; foreach($map as $v) $s+=(int)$v; return $
     </div>
 
     <input type="text" id="searchInput" placeholder="Поиск фильтра...">
-
-
 </div>
 
 <div class="calendar">
@@ -225,8 +232,8 @@ function sumFactForDayMap($map){ $s=0; foreach($map as $v) $s+=(int)$v; return $
                         $plan = 0; foreach ($planItems as $it) if ($it['base']===$base) $plan += (int)$it['count'];
                         $fact = (int)($factMapDay[$base] ?? 0);
 
-                        $carryIn   = $carryInfo[$d][$base]['carry_in']   ?? 0;   // закрываем прошлые долги
-                        $missToday = $carryInfo[$d][$base]['miss_today'] ?? 0;   // новая нехватка сегодня
+                        $carryIn   = $carryInfo[$d][$base]['carry_in']   ?? 0;
+                        $missToday = $carryInfo[$d][$base]['miss_today'] ?? 0;
 
                         $cls = ($fact >= $plan) ? 'ok' : ($fact>0 ? 'warn' : 'bad');
                         if ($plan===0 && $fact>0) $cls = 'ok';
@@ -261,6 +268,40 @@ function sumFactForDayMap($map){ $s=0; foreach($map as $v) $s+=(int)$v; return $
         document.querySelectorAll('.day li').forEach(li => {
             li.style.display = (!q || (li.getAttribute('data-key')||'').includes(q)) ? '' : 'none';
         });
+    });
+
+    // Сквозная подсветка одинаковых фильтров при наведении на НАЗВАНИЕ (strong)
+    const calendar = document.querySelector('.calendar');
+
+    function addHighlight(key){
+        if(!key) return;
+        document.querySelectorAll(`.day li[data-key="${CSS.escape(key)}"]`)
+            .forEach(li => li.classList.add('highlight-same'));
+    }
+    function removeHighlight(){
+        document.querySelectorAll('.day li.highlight-same')
+            .forEach(li => li.classList.remove('highlight-same'));
+    }
+
+    // Делегируем события: реагируем только на hover по <strong>
+    calendar.addEventListener('mouseover', (e) => {
+        const strong = e.target.closest('strong');
+        if (!strong) return;
+        const li = strong.closest('li');
+        if (!li) return;
+        const key = (li.getAttribute('data-key')||'').toLowerCase();
+        removeHighlight();
+        addHighlight(key);
+    });
+    calendar.addEventListener('mouseout', (e) => {
+        // Снимаем подсветку, когда курсор уходит с имени
+        const related = e.relatedTarget;
+        // Если ушли на другой strong того же ключа — подсветка обновится по mouseover
+        if (!e.target.closest('strong')) return;
+        // Если ушли куда-то ещё — убираем подсветку
+        if (!related || !related.closest || !related.closest('strong')) {
+            removeHighlight();
+        }
     });
 </script>
 

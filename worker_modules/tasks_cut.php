@@ -1,13 +1,13 @@
 <?php
-$pdo = new PDO("mysql:host=127.0.0.1;dbname=plan;charset=utf8mb4", "root", "");
+$pdo = new PDO("mysql:host=127.0.0.1;dbname=plan_u5;charset=utf8mb4", "root", "");
 $date = $_GET['date'] ?? date('Y-m-d');
 
 $stmt = $pdo->prepare("
-    SELECT r.id, r.order_number, r.bale_id, r.plan_date, r.done,
+    SELECT r.id, r.order_number, r.bale_id, r.work_date, r.done,
            c.filter, c.length, c.width, c.height
-    FROM roll_plan r
+    FROM roll_plans r
     JOIN cut_plans c ON r.bale_id = c.bale_id AND r.order_number = c.order_number
-    WHERE r.plan_date = ?
+    WHERE r.work_date = ?
     ORDER BY r.order_number, r.bale_id
 ");
 $stmt->execute([$date]);
@@ -21,7 +21,7 @@ foreach ($rows_u2 as $r) {
             'id' => $r['id'],
             'order_number' => $r['order_number'],
             'bale_id' => $r['bale_id'],
-            'plan_date' => $r['plan_date'],
+            'plan_date' => $r['work_date'],
             'done' => $r['done'],
             'filters' => [],
             'total_width' => 0
