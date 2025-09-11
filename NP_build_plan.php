@@ -1,8 +1,8 @@
 <?php
 // NP_build_plan.php — план сборки салонных фильтров (2 бригады)
-// Часы считаются по норме (build_complexity, шт/смену):
-//   часы = (count / rate_per_shift) * SHIFT_HOURS
-// Время других заявок в этот же день/бригаду включается прямо в «Время».
+// Часы считаются по норме (build_complexity, шт/смену): часы = (count / rate_per_shift) * SHIFT_HOURS
+// Время других заявок включено прямо в «Время» по бригадам и «Итого за день».
+// Высота бумаги берётся из paper_package_salon.p_p_height (мм) по связи sfs.paper_package = pps.p_p_name.
 
 $dsn  = "mysql:host=127.0.0.1;dbname=plan_u5;charset=utf8mb4";
 $user = "root";
@@ -116,7 +116,7 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy'], 
             echo json_encode(['ok'=>true,'rows'=>$rows]); exit;
         }
 
-        /* -------- busy (часы других заявок) -------- */
+        /* -------- busy (часы + высоты других заявок) -------- */
         if ($_GET['action']==='busy') {
             $order = $_GET['order'] ?? '';
             $payload = [];
@@ -128,30 +128,39 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy'], 
             if (is_string($days)) $days = explode(',', $days);
             $days = array_values(array_filter(array_unique(array_map('trim', (array)$days)), fn($d)=>preg_match('~^\d{4}-\d{2}-\d{2}$~',$d)));
 
-            if (!$order || !$days) { echo json_encode(['ok'=>true,'data'=>[]]); exit; }
+            if (!$order || !$days) { echo json_encode(['ok'=>true,'data'=>[], 'heights'=>[]]); exit; }
 
             $ph = implode(',', array_fill(0, count($days), '?'));
             $q  = $pdo->prepare("
                 SELECT bp.plan_date, bp.brigade, bp.count,
-                       NULLIF(COALESCE(sfs.build_complexity,0),0) AS rate_per_shift
+                       NULLIF(COALESCE(sfs.build_complexity,0),0) AS rate_per_shift,
+                       pps.p_p_height AS paper_height
                 FROM build_plan bp
                 LEFT JOIN salon_filter_structure sfs ON sfs.filter = bp.filter
+                LEFT JOIN paper_package_salon pps ON pps.p_p_name = sfs.paper_package
                 WHERE bp.order_number <> ?
                   AND bp.plan_date IN ($ph)
             ");
             $params = array_merge([$order], $days);
             $q->execute($params);
 
-            $out = []; // [$day][1|2] => hours
+            $outHrs = []; // [$day][1|2] => hours
+            $outHei = []; // [$day][1|2] => [heights...]
             while ($r = $q->fetch()){
                 $d = $r['plan_date']; $b = (int)($r['brigade'] ?: 1);
                 $cnt = (int)$r['count']; $rate = (int)$r['rate_per_shift'];
                 $hrs = $rate>0 ? ($cnt/$rate)*$SHIFT_HOURS : 0.0;
-                if (!isset($out[$d])) $out[$d] = [1=>0.0,2=>0.0];
-                $out[$d][$b] += $hrs;
+                if (!isset($outHrs[$d])) $outHrs[$d] = [1=>0.0,2=>0.0];
+                $outHrs[$d][$b] += $hrs;
+
+                if (!isset($outHei[$d])) $outHei[$d] = [1=>[],2=>[]];
+                if ($r['paper_height'] !== null) {
+                    $outHei[$d][$b][] = (float)$r['paper_height']; // dedupe на клиенте
+                }
             }
-            foreach ($out as $d=>$bb){ $out[$d][1] = round($bb[1],1); $out[$d][2] = round($bb[2],1); }
-            echo json_encode(['ok'=>true,'data'=>$out]); exit;
+            foreach ($outHrs as $d=>$bb){ $outHrs[$d][1] = round($bb[1],1); $outHrs[$d][2] = round($bb[2],1); }
+
+            echo json_encode(['ok'=>true,'data'=>$outHrs, 'heights'=>$outHei]); exit;
         }
 
         echo json_encode(['ok'=>false,'error'=>'unknown action']); exit;
@@ -168,6 +177,11 @@ if ($order==='') { http_response_code(400); exit('Укажите ?order=...'); }
 
 function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8'); }
 function fmt1($x){ return number_format((float)$x, 1, '.', ''); }
+function fmt_mm($v){
+    if ($v === null || $v === '') return null;
+    $v = (float)$v;
+    return (abs($v - round($v)) < 0.01) ? (string)(int)round($v) : rtrim(rtrim(number_format($v,1,'.',''), '0'), '.');
+}
 
 try{
     $pdo = new PDO($dsn,$user,$pass,[
@@ -175,24 +189,27 @@ try{
         PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC
     ]);
 
-    // источник: corrugation_plan + норма смены (build_complexity как "шт/смену")
+    // источник: corrugation_plan + норма смены + высота бумаги из paper_package_salon
     $src = $pdo->prepare("
         SELECT
           cp.plan_date     AS source_date,
           cp.filter_label  AS filter,
           SUM(cp.count)    AS planned,
-          NULLIF(COALESCE(sfs.build_complexity, 0), 0) AS rate_per_shift
+          NULLIF(COALESCE(sfs.build_complexity, 0), 0) AS rate_per_shift,
+          pps.p_p_height   AS paper_height
         FROM corrugation_plan cp
         LEFT JOIN salon_filter_structure sfs
-          ON sfs.filter = cp.filter_label
+               ON sfs.filter = cp.filter_label
+        LEFT JOIN paper_package_salon pps
+               ON pps.p_p_name = sfs.paper_package
         WHERE cp.order_number = ?
-        GROUP BY cp.plan_date, cp.filter_label
+        GROUP BY cp.plan_date, cp.filter_label, pps.p_p_height
         ORDER BY cp.plan_date, cp.filter_label
     ");
     $src->execute([$order]);
     $rowsSrc = $src->fetchAll();
 
-    // уже разложено (сумма по бригадам) — чтобы посчитать «Доступно» сверху
+    // уже разложено (сумма по бригадам) — для расчёта «Доступно» сверху
     $bp  = $pdo->prepare("SELECT source_date, filter, SUM(count) AS assigned
                           FROM build_plan WHERE order_number=?
                           GROUP BY source_date, filter");
@@ -203,7 +220,7 @@ try{
         $assignedMap[$r['source_date'].'|'.$r['filter']] = (int)$r['assigned'];
     }
 
-    // верхние плашки
+    // верхние плашки (с высотой)
     $pool = []; $srcDates = [];
     foreach($rowsSrc as $r){
         $d = $r['source_date'];
@@ -219,6 +236,7 @@ try{
             'filter'      => $flt,
             'available'   => $avail,
             'rate'        => $r['rate_per_shift'] ? (int)$r['rate_per_shift'] : 0, // шт/смену (11.5 ч)
+            'height'      => isset($r['paper_height']) && $r['paper_height']!==null ? (float)$r['paper_height'] : null, // мм
         ];
     }
     $srcDates = array_keys($srcDates); sort($srcDates);
@@ -238,24 +256,39 @@ try{
         ];
     }
 
-    // какие дни показать
-    $buildDays = array_keys($prePlan);
-    sort($buildDays);
-    if (!$buildDays) { $buildDays = $srcDates ?: []; }
-    if (!$buildDays) {
+    // какие дни показать — непрерывный диапазон от min до max среди srcDates и prePlan
+    $buildDays = [];
+    $interesting = array_unique(array_merge(array_keys($prePlan), $srcDates));
+    sort($interesting);
+
+    if ($interesting) {
+        $from = new DateTime(reset($interesting));
+        $to   = new DateTime(end($interesting));
+        for ($d = clone $from; $d <= $to; $d->modify('+1 day')) {
+            $buildDays[] = $d->format('Y-m-d');
+        }
+    } else {
+        // как и раньше — 7 следующих дней
         $start = new DateTime();
-        for($i=0;$i<7;$i++){ $buildDays[] = $start->format('Y-m-d'); $start->modify('+1 day'); }
+        for ($i = 0; $i < 7; $i++) {
+            $buildDays[] = $start->format('Y-m-d');
+            $start->modify('+1 day');
+        }
     }
 
-    /* === стартовая занятость от других заявок на те же дни (по бригаде) === */
-    $busyByDayBrig = []; // [$day][1|2] = ['cnt'=>int,'hrs'=>float]
+
+    /* === стартовая занятость от других заявок на те же дни (по бригаде) + высоты === */
+    $busyByDayBrig = [];   // [$day][1|2] = ['cnt'=>int,'hrs'=>float]
+    $busyHeiByDay = [];    // [$day][1|2] = [heights...]
     if ($buildDays) {
         $ph = implode(',', array_fill(0, count($buildDays), '?'));
         $q  = $pdo->prepare("
             SELECT bp.plan_date, bp.brigade, bp.filter, bp.count,
-                   NULLIF(COALESCE(sfs.build_complexity,0),0) AS rate_per_shift
+                   NULLIF(COALESCE(sfs.build_complexity,0),0) AS rate_per_shift,
+                   pps.p_p_height AS paper_height
             FROM build_plan bp
             LEFT JOIN salon_filter_structure sfs ON sfs.filter = bp.filter
+            LEFT JOIN paper_package_salon pps ON pps.p_p_name = sfs.paper_package
             WHERE bp.order_number <> ?
               AND bp.plan_date IN ($ph)
         ");
@@ -271,15 +304,27 @@ try{
             if (!isset($busyByDayBrig[$d])) $busyByDayBrig[$d] = [1=>['cnt'=>0,'hrs'=>0.0], 2=>['cnt'=>0,'hrs'=>0.0]];
             $busyByDayBrig[$d][$b]['cnt'] += $cnt;
             $busyByDayBrig[$d][$b]['hrs'] += $hrs;
+
+            if (!isset($busyHeiByDay[$d])) $busyHeiByDay[$d] = [1=>[],2=>[]];
+            if ($row['paper_height'] !== null) {
+                $busyHeiByDay[$d][$b][] = (float)$row['paper_height'];
+            }
         }
     }
 
-    // подготовим стартовую карту для JS
-    $busyInit = [];
+    // подготовим стартовые карты для JS
+    $busyInit = [];           // часы
+    $busyHeightsInit = [];    // высоты
     foreach ($busyByDayBrig as $d => $bb) {
         $busyInit[$d] = [
             1 => round(($bb[1]['hrs'] ?? 0), 1),
             2 => round(($bb[2]['hrs'] ?? 0), 1),
+        ];
+    }
+    foreach ($busyHeiByDay as $d => $bb) {
+        $busyHeightsInit[$d] = [
+            1 => array_values($bb[1]),
+            2 => array_values($bb[2]),
         ];
     }
 
@@ -337,6 +382,7 @@ try{
 
     .dayFoot{margin-top:6px;font-size:12px;color:#374151}
     .tot,.hrsB,.hrs{font-weight:700}
+    .hrsHeights{color:#6b7280;font-weight:600;margin-left:4px}
 </style>
 
 <div class="wrap">
@@ -359,17 +405,21 @@ try{
                     <h4><?=h($d)?></h4>
                     <?php if (empty($pool[$d])): ?>
                         <div class="muted">нет остатков</div>
-                    <?php else: foreach ($pool[$d] as $p): ?>
+                    <?php else: foreach ($pool[$d] as $p):
+                        $htStr = $p['height'] !== null ? fmt_mm($p['height']) : null;
+                        $ht = $htStr !== null ? ('  <span class="muted">['.$htStr.']</span>') : '';
+                        ?>
                         <div class="pill<?= ($p['available']<=0 ? ' disabled' : '') ?>"
                              data-key="<?=h($p['key'])?>"
                              data-source-date="<?=h($p['source_date'])?>"
                              data-filter="<?=h($p['filter'])?>"
                              data-avail="<?=$p['available']?>"
                              data-rate="<?=$p['rate']?>"
+                             data-height="<?= $htStr !== null ? h($htStr) : '' ?>"
                              title="Клик — добавить в день сборки">
                             <div class="pillTop">
                                 <div>
-                                    <div class="pillName"><?=h($p['filter'])?></div>
+                                    <div class="pillName"><?=h($p['filter'])?><?= $ht ?></div>
                                     <div class="pillSub">
                                         Доступно: <b class="av"><?=$p['available']?></b> шт ·
                                         Время: ~<b class="time">0.0</b> ч
@@ -407,6 +457,7 @@ try{
                             <h5>Бригада 1:
                                 <span class="totB" data-totb="<?=h($d)?>|1">0</span> шт ·
                                 Время: <span class="hrsB" data-hrsb="<?=h($d)?>|1">0.0</span> ч
+                                <span class="hrsHeights" data-hrsh="<?=h($d)?>|1"></span>
                             </h5>
                             <div class="dropzone" data-day="<?=h($d)?>" data-team="1"></div>
                         </div>
@@ -414,6 +465,7 @@ try{
                             <h5>Бригада 2:
                                 <span class="totB" data-totb="<?=h($d)?>|2">0</span> шт ·
                                 Время: <span class="hrsB" data-hrsb="<?=h($d)?>|2">0.0</span> ч
+                                <span class="hrsHeights" data-hrsh="<?=h($d)?>|2"></span>
                             </h5>
                             <div class="dropzone" data-day="<?=h($d)?>" data-team="2"></div>
                         </div>
@@ -435,7 +487,7 @@ try{
         </div>
 
         <div class="sub" style="margin-top:8px">
-            Удаляя позицию из дня/бригады, её количество возвращается в «Доступно» наверху. «Время» включает наши часы и часы других заявок на ту же дату и бригаду.
+            Удаляя позицию из дня/бригады, её количество возвращается в «Доступно» наверху. «Время» включает наши часы и часы других заявок на ту же дату и бригаду. Высоты других заявок отображаются в квадратных скобках.
         </div>
     </div>
 </div>
@@ -466,9 +518,8 @@ try{
     const SHIFT_HOURS = <?= json_encode($SHIFT_HOURS) ?>; // 11.5 ч
 
     // ===== in-memory =====
-    // plan.get(day) => { '1': [ {source_date, filter, count, rate} ], '2': [...] }
+    // plan.get(day) => { '1': [ {source_date, filter, count, rate, height?} ], '2': [...] }
     const plan   = new Map();
-    // агрегаты только по нашей заявке (шт и часы)
     const countsByTeam = new Map(); // {'1':cnt,'2':cnt,'sum':cnt}
     const hoursByTeam  = new Map(); // {'1':hrs,'2':hrs,'sum':hrs}
 
@@ -477,16 +528,21 @@ try{
 
     const prePlan = <?= json_encode($prePlan, JSON_UNESCAPED_UNICODE) ?>;
 
-    // стартовая занятость от других заявок (часы)
+    // стартовая занятость от других заявок (часы) и высоты
     const BUSY_INIT = <?= json_encode($busyInit, JSON_UNESCAPED_UNICODE) ?>;
-    // busyHours: Map(day -> {'1':hours, '2':hours})
-    const busyHours = new Map();
+    const BUSY_HEIGHTS_INIT = <?= json_encode($busyHeightsInit, JSON_UNESCAPED_UNICODE) ?>;
+
+    const busyHours = new Map();   // Map(day -> {'1':hours, '2':hours})
     Object.keys(BUSY_INIT || {}).forEach(d => {
         busyHours.set(d, {'1': BUSY_INIT[d][1] || 0, '2': BUSY_INIT[d][2] || 0});
     });
-    function getBusy(day, team){ return ((busyHours.get(day) || {})[team] || 0); }
 
-    // сохранить базовые доступности для плашек
+    const busyHeights = new Map(); // Map(day -> {'1':[heights], '2':[heights]})
+    Object.keys(BUSY_HEIGHTS_INIT || {}).forEach(d => {
+        busyHeights.set(d, {'1': BUSY_HEIGHTS_INIT[d][1] || [], '2': BUSY_HEIGHTS_INIT[d][2] || []});
+    });
+
+    // базовые доступности для плашек
     document.querySelectorAll('.pill').forEach(p=>{
         if (!p.dataset.avail0) p.dataset.avail0 = p.dataset.avail || '0';
     });
@@ -495,6 +551,17 @@ try{
     function cssEscape(s){ return String(s).replace(/["\\]/g, '\\$&'); }
     function escapeHtml(s){ return (s??'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
     function fmtH(x){ return (Math.round((x||0)*10)/10).toFixed(1); }
+    function fmtMM(v){
+        if (v === null || v === undefined || v === '') return '';
+        const n = +v; if (!isFinite(n)) return String(v);
+        const i = Math.round(n);
+        return (Math.abs(n - i) < 0.01) ? String(i) : String(Math.round(n*10)/10);
+    }
+    function uniq(arr){
+        const s = new Set(), out=[];
+        (arr||[]).forEach(v=>{ const k = String(v); if(!s.has(k)){ s.add(k); out.push(v); }});
+        return out;
+    }
     function getAllDays(){
         return [...document.querySelectorAll('#daysGrid .col[data-day]')].map(c=>c.dataset.day);
     }
@@ -508,13 +575,25 @@ try{
             });
             const data = await res.json();
             if (!data.ok) return;
+
+            // часы
             const map = data.data || {};
             daysArr.forEach(d=>{
                 const v = map[d] || {1:0,2:0};
                 busyHours.set(d, {'1': +v[1] || 0, '2': +v[2] || 0});
-                refreshTotalsDOM(d);   // сразу обновляем UI
             });
-        }catch(e){ /* молча игнорируем */ }
+
+            // высоты (могут отсутствовать в старой версии)
+            const hm = data.heights || {};
+            daysArr.forEach(d=>{
+                const hv = hm[d] || {};
+                const a1 = Array.isArray(hv[1]) ? hv[1] : [];
+                const a2 = Array.isArray(hv[2]) ? hv[2] : [];
+                busyHeights.set(d, {'1': a1, '2': a2});
+            });
+
+            daysArr.forEach(refreshTotalsDOM);
+        }catch(e){ /* молча */ }
     }
 
     function ensureDay(day){
@@ -522,7 +601,6 @@ try{
         if(!countsByTeam.has(day)) countsByTeam.set(day, {'1':0,'2':0,'sum':0});
         if(!hoursByTeam.has(day))  hoursByTeam.set(day,  {'1':0,'2':0,'sum':0});
 
-        // создать колонку в DOM при необходимости
         if (!document.querySelector(`.col[data-day="${cssEscape(day)}"]`)){
             const col = document.createElement('div'); col.className='col'; col.dataset.day = day;
             col.innerHTML = `
@@ -532,6 +610,7 @@ try{
                   <h5>Бригада 1:
                     <span class="totB" data-totb="${escapeHtml(day)}|1">0</span> шт ·
                     Время: <span class="hrsB" data-hrsb="${escapeHtml(day)}|1">0.0</span> ч
+                    <span class="hrsHeights" data-hrsh="${escapeHtml(day)}|1"></span>
                   </h5>
                   <div class="dropzone" data-day="${escapeHtml(day)}" data-team="1"></div>
                 </div>
@@ -539,6 +618,7 @@ try{
                   <h5>Бригада 2:
                     <span class="totB" data-totb="${escapeHtml(day)}|2">0</span> шт ·
                     Время: <span class="hrsB" data-hrsb="${escapeHtml(day)}|2">0.0</span> ч
+                    <span class="hrsHeights" data-hrsh="${escapeHtml(day)}|2"></span>
                   </h5>
                   <div class="dropzone" data-day="${escapeHtml(day)}" data-team="2"></div>
                 </div>
@@ -551,9 +631,8 @@ try{
             `;
             document.getElementById('daysGrid').appendChild(col);
 
-            // инициализация занятости — 0 до ответа сервера
             if (!busyHours.has(day)) busyHours.set(day, {'1':0,'2':0});
-            // подтянем «занятость других» с сервера
+            if (!busyHeights.has(day)) busyHeights.set(day, {'1':[], '2':[]});
             fetchBusyForDays([day]);
         }
         refreshTotalsDOM(day);
@@ -563,13 +642,18 @@ try{
         const c = countsByTeam.get(day) || {'1':0,'2':0,'sum':0};
         const h = hoursByTeam.get(day)  || {'1':0,'2':0,'sum':0};
 
-        const busy1 = getBusy(day, '1');
-        const busy2 = getBusy(day, '2');
+        const busy1 = (busyHours.get(day) || {})['1'] || 0;
+        const busy2 = (busyHours.get(day) || {})['2'] || 0;
+
+        const heights1 = uniq((busyHeights.get(day) || {})['1'] || []).map(fmtMM).filter(x=>x!=='');
+        const heights2 = uniq((busyHeights.get(day) || {})['2'] || []).map(fmtMM).filter(x=>x!=='');
 
         const el1 = document.querySelector(`.totB[data-totb="${cssEscape(day)}|1"]`);
         const el2 = document.querySelector(`.totB[data-totb="${cssEscape(day)}|2"]`);
         const eh1 = document.querySelector(`.hrsB[data-hrsb="${cssEscape(day)}|1"]`);
         const eh2 = document.querySelector(`.hrsB[data-hrsb="${cssEscape(day)}|2"]`);
+        const eH1 = document.querySelector(`.hrsHeights[data-hrsh="${cssEscape(day)}|1"]`);
+        const eH2 = document.querySelector(`.hrsHeights[data-hrsh="${cssEscape(day)}|2"]`);
         const edC = document.querySelector(`.tot[data-tot-day="${cssEscape(day)}"]`);
         const edH = document.querySelector(`.hrs[data-hrs-day="${cssEscape(day)}"]`);
 
@@ -577,6 +661,8 @@ try{
         if (el2) el2.textContent = String(c['2']||0);
         if (eh1) eh1.textContent = fmtH((h['1']||0) + busy1);
         if (eh2) eh2.textContent = fmtH((h['2']||0) + busy2);
+        if (eH1) eH1.textContent = heights1.length ? ` [${heights1.join(', ')}]` : '';
+        if (eH2) eH2.textContent = heights2.length ? ` [${heights2.join(', ')}]` : '';
         if (edC) edC.textContent = String((c['1']||0) + (c['2']||0));
         if (edH) edH.textContent = fmtH(((h['1']||0) + busy1) + ((h['2']||0) + busy2));
     }
@@ -640,7 +726,7 @@ try{
     });
 
     // ===== строки внизу =====
-    function addRowElement(day, team, src, flt, count, rate){
+    function addRowElement(day, team, src, flt, count, rate, height){
         ensureDay(day);
         const dz = document.querySelector(`.dropzone[data-day="${cssEscape(day)}"][data-team="${cssEscape(team)}"]`);
         if (!dz) return;
@@ -648,7 +734,7 @@ try{
         const r = Math.max(0, +rate || 0);            // шт/смену
         const rowHours = r>0 ? (count / r) * SHIFT_HOURS : 0;
 
-        plan.get(day)[team].push({source_date:src, filter:flt, count:count, rate:r});
+        plan.get(day)[team].push({source_date:src, filter:flt, count:count, rate:r, height:height ?? ''});
 
         const row = document.createElement('div');
         row.className = 'rowItem';
@@ -659,9 +745,13 @@ try{
         row.dataset.count = count;
         row.dataset.rate  = r;
         row.dataset.hours = rowHours;
+        if (height) row.dataset.height = height;
+
+        const heightBadge = height ? ` <span class="sub">· ${escapeHtml(String(height))} мм</span>` : '';
+
         row.innerHTML = `
         <div class="rowLeft">
-            <div><b>${escapeHtml(flt)}</b></div>
+            <div><b>${escapeHtml(flt)}</b>${heightBadge}</div>
             <div class="sub">
                 Кол-во: <b class="cnt">${count}</b> шт ·
                 Время: <b class="h">${fmtH(rowHours)}</b> ч
@@ -713,7 +803,7 @@ try{
         if (i < 0) return;
 
         const j = i + (dir < 0 ? -1 : 1);
-        if (j < 0 || j >= days.length) return; // крайние колонки — некуда двигать
+        if (j < 0 || j >= days.length) return;
 
         const newDay = days[j];
         const team   = row.dataset.team;
@@ -723,8 +813,9 @@ try{
         const cnt = +row.dataset.count || 0;
         const r   = +row.dataset.rate  || 0;
         const hrs = +row.dataset.hours || 0;
+        const height = row.dataset.height || '';
 
-        // убрать из плана текущего дня
+        // убрать из старого дня
         const arr = plan.get(curDay)?.[team] || [];
         const idx = arr.findIndex(x =>
             x.source_date === src &&
@@ -739,7 +830,7 @@ try{
 
         // добавить в новый день
         ensureDay(newDay);
-        plan.get(newDay)[team].push({source_date:src, filter:flt, count:cnt, rate:r});
+        plan.get(newDay)[team].push({source_date:src, filter:flt, count:cnt, rate:r, height});
 
         // переставить DOM
         const dzNew = document.querySelector(`.dropzone[data-day="${cssEscape(newDay)}"][data-team="${cssEscape(team)}"]`);
@@ -788,7 +879,10 @@ try{
             btn.type='button'; btn.className='dayBtn'; btn.dataset.day = d;
             btn.style.cssText='display:flex;flex-direction:column;gap:4px;padding:10px;border:1px solid #d9e2f1;border-radius:10px;background:#f4f8ff;cursor:pointer;text-align:left';
             btn.innerHTML = `<div class="dayHead" style="font-weight:600">${d}</div><div class="daySub" style="font-size:12px;color:#6b7280"></div>`;
-            btn.onclick = ()=>{ addToDay(d, lastTeam, pending.pill, +dpQty.value || 1); closeDatePicker(); };
+            btn.onclick = ()=>{
+                addToDay(d, lastTeam, pending.pill, +dpQty.value || 1);
+                closeDatePicker();
+            };
             if (d===lastDay) btn.style.outline = '2px solid #2563eb';
             dpDays.appendChild(btn);
         });
@@ -829,8 +923,9 @@ try{
         const src  = pill.dataset.sourceDate;
         const flt  = pill.dataset.filter;
         const rate = parseInt(pill.dataset.rate || '0', 10) || 0; // шт/смену
+        const height = pill.dataset.height || '';
 
-        addRowElement(day, team, src, flt, take, rate);
+        addRowElement(day, team, src, flt, take, rate, height);
 
         const rest = avail - take;
         updateAvailForPill(pill, rest);
@@ -846,7 +941,8 @@ try{
                 (prePlan[day][team]||[]).forEach(it=>{
                     const pill = document.querySelector(`.pill[data-source-date="${cssEscape(it.source_date)}"][data-filter="${cssEscape(it.filter)}"]`);
                     const rate = pill ? (parseInt(pill.dataset.rate||'0',10)||0) : 0;
-                    addRowElement(day, team, it.source_date, it.filter, +it.count||0, rate);
+                    const height = pill ? (pill.dataset.height || '') : '';
+                    addRowElement(day, team, it.source_date, it.filter, +it.count||0, rate, height);
                 });
             });
             lastDay = day;
@@ -864,7 +960,7 @@ try{
         });
     })();
 
-    // подтянуть «другие часы» на стартовые дни (то, что отрисовал PHP)
+    // подтянуть «другие часы/высоты» на стартовые дни
     fetchBusyForDays(getAllDays());
 
     // добавление диапазона дней
@@ -937,6 +1033,7 @@ try{
             document.querySelectorAll('#daysGrid .dropzone').forEach(dz=>dz.innerHTML='');
             document.querySelectorAll('.totB').forEach(el=>el.textContent='0');
             document.querySelectorAll('.hrsB').forEach(el=>el.textContent='0.0');
+            document.querySelectorAll('.hrsHeights').forEach(el=>el.textContent='');
             document.querySelectorAll('.tot').forEach(el=>el.textContent='0');
             document.querySelectorAll('.hrs').forEach(el=>el.textContent='0.0');
             resetPillsToBase();
@@ -950,7 +1047,8 @@ try{
                     (data.plan[day][team]||[]).forEach(it=>{
                         const pill = document.querySelector(`.pill[data-source-date="${cssEscape(it.source_date)}"][data-filter="${cssEscape(it.filter)}"]`);
                         const rate = pill ? (parseInt(pill.dataset.rate||'0',10)||0) : 0;
-                        addRowElement(day, team, it.source_date, it.filter, +it.count||0, rate);
+                        const height = pill ? (pill.dataset.height || '') : '';
+                        addRowElement(day, team, it.source_date, it.filter, +it.count||0, rate, height);
                         const k = it.source_date + '|' + it.filter;
                         used.set(k, (used.get(k)||0) + (+it.count||0));
                     });
@@ -965,7 +1063,7 @@ try{
                 updateAvailForPill(p, rest);
             });
 
-            // подтянуть занятость по дням и обновить «Время»
+            // подтянуть занятость и высоты по дням и обновить «Время [высоты]»
             fetchBusyForDays(days);
 
             alert('План сборки загружен.');

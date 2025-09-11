@@ -187,6 +187,8 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))){
                                 ."<form action='BOX_CREATOR_2.htm' method='post'><input type='submit' value='Максимальное количество'  style=\"height: 20px; width: 220px\"></form>"
                         ?>
                         Мониториг:  <p>
+
+                        <form action='NP_full_build_plan.php' method='post' target="_blank"><input type='submit' value='План сборки'  style="height: 20px; width: 220px"></form>
                         <form action='NP_monitor.php' method='post' target="_blank"><input type='submit' value='Мониторинг'  style="height: 20px; width: 220px"></form>
 
                         <form action="worker_modules/tasks_corrugation.php" method="post" target="_blank">
@@ -261,50 +263,6 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))){
                         show_weekly_production();
                         show_monthly_production();
 
-                        /**-------------------------------------------------------------------------------------------------------------------*/
-                        /**                                                  СТРОИМ ГРАФИК                                                    */
-                        /**-------------------------------------------------------------------------------------------------------------------*/
-                        $conn = new mysqli($mysql_host, $mysql_user, $mysql_user_pass, $mysql_database);
-
-
-                        // Проверка соединения
-                        if ($conn->connect_error) {
-                            die("Connection failed: " . $conn->connect_error);
-                        }
-
-                        // SQL запрос для получения данных
-                        $sql = "SELECT date_of_production, SUM(count_of_filters) AS total_filters_produced
-        FROM manufactured_production
-        GROUP BY date_of_production
-        ORDER BY date_of_production";
-
-                        $result = $conn->query($sql);
-
-                        // Формирование массива данных для передачи на клиентскую часть (JSON)
-                        $data = array();
-                        while ($row = $result->fetch_assoc()) {
-                            $data[] = $row;
-                        }
-
-                        // Закрытие соединения с базой данных
-                        $conn->close();
-
-                        // Передача данных на клиентскую часть в формате JSON
-                        //echo json_encode($data);
-                        $data = json_encode($data);
-
-                        ?>
-                        <canvas id="productionChart" width="400" height="200"></canvas>
-                        <?php
-
-                        /**-------------------------------------------------------------------------------------------------------------------*/
-                        /**                                                  СТРОИМ ГРАФИК                                                    */
-                        /**-------------------------------------------------------------------------------------------------------------------*/
-
-
-
-
-
                         echo "</td></tr><tr><td></td></tr>"
                             ."</table>"
                             ."</td><td>";
@@ -339,7 +297,7 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))){
                         if ($result->num_rows === 0) { echo "В базе нет ни одной заявки";}
 
                         /** Разбор массива значений  */
-                        echo '<form action="show_order.php" method="post">';
+                        echo '<form action="show_order.php" method="post" target="_blank">';
                         while ($orders_data = $result->fetch_assoc()){
                             if ( $orders_data['hide'] != 1){
                                 echo "<input type='submit' name='order_number' value=".$orders_data['order_number']." style=\"height: 20px; width: 115px\">";

@@ -192,6 +192,20 @@ try{
     th{background:#f6f6f6}
     .right{text-align:right}
 
+    /* === МЕТКИ (новое) === */
+    .col-mark{width:26px}
+    .markCell{ text-align:center; cursor:pointer; }
+    .dot{
+        width:12px; height:12px;
+        display:inline-block; border-radius:999px;
+        border:0;
+        box-shadow: inset 0 0 0 0.5px #111; /* «пол-пикселя» */
+        background:transparent;
+    }
+    .markCell.on .dot{ background:#111; }
+    /* дополнительно можно подсветить всю строку слегка серым, если нужно */
+    .posTable tr.marked td{ background-image: linear-gradient(to right, rgba(0,0,0,.06), rgba(0,0,0,0)); }
+    .posTable tr.marked .dot{ background:#ef4444; }
     .col-filter{width:180px}.col-w{width:60px}.col-h{width:50px}
     .col-sum{width:80px}.col-cut{width:90px}.col-rest{width:90px}
 
@@ -211,7 +225,7 @@ try{
     .factControl input{width:90px;padding:4px 6px;border:1px solid #bbb;border-radius:6px}
 
     .baleTbl{table-layout:fixed;margin-top:6px}
-    .bcol-act{width:36px}.bcol-pos{width:200px}.bcol-w{width:80px}.bcol-h{width:70px}.bcol-l{width:140px}
+    .bcol-act{width:36px}.bcol-pos{width:160px}.bcol-w{width:80px}.bcol-h{width:70px}.bcol-l{width:140px}
     .lenInput{width:100%;padding:3px 6px;border:1px solid #bbb;border-radius:6px}
     .delBtn{border:1px solid #d66;background:#fee;border-radius:6px;padding:2px 8px;cursor:pointer}
     .delBtn:hover{background:#fdd}
@@ -238,17 +252,71 @@ try{
 
     @media print {
         @page { size: A4 portrait; margin: 10mm; }
-        body * { visibility: hidden; }
-        #balesPanel, #balesPanel * { visibility: visible; }
-        #balesPanel { position: absolute; left: 0; top: 0; width: 100%; border: none; box-shadow: none; background: #fff; }
-        #balesPanel .balesList { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; }
-        #balesPanel .balesList > div:not(.card) { grid-column: 1 / -1; margin: 0 0 3mm; padding: 0; }
-        #balesPanel .card { break-inside: avoid; page-break-inside: avoid; margin: 0; border: 1px solid #000; box-shadow: none; }
+
+        /* страница должна тянуться на несколько листов */
+        html, body { height:auto !important; overflow:visible !important; }
+        body { margin:0 !important; }
+
+        /* показываем только правую панель со списком бухт */
+        h2, .left, .mid { display:none !important; }
+        .wrap { display:block !important; height:auto !important; }
+
+        #balesPanel {
+            display:block !important;
+            position:static !important;
+            width:auto !important;
+            border:none !important;
+            box-shadow:none !important;
+            background:#fff !important;
+        }
+
+        /* карточки уверенно разбиваются по страницам */
+        #balesPanel .balesList { column-count: 2; column-gap: 8mm; }  /* хочешь в одну колонку — поставь 1 */
+        #balesPanel .balesList > div:not(.card) { break-inside: avoid; margin: 0 0 3mm; padding: 0; }
+
+        #balesPanel .card {
+            break-inside: avoid; page-break-inside: avoid;
+            margin: 0 0 6mm 0; border: 1px solid #000; box-shadow: none;
+            background: #fff;
+        }
         #balesPanel .cardHead { margin-bottom: 2mm; }
         #balesPanel .baleTbl th, #balesPanel .baleTbl td { padding: 2mm 2mm; }
         #balesPanel .baleTbl th { background: #fff; }
+
+        /* убираем интерактив */
         .btn, .delBaleBtn, .delBtn, .lenInput, .menu, .eqBtn { display: none !important; }
+
+        /* чтобы цвета/границы не «серали» в печати (хром/edge) */
+        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        /* Узкие колонки в печати */
+        #balesPanel .baleTbl{
+            table-layout: fixed;      /* жёсткие ширины колонок */
+            width:100%;
+            font-size: 10px;          /* компактнее текст */
+        }
+        #balesPanel .baleTbl th,
+        #balesPanel .baleTbl td{
+            padding: 1mm 1mm;         /* меньше паддинги */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            vertical-align: middle;
+        }
+
+        /* конкретные ширины колонок (на одну карточку ~ 91мм) */
+        #balesPanel .baleTbl col.bcol-pos { width: 32mm; }  /* Позиция */
+        #balesPanel .baleTbl col.bcol-w   { width: 18mm; }  /* Ширина */
+        #balesPanel .baleTbl col.bcol-h   { width: 12mm; }  /* H */
+        #balesPanel .baleTbl col.bcol-l   { width: 14mm; }  /* Длина */
+
+        /* чуть компактнее заголовки таблицы */
+        #balesPanel .baleTbl th{ font-weight:700; }
+
+        /* если всё равно тесно — уменьши зазор между колонками листа */
+        #balesPanel .balesList{ column-gap: 6mm; } /* было 8mm */
+
     }
+
 </style>
 
 <h2>Раскрой по заявке #<?=htmlspecialchars($orderNumber)?></h2>
@@ -259,10 +327,12 @@ try{
             <h3>Простой материал</h3>
             <table id="tblSimple" class="posTable">
                 <colgroup>
+                    <col class="col-mark">
                     <col class="col-filter"><col class="col-w"><col class="col-h">
                     <col class="col-sum"><col class="col-cut"><col class="col-rest">
                 </colgroup>
                 <tr>
+                    <th title="Метка">М</th>
                     <th>Фильтр</th><th>Ширина, мм</th><th>H, мм</th>
                     <th class="right">Σ, м</th><th class="right">в раскрое, м</th><th class="right">остаток, м</th>
                 </tr>
@@ -275,6 +345,7 @@ try{
                         data-h="<?=$r['pleat_height_mm']?>"
                         data-tm="<?=$tm?>"
                         data-cutm="0">
+                        <td class="markCell"><span class="dot" aria-hidden="true"></span></td>
                         <td><?=htmlspecialchars($r['filter'])?></td>
                         <td><?=$r['strip_width_mm']?></td>
                         <td><?=$r['pleat_height_mm']?></td>
@@ -290,10 +361,12 @@ try{
             <h3>Carbon</h3>
             <table id="tblCarbon" class="posTable">
                 <colgroup>
+                    <col class="col-mark">
                     <col class="col-filter"><col class="col-w"><col class="col-h">
                     <col class="col-sum"><col class="col-cut"><col class="col-rest">
                 </colgroup>
                 <tr>
+                    <th title="Метка">М</th>
                     <th>Фильтр</th><th>Ширина, мм</th><th>H, мм</th>
                     <th class="right">Σ, м</th><th class="right">в раскрое, м</th><th class="right">остаток, м</th>
                 </tr>
@@ -306,6 +379,7 @@ try{
                         data-h="<?=$r['pleat_height_mm']?>"
                         data-tm="<?=$tm?>"
                         data-cutm="0">
+                        <td class="markCell"><span class="dot" aria-hidden="true"></span></td>
                         <td><?=htmlspecialchars($r['filter'])?></td>
                         <td><?=$r['strip_width_mm']?></td>
                         <td><?=$r['pleat_height_mm']?></td>
@@ -406,6 +480,21 @@ try{
     const fmt0=(x)=>String(Math.round(x));
     const round3=(x)=>Math.round(x*1000)/1000;
 
+    /* ====== МЕТКИ (новое) ====== */
+    const MARKS_KEY = 'cut_marks:'+ORDER_NUMBER;
+    let MARKS = {};
+    const rowKey = (tr)=>[(tr.dataset.mat||''),(tr.dataset.filter||''),tr.dataset.w,tr.dataset.h].join('|');
+    function loadMarks(){ try{ MARKS = JSON.parse(localStorage.getItem(MARKS_KEY)||'{}'); }catch{ MARKS={}; } }
+    function saveMarks(){ localStorage.setItem(MARKS_KEY, JSON.stringify(MARKS)); }
+    function applyMarkToRow(tr){
+        const key=rowKey(tr); const on=!!MARKS[key];
+        tr.classList.toggle('marked', on);
+        const mc = tr.querySelector('.markCell'); if(mc) mc.classList.toggle('on', on);
+    }
+    function applyAllMarks(){
+        document.querySelectorAll('.posTable tr[data-i]').forEach(applyMarkToRow);
+    }
+
     function calcBaleMaxLen(){
         let m = 0;
         for(const s of baleStrips) if (s.len > m) m = Math.round(s.len);
@@ -472,7 +561,7 @@ try{
         });
     }
 
-    /* выбор в левой таблице */
+    /* выбор в левой таблице + обработка клика по метке */
     function setSelection(tr){
         document.querySelectorAll('.posTable tr').forEach(r=>r.classList.remove('sel'));
         curRow=tr||null;
@@ -487,15 +576,33 @@ try{
         el('selName').classList.remove('quiet'); el('selMat').classList.remove('quiet');
         toggleCtrls();
     }
+
     document.querySelectorAll('.posTable').forEach(tbl=>{
+        // общий клик
         tbl.addEventListener('click',e=>{
+            // 1) клик по метке — просто переключаем, не открываем меню
+            const markCell = e.target.closest('.markCell');
+            if (markCell){
+                const tr = markCell.closest('tr[data-i]'); if(!tr) return;
+                const key = rowKey(tr);
+                MARKS[key] = !MARKS[key];
+                saveMarks();
+                applyMarkToRow(tr);
+                e.stopPropagation();
+                return;
+            }
+            // 2) обычный клик по строке — выбор и меню
             const tr=e.target.closest('tr[data-i]'); if(!tr) return;
             setSelection(tr); openMenu(e.clientX, e.clientY);
         });
+        // ПКМ
         tbl.addEventListener('contextmenu',e=>{
+            // ПКМ по метке — не открываем меню
+            if (e.target.closest('.markCell')) { e.preventDefault(); return; }
             const tr=e.target.closest('tr[data-i]'); if(!tr) return;
             e.preventDefault(); setSelection(tr); openMenu(e.clientX, e.clientY);
         });
+        // первичная раскраска остатков
         tbl.querySelectorAll('tr[data-i]').forEach(applyRestColor);
     });
 
@@ -963,5 +1070,8 @@ try{
 
     /* init */
     function toggleCtrls(){ const hasBale=baleStrips.length>0; if(el('btnSave'))  el('btnSave').disabled=!hasBale; if(el('btnClear')) el('btnClear').disabled=!hasBale; }
+    loadMarks();
     updBaleUI(); setSelection(null); highlightWidthMatches();
+    // применяем метки к строкам после первичной разметки
+    applyAllMarks();
 </script>

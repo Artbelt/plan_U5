@@ -28,13 +28,15 @@ foreach ($hours_raw as $h) {
     $hours_map[$key] = $h['hours'];
 }
 
-$sql = "SELECT 
+$sql = "
+
+        SELECT 
             mp.date_of_production,
             mp.name_of_filter,
             mp.count_of_filters,
             mp.name_of_order,
             mp.team,
-            
+        
             sfs.insertion_count,
             sfs.foam_rubber,
             sfs.form_factor,
@@ -44,17 +46,39 @@ $sql = "SELECT
             st.rate_per_unit,
             st.type,
             st.tariff_name
-            
-        FROM 
-            manufactured_production mp
-        LEFT JOIN 
-            salon_filter_structure sfs ON mp.name_of_filter = sfs.filter
-        LEFT JOIN 
-            paper_package_salon pps ON sfs.paper_package = pps.p_p_name
-        LEFT JOIN 
-            salary_tariffs st ON sfs.tariff_id = st.id
-        WHERE 
-            mp.date_of_production = '$production_date';";
+        
+        FROM manufactured_production mp
+        
+        /* --- salon_filter_structure: берем по 1 строке на каждый filter --- */
+        LEFT JOIN (
+            SELECT 
+                filter,
+                MAX(insertion_count) AS insertion_count,
+                MAX(foam_rubber)     AS foam_rubber,
+                MAX(form_factor)     AS form_factor,
+                MAX(tail)            AS tail,
+                MAX(has_edge_cuts)   AS has_edge_cuts,
+                MAX(paper_package)   AS paper_package,
+                MAX(tariff_id)       AS tariff_id
+            FROM salon_filter_structure
+            GROUP BY filter
+        ) sfs ON sfs.filter = mp.name_of_filter
+        
+        /* --- paper_package_salon: по 1 строке на каждый p_p_name --- */
+        LEFT JOIN (
+            SELECT 
+                p_p_name,
+                MAX(p_p_material) AS p_p_material
+            FROM paper_package_salon
+            GROUP BY p_p_name
+        ) pps ON pps.p_p_name = sfs.paper_package
+        
+        LEFT JOIN salary_tariffs st ON st.id = sfs.tariff_id
+        WHERE mp.date_of_production = '$production_date';
+        ";
+
+
+
 
 $result = mysql_execute($sql);
 
