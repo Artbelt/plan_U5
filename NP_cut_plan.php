@@ -10,6 +10,8 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save_plan','load_plan'
             PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC
         ]);
 
+
+
         if ($_GET['action']==='save_plan') {
             $payload = json_decode(file_get_contents('php://input'), true);
             if (!$payload || !isset($payload['order_number']) || !isset($payload['bales'])) {
@@ -67,14 +69,13 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save_plan','load_plan'
                 }
             }
 
-            // статусы заявки: раскрой готов/не готов, подтверждение сбрасываем
+            // статусы заявки
             $stUpd = $pdo->prepare("UPDATE orders SET cut_ready=?, cut_confirmed=? WHERE order_number=?");
             $stUpd->execute([$rowsInserted > 0 ? 1 : 0, 0, $order]);
 
             $pdo->commit();
             echo json_encode(['ok'=>true, 'rows'=>$rowsInserted]); exit;
         }
-
 
         if ($_GET['action']==='load_plan') {
             $order = $_GET['order_number'] ?? '';
@@ -127,7 +128,7 @@ $orderNumber=$_GET['order_number']??''; if($orderNumber===''){http_response_code
 try{
     $pdo=new PDO($dsn,$user,$pass,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
 
-    // позиции ЗАЯВКИ
+    /* Позиции ЗАЯВКИ, которые уже описаны в справочнике (для левой таблицы) */
     $sql="
     SELECT
       o.order_number,
@@ -152,18 +153,31 @@ try{
         if (strtoupper((string)$r['material'])==='CARBON') $rowsCarbon[]=$r; else $rowsSimple[]=$r;
     }
 
-    // АССОРТИМЕНТ
+    /* АССОРТИМЕНТ — для выпадающих списков в модалке */
     $sqlAssort="
     SELECT
-      sfs.filter,
-      pps.p_p_material  AS material,
-      pps.p_p_width     AS strip_width_mm,
-      pps.p_p_height    AS pleat_height_mm
+      sfs.filter               AS filter,
+      pps.p_p_material         AS material,
+      pps.p_p_width            AS strip_width_mm,
+      pps.p_p_height           AS pleat_height_mm
     FROM salon_filter_structure sfs
     JOIN paper_package_salon pps ON pps.p_p_name = sfs.paper_package
     GROUP BY sfs.filter, pps.p_p_material, pps.p_p_width, pps.p_p_height
     ORDER BY pps.p_p_material, sfs.filter";
     $assort = $pdo->query($sqlAssort)->fetchAll();
+
+    /* НОВЫЕ позиции в заказе — их НЕТ в справочнике (для модалки) */
+    $sqlMissing="
+      SELECT o.filter AS filter, SUM(o.count) AS strips_qty
+      FROM orders o
+      LEFT JOIN salon_filter_structure sfs ON sfs.filter = o.filter
+      WHERE o.order_number = :order_number AND sfs.filter IS NULL
+      GROUP BY o.filter
+      ORDER BY o.filter
+    ";
+    $stm=$pdo->prepare($sqlMissing);
+    $stm->execute([':order_number'=>$orderNumber]);
+    $missing = $stm->fetchAll();
 
 }catch(Throwable $e){http_response_code(500);echo 'Ошибка: '.$e->getMessage(); exit;}
 ?>
@@ -192,31 +206,27 @@ try{
     th{background:#f6f6f6}
     .right{text-align:right}
 
-    /* === МЕТКИ (новое) === */
+    /* === МЕТКИ (лев. таблица) === */
     .col-mark{width:26px}
     .markCell{ text-align:center; cursor:pointer; }
     .dot{
         width:12px; height:12px;
         display:inline-block; border-radius:999px;
         border:0;
-        box-shadow: inset 0 0 0 0.5px #111; /* «пол-пикселя» */
+        box-shadow: inset 0 0 0 0.5px #111;
         background:transparent;
     }
     .markCell.on .dot{ background:#111; }
-    /* дополнительно можно подсветить всю строку слегка серым, если нужно */
     .posTable tr.marked td{ background-image: linear-gradient(to right, rgba(0,0,0,.06), rgba(0,0,0,0)); }
     .posTable tr.marked .dot{ background:#ef4444; }
     .col-filter{width:180px}.col-w{width:60px}.col-h{width:50px}
     .col-sum{width:80px}.col-cut{width:90px}.col-rest{width:90px}
 
-    .posTable tr.sel td{background: #ffd0d0 !important}
+    .posTable tr.sel td{background:#ffd0d0 !important}
     .posTable tr:hover td{background:#f3f8ff}
     .posTable tr.rest-colored td{background:var(--rest-bg)}
-
     .posTable tr.width-cand td{ position:relative; }
-    .posTable tr.width-cand td::after{
-        content:""; position:absolute; inset:0; background: var(--wbg, transparent); pointer-events:none;
-    }
+    .posTable tr.width-cand td::after{ content:""; position:absolute; inset:0; background: var(--wbg, transparent); pointer-events:none; }
 
     .btn{border:1px solid #aaa;padding:5px 9px;border-radius:6px;background:#fafafa;cursor:pointer}
     .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -250,73 +260,54 @@ try{
     .acol-mat{width:80px}.acol-filter{width:180px}.acol-w{width:70px}.acol-h{width:60px}.acol-act{width:120px}
     .assortBtn{border:1px solid #aaa;padding:3px 8px;border-radius:6px;background:#fafafa;cursor:pointer;margin-right:4px}
 
+    /* ===== МОДАЛКА (новые позиции) ===== */
+    .modal-back{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; z-index:1000; }
+    .modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:1001; }
+    .modal .win{
+        width:min(920px, 92vw); max-height:80vh; overflow:auto;
+        background:#fff; border-radius:12px; border:1px solid #e5e7eb; box-shadow:0 20px 60px rgba(0,0,0,.25);
+        padding:14px;
+    }
+    .modal h3{ margin:0 0 8px; font:700 16px/1.2 system-ui, Arial; }
+    .missingTbl{ width:100%; border-collapse:collapse; table-layout:auto; }
+    .missingTbl th, .missingTbl td{ border:1px solid #e5e7eb; padding:6px 8px; vertical-align:middle; }
+    .missingTbl th{ background:#f9fafb; }
+    .missFilter{ font-weight:700; }
+    .assortSelect{ width:100%; max-width:420px; }
+    .modal .topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+    .modal .closeBtn{ border:1px solid #aaa; background:#fafafa; border-radius:8px; padding:6px 10px; cursor:pointer; }
+    .addBtn{ border:1px solid #2563eb; background:#eff6ff; color:#1d4ed8; border-radius:8px; padding:6px 10px; cursor:pointer; white-space:nowrap; }
+    .addBtn:hover{ background:#dbeafe; }
+    .muted{ color:#6b7280; }
+
     @media print {
         @page { size: A4 portrait; margin: 10mm; }
-
-        /* страница должна тянуться на несколько листов */
         html, body { height:auto !important; overflow:visible !important; }
         body { margin:0 !important; }
 
-        /* показываем только правую панель со списком бухт */
         h2, .left, .mid { display:none !important; }
         .wrap { display:block !important; height:auto !important; }
 
-        #balesPanel {
-            display:block !important;
-            position:static !important;
-            width:auto !important;
-            border:none !important;
-            box-shadow:none !important;
-            background:#fff !important;
-        }
-
-        /* карточки уверенно разбиваются по страницам */
-        #balesPanel .balesList { column-count: 2; column-gap: 8mm; }  /* хочешь в одну колонку — поставь 1 */
+        #balesPanel { display:block !important; position:static !important; width:auto !important; border:none !important; box-shadow:none !important; background:#fff !important; }
+        #balesPanel .balesList { column-count: 2; column-gap: 8mm; }
         #balesPanel .balesList > div:not(.card) { break-inside: avoid; margin: 0 0 3mm; padding: 0; }
-
-        #balesPanel .card {
-            break-inside: avoid; page-break-inside: avoid;
-            margin: 0 0 6mm 0; border: 1px solid #000; box-shadow: none;
-            background: #fff;
-        }
+        #balesPanel .card { break-inside: avoid; page-break-inside: avoid; margin: 0 0 6mm 0; border: 1px solid #000; box-shadow: none; background: #fff; }
         #balesPanel .cardHead { margin-bottom: 2mm; }
         #balesPanel .baleTbl th, #balesPanel .baleTbl td { padding: 2mm 2mm; }
         #balesPanel .baleTbl th { background: #fff; }
 
-        /* убираем интерактив */
-        .btn, .delBaleBtn, .delBtn, .lenInput, .menu, .eqBtn { display: none !important; }
+        .btn, .delBaleBtn, .delBtn, .lenInput, .menu, .eqBtn, .modal, .modal-back { display:none !important; }
 
-        /* чтобы цвета/границы не «серали» в печати (хром/edge) */
         * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        /* Узкие колонки в печати */
-        #balesPanel .baleTbl{
-            table-layout: fixed;      /* жёсткие ширины колонок */
-            width:100%;
-            font-size: 10px;          /* компактнее текст */
-        }
-        #balesPanel .baleTbl th,
-        #balesPanel .baleTbl td{
-            padding: 1mm 1mm;         /* меньше паддинги */
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            vertical-align: middle;
-        }
-
-        /* конкретные ширины колонок (на одну карточку ~ 91мм) */
-        #balesPanel .baleTbl col.bcol-pos { width: 32mm; }  /* Позиция */
-        #balesPanel .baleTbl col.bcol-w   { width: 18mm; }  /* Ширина */
-        #balesPanel .baleTbl col.bcol-h   { width: 12mm; }  /* H */
-        #balesPanel .baleTbl col.bcol-l   { width: 14mm; }  /* Длина */
-
-        /* чуть компактнее заголовки таблицы */
+        #balesPanel .baleTbl{ table-layout: fixed; width:100%; font-size: 10px; }
+        #balesPanel .baleTbl th, #balesPanel .baleTbl td{ padding: 1mm 1mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+        #balesPanel .baleTbl col.bcol-pos { width: 32mm; }
+        #balesPanel .baleTbl col.bcol-w   { width: 18mm; }
+        #balesPanel .baleTbl col.bcol-h   { width: 12mm; }
+        #balesPanel .baleTbl col.bcol-l   { width: 14mm; }
         #balesPanel .baleTbl th{ font-weight:700; }
-
-        /* если всё равно тесно — уменьши зазор между колонками листа */
-        #balesPanel .balesList{ column-gap: 6mm; } /* было 8mm */
-
+        #balesPanel .balesList{ column-gap: 6mm; }
     }
-
 </style>
 
 <h2>Раскрой по заявке #<?=htmlspecialchars($orderNumber)?></h2>
@@ -455,6 +446,28 @@ try{
     </div>
 </div>
 
+
+<!-- ===== МОДАЛКА: новые позиции ===== -->
+<div class="modal-back" id="missBack"></div>
+<div class="modal" id="missModal" role="dialog" aria-modal="true" aria-labelledby="missTitle">
+    <div class="win">
+        <div class="topbar">
+            <h3 id="missTitle">Новые позиции в заявке — нет в справочнике</h3>
+            <button class="closeBtn" id="missClose">Закрыть</button>
+        </div>
+        <p class="muted" id="missIntro"></p>
+        <table class="missingTbl" id="missTbl">
+            <tr>
+                <th>Позиция из заявки</th>
+                <th>Подобрать из ассортимента</th>
+                <th>Добавить в БД</th>
+            </tr>
+            <!-- строки генерируются JS -->
+        </table>
+    </div>
+</div>
+
+
 <!-- ВСПЛЫВАЮЩЕЕ МЕНЮ -->
 <div class="menu" id="ctxMenu">
     <div class="row"><button class="mi" id="mi_auto">Добавить авто</button></div>
@@ -468,10 +481,19 @@ try{
     const BALE_WIDTH=1000.0, eps=1e-9;
     const ORDER_NUMBER = "<?=htmlspecialchars($orderNumber, ENT_QUOTES)?>";
 
+    // ===== данные для модалки =====
+    const MISSING = <?=json_encode($missing, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)?>;
+    const ASSORT  = <?=json_encode($assort,  JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)?>;
+
+    // путь к странице добавления позиции (ПОМЕНЯЙ при необходимости)
+    const ADD_FILTER_URL = 'add_salon_filter_into_db.php';
+    const WORKSHOP_CODE = 'U5';
+    const ASSORT_SELECT_POST_NAME = 'analog_filter'; // имя поля для селекта, как ждёт ваш PHP
+
+
     let curRow=null, baleStrips=[], baleWidth=0.0, baleMaterial=null, bales=[];
-    // фактическая длина текущей бухты
     let baleFactLen = 0;     // м
-    let baleFactManual = false; // true, если пользователь менял поле вручную
+    let baleFactManual = false;
 
     let lastN = 1;
     const el=(id)=>document.getElementById(id);
@@ -530,7 +552,6 @@ try{
         }
     }
 
-    /* подсветка подходящих по ширине (+ остаток ≥30 м) */
     function highlightWidthMatches(){
         const RANGE = 30;
         const free  = Math.max(0, BALE_WIDTH - baleWidth);
@@ -578,31 +599,23 @@ try{
     }
 
     document.querySelectorAll('.posTable').forEach(tbl=>{
-        // общий клик
         tbl.addEventListener('click',e=>{
-            // 1) клик по метке — просто переключаем, не открываем меню
             const markCell = e.target.closest('.markCell');
             if (markCell){
                 const tr = markCell.closest('tr[data-i]'); if(!tr) return;
                 const key = rowKey(tr);
                 MARKS[key] = !MARKS[key];
-                saveMarks();
-                applyMarkToRow(tr);
-                e.stopPropagation();
-                return;
+                saveMarks(); applyMarkToRow(tr);
+                e.stopPropagation(); return;
             }
-            // 2) обычный клик по строке — выбор и меню
             const tr=e.target.closest('tr[data-i]'); if(!tr) return;
             setSelection(tr); openMenu(e.clientX, e.clientY);
         });
-        // ПКМ
         tbl.addEventListener('contextmenu',e=>{
-            // ПКМ по метке — не открываем меню
             if (e.target.closest('.markCell')) { e.preventDefault(); return; }
             const tr=e.target.closest('tr[data-i]'); if(!tr) return;
             e.preventDefault(); setSelection(tr); openMenu(e.clientX, e.clientY);
         });
-        // первичная раскраска остатков
         tbl.querySelectorAll('tr[data-i]').forEach(applyRestColor);
     });
 
@@ -614,7 +627,6 @@ try{
     if(el('btnSave'))  el('btnSave').addEventListener('click', saveBale);
     if(el('btnClear')) el('btnClear').addEventListener('click', clearBale);
 
-    /* обновление метрик слева */
     function updateRowMeters(tr, deltaMeters){
         const total   = parseFloat(tr.dataset.tm);
         const cutPrev = parseFloat(tr.dataset.cutm||'0');
@@ -632,14 +644,12 @@ try{
         return effDelta;
     }
 
-    /* интерфейс текущей бухты */
     function updBaleUI(){
         el('bw').textContent=fmt1(baleWidth);
         el('rest').textContent=fmt1(Math.max(0,BALE_WIDTH-baleWidth));
         el('baleMat').textContent=baleMaterial?baleMaterial:'—';
         if(!baleMaterial) el('baleMat').classList.add('quiet'); else el('baleMat').classList.remove('quiet');
 
-        // если факт не трогали вручную — подстраиваем его к максимуму длин
         if(!baleFactManual) baleFactLen = calcBaleMaxLen();
         const fi = el('factLenInput'); if (fi) fi.value = String(baleFactLen||0);
 
@@ -668,7 +678,6 @@ try{
         html+='</table>';
         box.innerHTML=html;
 
-        // ручное редактирование длины конкретной строки → унифицируем по введённому значению
         box.querySelectorAll('.lenInput').forEach(inp=>{
             inp.addEventListener('change', e=>{
                 let L = Math.round(parseFloat(e.target.value||'0')); if(isNaN(L)||L<0) L=0;
@@ -676,7 +685,6 @@ try{
                 if(!baleFactManual){ baleFactLen = calcBaleMaxLen(); el('factLenInput').value = String(baleFactLen); }
             });
         });
-        // "=" — сделать длину всех равной выбранной
         box.querySelectorAll('.eqBtn').forEach(btn=>{
             btn.addEventListener('click', e=>{
                 const i = parseInt(e.currentTarget.dataset.idx,10);
@@ -691,7 +699,6 @@ try{
                 if(!baleFactManual){ baleFactLen = calcBaleMaxLen(); el('factLenInput').value = String(baleFactLen); }
             });
         });
-        // удаление полос
         box.querySelectorAll('.delBtn').forEach(btn=>{
             btn.addEventListener('click', e=>{
                 const i = parseInt(e.currentTarget.dataset.idx,10);
@@ -703,7 +710,6 @@ try{
         highlightWidthMatches();
     }
 
-    // унификация длин до L с учётом остатков
     function unifyBaleLength(Lnew){
         if(!baleStrips.length) return;
 
@@ -742,22 +748,14 @@ try{
     }
 
     function ensureMaterial(matRaw){
-        const cur = (baleMaterial ?? '').trim();          // текущий материал бухты (как текст)
-        const m   = (matRaw ?? '').trim();                // материал добавляемой позиции
-
-        // если в бухте ещё нет материала — устанавливаем (или дефолтимся к Simple)
+        const cur = (baleMaterial ?? '').trim();
+        const m   = (matRaw ?? '').trim();
         if (!cur) { baleMaterial = m || 'Simple'; return true; }
-
-        // если у позиции материал пустой — считаем, что он такой же, как в бухте
         if (!m) return true;
-
-        // сравнение без учёта регистра и пробелов
         if (cur.toLowerCase() === m.toLowerCase()) return true;
-
         alert('Материал текущей бухты: ' + cur + '. Нельзя смешивать с: ' + (m || '—') + '. Очистите или сохраните бухту.');
         return false;
     }
-
 
     function removeStrip(idx){
         const s = baleStrips[idx];
@@ -769,7 +767,6 @@ try{
         updBaleUI();
     }
 
-    /* добавление из левой таблицы */
     function addStrips(take){
         if(!curRow) return;
         let w   = parseFloat(curRow.dataset.w),
@@ -819,11 +816,9 @@ try{
         lastN = n;
     }
 
-    // добавление из ассортимента (len=0)
     function addAssort(filter, w, h, matRaw, mode){
         const mClean = (matRaw ?? '').trim();
-        const effMat = baleMaterial || mClean || 'Simple';   // что реально используем
-
+        const effMat = baleMaterial || mClean || 'Simple';
         if(!ensureMaterial(effMat)) return;
 
         const free = Math.max(0, BALE_WIDTH - baleWidth);
@@ -837,21 +832,12 @@ try{
         }
 
         for(let i=0;i<take;i++){
-            baleStrips.push({
-                filter: filter,
-                w: parseFloat(w),
-                h: parseFloat(h),
-                len: 0,
-                mat: effMat,         // <-- фикс: сохраняем нормализованный материал
-                rowEl: null
-            });
+            baleStrips.push({ filter: filter, w: parseFloat(w), h: parseFloat(h), len: 0, mat: effMat, rowEl: null });
         }
         baleWidth = round3(baleWidth + w*take);
         updBaleUI();
     }
 
-
-    // очистка
     function clearBale(){
         if(!baleStrips.length){ updBaleUI(); return; }
         const sums = new Map();
@@ -873,7 +859,6 @@ try{
         renderBales(); baleStrips=[]; baleWidth=0; baleMaterial=null; baleFactLen=0; baleFactManual=false; updBaleUI();
     }
 
-    // удаление сохранённой бухты (возврат полос влево)
     function deleteBale(idx){
         const b = bales[idx]; if(!b) return;
 
@@ -950,7 +935,6 @@ try{
     }
     if(el('btnPrint')) el('btnPrint').addEventListener('click', printBales);
 
-    /* === Сохранение/Загрузка плана === */
     function buildPlanPayload(){
         return {
             order_number: ORDER_NUMBER,
@@ -982,16 +966,12 @@ try{
         try{
             const url = 'NP_cut_plan.php?action=load_plan&order_number='+encodeURIComponent(ORDER_NUMBER);
             const res = await fetch(url, { headers:{'Accept':'application/json'} });
-
-            const txt = await res.text();                     // читаем ОДИН раз
+            const txt = await res.text();
             if (!res.ok) throw new Error(`HTTP ${res.status}: ${txt.slice(0,500)}`);
 
             let data;
-            try {
-                data = JSON.parse(txt);                         // пытаемся распарсить
-            } catch {
-                throw new Error('Backend вернул не JSON:\n'+txt.slice(0,500));
-            }
+            try { data = JSON.parse(txt); }
+            catch { throw new Error('Backend вернул не JSON:\n'+txt.slice(0,500)); }
 
             if(!data.ok) throw new Error(data.error||'Ошибка загрузки');
             if(!data.exists){ alert('Сохранённый раскрой не найден.'); return; }
@@ -1025,7 +1005,7 @@ try{
     if (el('btnLoadPlan')) el('btnLoadPlan').addEventListener('click', loadPlanFromDB);
     if (el('btnSign')) el('btnSign').addEventListener('click',signPlan );
 
-    /* контекстное меню (левая таблица) */
+    /* контекстное меню */
     const menu=el('ctxMenu');
     function openMenu(cx,cy){
         menu.style.display='block';
@@ -1046,7 +1026,7 @@ try{
     document.getElementById('assortTable').addEventListener('click', (e)=>{
         const tr = e.target.closest('tr[data-filter]'); if(!tr) return;
         const filter = tr.dataset.filter;
-        const mat    = (tr.dataset.mat || '').trim();   // <-- trim
+        const mat    = (tr.dataset.mat || '').trim();
         const w      = parseFloat(tr.dataset.w);
         const h      = parseFloat(tr.dataset.h);
 
@@ -1057,8 +1037,123 @@ try{
         }
     });
 
+    // ======== МОДАЛКА: отрисовка и показ ========
+    // список уникальных фильтров из ассортимента (отсортирован)
+    function getAssortFilterList(){
+        const set = new Set();
+        for (const a of ASSORT) if (a && a.filter) set.add(a.filter);
+        return Array.from(set).sort((x,y)=>x.localeCompare(y,'ru'));
+    }
 
-    // изменение фактической длины пользователем — только запоминаем (не унифицируем автоматически)
+    function buildAssortSelect(id){
+        const sel = document.createElement('select');
+        sel.className = 'assortSelect';
+        sel.id = id;
+
+        const def = document.createElement('option');
+        def.value = '';
+        def.textContent = '— выбрать фильтр —';
+        sel.appendChild(def);
+
+        for (const name of getAssortFilterList()){
+            const o = document.createElement('option');
+            o.value = name;         // по значению — сам фильтр
+            o.textContent = name;   // в пункте — только название фильтра
+            sel.appendChild(o);
+        }
+        return sel;
+    }
+
+
+    function renderMissingModal(){
+        if(!Array.isArray(MISSING) || !MISSING.length) return;
+
+        el('missIntro').textContent = `В заявке #${ORDER_NUMBER} найдены позиции, которых нет в справочнике. Подберите аналог из ассортимента или добавьте позицию в БД.`;
+
+        const tbody = el('missTbl');
+        for (const [idx, m] of MISSING.entries()){
+            const tr = document.createElement('tr');
+
+// 1) Позиция из заявки
+            const tdF = document.createElement('td');
+            tdF.innerHTML = `<span class="missFilter">${m.filter}</span>`;
+            tr.appendChild(tdF);
+
+// 2) Выпадающий список ассортимента
+            const tdSel = document.createElement('td');
+            const sel = buildAssortSelect('assSel_'+idx);
+            tdSel.appendChild(sel);
+            tr.appendChild(tdSel);
+
+// 3) Форма "Добавить в БД" (POST как раньше)
+            const tdAdd = document.createElement('td');
+
+            const form = document.createElement('form');
+            form.action = ADD_FILTER_URL;
+            form.method = 'post';
+            form.target = '_blank';
+
+// hidden: цех
+            const inpWorkshop = document.createElement('input');
+            inpWorkshop.type = 'hidden';
+            inpWorkshop.name = 'workshop';
+            inpWorkshop.value = WORKSHOP_CODE;
+            form.appendChild(inpWorkshop);
+
+// hidden: имя отсутствующего фильтра
+            const inpFilterName = document.createElement('input');
+            inpFilterName.type = 'hidden';
+            inpFilterName.name = 'filter_name';
+            inpFilterName.value = m.filter; // из заявки
+            form.appendChild(inpFilterName);
+
+// hidden: выбранный шаблон из выпадайки (положим туда значение перед сабмитом)
+            const inpCopyFrom = document.createElement('input');
+            inpCopyFrom.type = 'hidden';
+            inpCopyFrom.name = ASSORT_SELECT_POST_NAME;
+            form.appendChild(inpCopyFrom);
+
+// сабмит
+            const btn = document.createElement('button');
+            btn.type = 'submit';
+            btn.className = 'addBtn';
+            btn.textContent = 'Добавить в БД';
+            form.appendChild(btn);
+
+// при отправке перетащим выбранное из select во hidden
+            form.addEventListener('submit', (ev) => {
+                const selEl = document.getElementById('assSel_' + idx);
+
+                inpCopyFrom.value = selEl.value; // просто имя фильтра
+            });
+
+            tdAdd.appendChild(form);
+            tr.appendChild(tdAdd);
+
+
+            tbody.appendChild(tr);
+        }
+
+        // показать модалку
+        el('missBack').style.display='block';
+        el('missModal').style.display='flex';
+
+        // закрытие
+        const close = ()=>{ el('missBack').style.display='none'; el('missModal').style.display='none'; };
+        el('missBack').onclick = close;
+        el('missClose').onclick = close;
+    }
+
+    // ===== init =====
+    function toggleCtrls(){ const hasBale=baleStrips.length>0; if(el('btnSave'))  el('btnSave').disabled=!hasBale; if(el('btnClear')) el('btnClear').disabled=!hasBale; }
+    loadMarks();
+    updBaleUI(); setSelection(null); highlightWidthMatches();
+    applyAllMarks();
+
+    // показываем модалку, если есть новые позиции
+    if (Array.isArray(MISSING) && MISSING.length){ renderMissingModal(); }
+
+    // изменение фактической длины пользователем
     const factInp = el('factLenInput');
     if (factInp){
         factInp.addEventListener('change', ()=>{
@@ -1067,11 +1162,4 @@ try{
             factInp.value = String(baleFactLen);
         });
     }
-
-    /* init */
-    function toggleCtrls(){ const hasBale=baleStrips.length>0; if(el('btnSave'))  el('btnSave').disabled=!hasBale; if(el('btnClear')) el('btnClear').disabled=!hasBale; }
-    loadMarks();
-    updBaleUI(); setSelection(null); highlightWidthMatches();
-    // применяем метки к строкам после первичной разметки
-    applyAllMarks();
 </script>

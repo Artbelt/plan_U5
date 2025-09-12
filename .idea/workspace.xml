@@ -5,14 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="В планирование сборки добавлено время работы по другим заявкам при планировании текущей">
-      <change afterPath="$PROJECT_DIR$/NP_full_build_plan.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NP_supply_requirements.php" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NP_view_roll_plan.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/NP_build_plan.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_build_plan.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/NP_cut_plan.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_cut_plan.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.php" beforeDir="false" afterPath="$PROJECT_DIR$/main.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/show_manufactured_filters.php" beforeDir="false" afterPath="$PROJECT_DIR$/show_manufactured_filters.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/NP_roll_plan.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_roll_plan.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/add_salon_filter_into_db.php" beforeDir="false" afterPath="$PROJECT_DIR$/add_salon_filter_into_db.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -135,7 +131,7 @@
       <workItem from="1755165694246" duration="9409000" />
       <workItem from="1755233698449" duration="98025000" />
       <workItem from="1756794873917" duration="30084000" />
-      <workItem from="1757569924407" duration="1007000" />
+      <workItem from="1757569924407" duration="12960000" />
     </task>
     <task id="LOCAL-00001" summary="Добавлено окно просмотра параметров изделия">
       <created>1752823327851</created>
@@ -221,7 +217,14 @@
       <option name="project" value="LOCAL" />
       <updated>1756885731999</updated>
     </task>
-    <option name="localTasksCounter" value="13" />
+    <task id="LOCAL-00013" summary="В планирование сборки добавлено время работы по другим заявкам при планировании текущей">
+      <created>1757571017787</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1757571017787</updated>
+    </task>
+    <option name="localTasksCounter" value="14" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

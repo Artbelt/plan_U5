@@ -99,6 +99,7 @@ require_once('tools/tools.php');
     </header>
 
     <?php
+
     // Текущее имя нового фильтра (чтобы не терялось при выборе прототипа)
     $filter_name = isset($_POST['filter_name']) ? $_POST['filter_name'] : '';
 
