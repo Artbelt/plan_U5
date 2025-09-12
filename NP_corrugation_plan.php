@@ -105,6 +105,18 @@ sort($dates);
     .rowItem .rm{border:none;background:#fff;border:1px solid #ccc;border-radius:6px;padding:2px 8px;cursor:pointer}
     .dayTotal{margin-top:6px;font-size:12px}
     .rowItem b.qty{margin-left:8px}
+    /* керування всередині картки низу */
+    .rowItem .controls{display:flex;align-items:center;gap:6px}
+    .rowItem .mv{
+        min-width: 24px;        /* трохи вужчі за попередні */
+        padding: 0 6px;
+        font-size: 16px;        /* щоб символ був чіткий */
+        line-height: 1;
+        text-align: center;
+    }
+
+    .rowItem .mv:hover{background:#f1f5f9}
+    .rowItem .mv:disabled{opacity:.4;cursor:not-allowed}
 
     .tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .tools label{font-size:12px;color:#333}
@@ -136,6 +148,10 @@ sort($dates);
     .dayBtn:hover{background:#ecf4ff}
     .dayHead{font-weight:600}
     .daySub{font-size:12px;color:#6b7280}
+    .dayBtn:disabled{
+        opacity:.5;
+        cursor:not-allowed;
+    }
     @media (max-width:560px){ .daysGrid{grid-template-columns:1fr;} .modal{min-width:280px;max-width:90vw;} }
 </style>
 
@@ -180,7 +196,7 @@ sort($dates);
                 <label>Начало: <input type="date" id="rngStart"></label>
                 <label>Дней: <input type="number" id="rngDays" value="7" min="1"></label>
                 <button class="btn" id="btnBuildDays">Построить дни</button>
-                <label>Добавить день: <input type="date" id="addOneDay"></label>
+                <label> День+: </label>
                 <button class="btn" id="btnAddDay" title="Добавить этот день внизу">+</button>
             </div>
             <button class="btn" id="btnSave" disabled>Сохранить план</button>
@@ -217,6 +233,12 @@ sort($dates);
     const saveBtn  = document.getElementById('btnSave');
     const loadBtn  = document.getElementById('btnLoad');
 
+    // Локальний ISO без UTC-зсуву
+    const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const parseISO = s => { const [y,m,da] = s.split('-').map(Number); return new Date(y, m-1, da); };
+
+    const cutDateByKey = new Map(); // key => 'YYYY-MM-DD'
+
     let lastPickedDay = null;
 
     const initialDays = <?= json_encode($dates, JSON_UNESCAPED_UNICODE) ?>;
@@ -235,6 +257,105 @@ sort($dates);
         return [...planGrid.querySelectorAll('.col[data-day]')].map(c=>c.dataset.day);
     }
     function dayCount(ds){ return plan.has(ds) ? plan.get(ds).size : 0; }
+
+    function dayPacks(ds){
+        const col = document.querySelector(`.col[data-day="${ds}"]`);
+        if(!col) return 0;
+        let sum = 0;
+        col.querySelectorAll('.dropzone .rowItem').forEach(r=>{
+            const pk = parseInt(r.dataset.packs||'0',10);
+            if(!isNaN(pk)) sum += pk;
+        });
+        return sum;
+    }
+
+
+    function updateMoveButtons(row){
+        const days = getAllDays();
+        const idx  = days.indexOf(row.dataset.day);
+        const leftBtn  = row.querySelector('.mv-left');
+        const rightBtn = row.querySelector('.mv-right');
+        if(leftBtn)  leftBtn.disabled  = (idx <= 0);
+        if(rightBtn) rightBtn.disabled = (idx >= days.length - 1);
+    }
+
+    function moveRow(row, dir){
+        const days = getAllDays();
+        const cur  = row.dataset.day;
+        const idx  = days.indexOf(cur);
+        const next = idx + dir;
+        if (next < 0 || next >= days.length) return;
+
+        const newDay  = days[next];
+        const key     = row.dataset.key;
+        const cutDate = row.dataset.cutDate || cutDateByKey.get(key) || '';  // ← додано
+
+        if (cutDate && newDay < cutDate) {
+            alert(`Нельзя переносить раньше раскроя: ${cutDate}`);
+            return;
+        }
+
+        ensureDay(newDay);
+        const newSet = plan.get(newDay);
+        if (newSet.has(key)) { alert('У цьому дні вже є ця полоса.'); return; }
+
+        const oldSet = plan.get(cur);
+        if (oldSet) oldSet.delete(key);
+        newSet.add(key);
+
+        const dzNew = planGrid.querySelector(`.col[data-day="${newDay}"] .dropzone`);
+        if (!dzNew) return;
+        dzNew.appendChild(row);
+        row.dataset.day = newDay;
+
+        recalcDayTotal(cur);
+        recalcDayTotal(newDay);
+        updateMoveButtons(row);
+        lastPickedDay = newDay;
+    }
+
+
+
+    /* фабрика створення картки рядка з кнопками ⟵ ⟶ */
+    function createRow({key,targetDay,packs,filter,labelTxt,cutDate}){
+        const row = document.createElement('div');
+        row.className = 'rowItem';
+        row.dataset.key      = key;
+        row.dataset.day      = targetDay;
+        row.dataset.packs    = String(packs);
+        row.dataset.filter   = filter;
+        row.dataset.cutDate  = cutDate || cutDateByKey.get(key) || '';  // ← зберегли
+
+        row.innerHTML = `
+    <div>
+      <b>${labelTxt}</b>
+      <b class="qty">· ${packs} шт</b>
+    </div>
+    <div class="controls">
+      <button class="mv mv-left"  title="Перенести на попередній день" aria-label="Вліво">&lsaquo;</button>
+      <button class="mv mv-right" title="Перенести на наступний день"   aria-label="Вправо">&rsaquo;</button>
+      <button class="rm"          title="Убрать" aria-label="Видалити">×</button>
+    </div>
+  `;
+
+        row.querySelector('.rm').onclick = ()=>{
+            const set = plan.get(row.dataset.day);
+            if(set) set.delete(key);
+            row.remove();
+            assigned.delete(key);
+            setPillDisabledByKey(key,false);
+            refreshSaveState();
+            recalcDayTotal(row.dataset.day);
+        };
+
+        row.querySelector('.mv-left').onclick  = ()=>moveRow(row,-1);
+        row.querySelector('.mv-right').onclick = ()=>moveRow(row, 1);
+
+        updateMoveButtons(row);
+        return row;
+    }
+
+
 
     function renderPlanGrid(days){
         plan.clear(); assigned.clear();
@@ -277,6 +398,14 @@ sort($dates);
         const packs    = parseInt(pillEl.dataset.packs||'0',10);
         const filter   = pillEl.dataset.filterName || '';
         const labelTxt = pillEl.querySelector('span')?.textContent || pillEl.textContent;
+        const cutDate  = pillEl.dataset.cutDate || cutDateByKey.get(key) || '';
+
+        // ЗАБОРОНА: не раніше розкрою
+        if (cutDate && targetDay < cutDate) {
+            alert(`Нельзя назначать раньше раскроя: ${cutDate}`);
+            return;
+        }
+
 
         ensureDay(targetDay);
         const set = plan.get(targetDay);
@@ -285,28 +414,15 @@ sort($dates);
         const dz  = planGrid.querySelector(`.col[data-day="${targetDay}"] .dropzone`);
         if(!dz){ alert('Такого дня нет в нижней таблице. Добавьте день внизу.'); return; }
 
-        const row = document.createElement('div');
-        row.className = 'rowItem';
-        row.dataset.key = key;
-        row.dataset.day = targetDay;
-        row.dataset.packs = String(packs);
-        row.dataset.filter = filter;  // важно для сохранения
-        row.innerHTML = `
-            <div>
-                <b>${labelTxt}</b>
-                <b class="qty">· ${packs} шт</b>
-            </div>
-            <button class="rm" title="Убрать">×</button>
-        `;
-        row.querySelector('.rm').onclick = ()=>{
-            set.delete(key);
-            row.remove();
-            assigned.delete(key);
-            setPillDisabledByKey(key,false);
-            refreshSaveState();
-            recalcDayTotal(targetDay);
-        };
+        const row = createRow({
+            key,
+            targetDay,
+            packs,
+            filter,
+            labelTxt
+        });
         dz.appendChild(row);
+
 
         set.add(key);
         assigned.add(key);
@@ -328,25 +444,47 @@ sort($dates);
         const days = getAllDays();
         if (!days.length){ alert('Нет дат в нижней таблице. Сначала добавьте дни.'); return; }
 
+        const cutDate = pillEl.dataset.cutDate; // 'YYYY-MM-DD'
+
         days.forEach(ds=>{
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'dayBtn';
-            btn.innerHTML = `<div class="dayHead">${ds}</div><div class="daySub">Назначено полос: ${dayCount(ds)}</div>`;
+
+            const lines = dayCount(ds);
+            const packs = dayPacks(ds);
+
+            btn.innerHTML = `
+      <div class="dayHead">${ds}</div>
+      <div class="daySub">Назначено полос: ${lines}</div>
+      <div class="daySub">Гофропакетів: ${packs} шт</div>
+    `;
+
+            if (cutDate && ds < cutDate) {
+                btn.disabled = true;        // раніше розкрою — забороняємо
+            } else {
+                btn.onclick = ()=>{ addToPlan(ds, pendingPill); closeDatePicker(); };
+            }
+
             if (ds === lastPickedDay) btn.style.outline = '2px solid #2563eb';
-            btn.onclick = ()=>{ addToPlan(ds, pendingPill); closeDatePicker(); };
             dpDays.appendChild(btn);
         });
 
         dpWrap.style.display = 'flex';
-        setTimeout(()=>{ const first = dpDays.querySelector('.dayBtn'); if(first) first.focus(); },0);
+        setTimeout(()=>{ const first = dpDays.querySelector('.dayBtn:not(:disabled)'); if(first) first.focus(); },0);
     }
+
+
+
+
+
     function closeDatePicker(){ dpWrap.style.display = 'none'; pendingPill = null; }
     dpClose.addEventListener('click', closeDatePicker);
     dpWrap.addEventListener('click', (e)=>{ if(e.target===dpWrap) closeDatePicker(); });
     document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && dpWrap.style.display==='flex') closeDatePicker(); });
 
     document.querySelectorAll('.pill').forEach(p=>{
+        cutDateByKey.set(p.dataset.key, p.dataset.cutDate);
         p.addEventListener('click', (e)=>{
             if (e.shiftKey && lastPickedDay){ addToPlan(lastPickedDay, p); return; }
             openDatePicker(p);
@@ -371,31 +509,43 @@ sort($dates);
         const n = parseInt(rngDays.value||'0',10);
         if(!start || isNaN(n) || n<=0){ alert('Укажите корректный диапазон дат.'); return; }
         const out = [];
-        const d0 = new Date(start+'T00:00:00');
-        for(let i=0;i<n;i++){ const d=new Date(d0); d.setDate(d0.getDate()+i); out.push(d.toISOString().slice(0,10)); }
+        const d0 = parseISO(start);
+        for(let i=0;i<n;i++){ const d=new Date(d0); d.setDate(d0.getDate()+i); out.push(iso(d)); }
         renderPlanGrid(out);
     });
 
+    // Добавление одного дня
     btnAddDay.addEventListener('click', ()=>{
-        const ds = addOneDayInp.value;
-        if(!ds){ alert('Выберите дату для добавления.'); return; }
-        const exist = new Set(getAllDays());
-        if (exist.has(ds)) { alert('Такой день уже есть.'); return; }
+        // 1) Визначаємо, який день додати
+        const daysNow = getAllDays();
+        let newDs;
+        if (daysNow.length) {
+            const last = daysNow[daysNow.length - 1];
+            const nd = parseISO(last); nd.setDate(nd.getDate() + 1);
+            newDs = iso(nd);
+        } else {
+            // якщо таблиця порожня — стартуємо з rngStart або сьогодні
+            const base = (rngStart.value || iso(new Date()));
+            newDs = base;
+        }
 
-        ensureDay(ds);
+        // 3) Додаємо колонку дня в кінець
+        ensureDay(newDs);
         const col = document.createElement('div');
         col.className = 'col';
-        col.dataset.day = ds;
+        col.dataset.day = newDs;
         col.innerHTML = `
-            <h4>${ds}</h4>
-            <div class="dropzone"></div>
-            <div class="dayTotal muted">Итого: <b class="n">0</b> шт</div>
-        `;
+    <h4>${newDs}</h4>
+    <div class="dropzone"></div>
+    <div class="dayTotal muted">Итого: <b class="n">0</b> шт</div>
+  `;
         planGrid.appendChild(col);
 
-        const daysNow = getAllDays();
-        planGrid.style.gridTemplateColumns = `repeat(${Math.max(1, daysNow.length)}, minmax(220px, 1fr))`;
+        // 4) Оновлюємо ширину гріда
+        const total = daysNow.length + 1;
+        planGrid.style.gridTemplateColumns = `repeat(${Math.max(1, total)}, minmax(220px, 1fr))`;
     });
+
 
     // Сохранение
     function buildPayload(){
@@ -430,54 +580,72 @@ sort($dates);
 
 
     // Загрузка
+    // Загрузка
     loadBtn.addEventListener('click', async ()=>{
+        const uniqSortedDates = arr => Array.from(new Set(arr.filter(Boolean))).sort();
+
         try{
-            const res = await fetch('NP/save_corrugation_plan.php?order='+encodeURIComponent(orderNumber)); // <-- путь
+            const res = await fetch('NP/save_corrugation_plan.php?order='+encodeURIComponent(orderNumber));
             let data;
             try { data = await res.json(); }
             catch { const t = await res.text(); throw new Error('Backend не JSON:\n'+t.slice(0,500)); }
             if(!data.ok) throw new Error(data.error||'Ошибка загрузки');
 
-            const days = (data.days && data.days.length) ? data.days : initialDays;
-            renderPlanGrid(days.length ? days : []);
+            // 1) Зібрати всі дати з бекенда: з data.days і з самих items
+            const itemDays = uniqSortedDates((data.items||[]).map(it=>it.date));
+            const apiDays  = uniqSortedDates([...(data.days||[]), ...itemDays]);
 
+            // 2) Якщо бекенд нічого не дав — fallback на initialDays
+            const days = apiDays.length ? apiDays : (initialDays.length ? initialDays : []);
+            renderPlanGrid(days);
+
+            // 3) Розкласти елементи по днях
+// 3) Розкласти елементи по днях
             (data.items||[]).forEach(it=>{
-                const key = String(it.bale_id)+':'+String(it.strip_no);
+                const key  = String(it.bale_id)+':'+String(it.strip_no);
                 const pill = document.querySelector(`.pill[data-key="${key}"]`);
+
                 if (pill) {
                     addToPlan(it.date, pill);
                 } else {
                     ensureDay(it.date);
                     const dz = document.querySelector(`.col[data-day="${it.date}"] .dropzone`);
                     if (!dz) return;
-                    const row = document.createElement('div');
-                    row.className = 'rowItem';
-                    row.dataset.key = key;
-                    row.dataset.day = it.date;
-                    row.dataset.packs = String(it.count||0);
-                    row.dataset.filter = it.filter || '';
-                    const label = (it.filter||'Без имени') + ' ['+(it.count||0)+' шт]';
-                    row.innerHTML = `<div><b>${label}</b></div><button class="rm" title="Убрать">×</button>`;
-                    row.querySelector('.rm').onclick = ()=>{
-                        const set = plan.get(it.date); if(set) set.delete(key);
-                        row.remove(); assigned.delete(key); refreshSaveState(); recalcDayTotal(it.date);
-                    };
+
+                    const label   = (it.filter||'Без имени') + ' ['+(it.count||0)+' шт]';
+                    const cutDate = cutDateByKey.get(key) || '';  // ← взяли з мапи
+
+                    const row = createRow({
+                        key,
+                        targetDay: it.date,
+                        packs: (it.count||0),
+                        filter: (it.filter||''),
+                        labelTxt: label,
+                        cutDate                          // ← передали явно
+                    });
                     dz.appendChild(row);
-                    ensureDay(it.date); const set = plan.get(it.date); set.add(key);
+
+                    const set = plan.get(it.date); set.add(key);
                     assigned.add(key);
+                    setPillDisabledByKey(key,true);
                 }
             });
 
+
+            // 4) Підрахувати підсумки по кожному дню та розблокувати “Сохранить”
             getAllDays().forEach(ds=>recalcDayTotal(ds));
             refreshSaveState();
             alert('План загружен.');
-        }catch(e){ alert('Не удалось загрузить: '+e.message); }
+        }catch(e){
+            alert('Не удалось загрузить: '+e.message);
+        }
     });
+
 
 
     // Инициализация
     (function init(){
-        const today = new Date(); const ds = today.toISOString().slice(0,10);
+        const today = new Date(); const ds = iso(today);
         document.getElementById('rngStart').value = ds;
         renderPlanGrid(initialDays.length ? initialDays : [ds]);
     })();

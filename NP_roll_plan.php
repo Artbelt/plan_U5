@@ -77,8 +77,12 @@ while ($r = $st2->fetch(PDO::FETCH_ASSOC)) {
         #heightBarWrap{margin-top:12px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.05);padding:8px 10px;}
         #heightBarTitle{font-size:12px;color:#555;margin:0 0 6px}
         #heightBar{display:flex;flex-wrap:wrap;gap:6px}
-        .hchip{font-size:12px;line-height:1;border:1px solid #d1d5db;border-radius:999px;padding:6px 10px;background:#f9fafb;cursor:pointer;user-select:none}
+        .hchip{font-size:12px;line-height:1;border:1px solid #d1d5db;border-radius:999px;padding:6px 10px;background:#f9fafb;cursor:pointer;user-select:none;position:relative;padding-bottom:16px}
         .hchip.active{background:#e0f2fe;border-color:#38bdf8;font-weight:600}
+        /* відсоток + смужка прогресу всередині чіпа */
+        .hchip .hpct{font-size:10px;color:#555;margin-left:6px}
+        .hchip .hbar{position:absolute;left:8px;right:8px;bottom:4px;height:4px;background:#e5e7eb;border-radius:999px;overflow:hidden}
+        .hchip .hfill{height:100%;width:0;background:#60a5fa;transition:width .2s ease}
 
         #planArea{margin-top:12px;overflow:auto;max-height:calc(100vh - 300px);background:#fff;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.05);border:1px solid #e5e7eb}
 
@@ -89,25 +93,24 @@ while ($r = $st2->fetch(PDO::FETCH_ASSOC)) {
         th:not(:first-child),td:not(:first-child){width:var(--daycol)}
         .highlight{background:#d1ecf1 !important;outline:1px solid #0bb}
         .overload{background:#f8d7da !important}
-        /* Стало: */
+
+        /* Липкий перший стовпець */
         th:first-child {
             position: sticky;
             left: 0;
-            z-index: 5;                 /* вище за ліві td, щоб кутова комірка була над усім */
-            background: #f0f3f8;        /* фон хедера */
+            z-index: 5;
+            background: #f0f3f8;
             width: var(--leftcol);
             min-width: var(--leftcol);
             max-width: var(--leftcol);
             text-align: left;
             white-space: normal;
         }
-
-        /* тільки для лівої клітинки-лейблу бухти */
         td.left-label {
             position: sticky;
             left: 0;
             z-index: 4;
-            background: #fff;           /* дефолтний фон */
+            background: #fff;
             width: var(--leftcol);
             min-width: var(--leftcol);
             max-width: var(--leftcol);
@@ -115,33 +118,54 @@ while ($r = $st2->fetch(PDO::FETCH_ASSOC)) {
             white-space: normal;
         }
 
-        /* ПІДСВІТКА обраних бухт тепер точно перекриє фон */
-        td.left-label.bale-picked {
-            background: #fff7cc !important;
-            box-shadow: inset 4px 0 0 #f59e0b;
-        }
-
-        .bale-picked{background:#fff7cc;box-shadow:inset 4px 0 0 #f59e0b}
+        /* ПІДСВІТКА обраних бухт (ліва клітинка) */
+        td.left-label.bale-picked{background:#fff7cc !important;box-shadow:inset 4px 0 0 #f59e0b}
 
         /* тільки окремі висоти */
-        .hval{
-            padding:1px 4px;
-            border-radius:4px;
-            margin-right:2px;
-            border:1px solid transparent;          /* щоб при активі не зсувався текст */
-        }
-        .hval.active{
-            background:#7dd3fc;                    /* яскравіше блакитне */
-            color:#052c47;
-            font-weight:700;
-            border-color:#0284c7;                  /* контрастна рамка */
-            box-shadow:0 0 0 2px rgba(2,132,199,.22); /* м’яке «світіння» */
-        }
+        .hval{padding:1px 4px;border-radius:4px;margin-right:2px;border:1px solid transparent}
+        .hval.active{background:#7dd3fc;color:#052c47;font-weight:700;border-color:#0284c7;box-shadow:0 0 0 2px rgba(2,132,199,.22)}
 
         #totalsBar{position:sticky;bottom:0;z-index:5;display:grid;grid-auto-rows:32px;align-items:center;background:#f0f3f8;border-top:1px solid #e5e7eb}
         #totalsBar .cell{border-right:1px solid #e5e7eb;text-align:center;font-weight:600;font-size:12px;white-space:nowrap;padding:6px}
         #totalsBar .cell:first-child{text-align:left;padding-left:8px}
         #totalsBar .overload{background:#f8d7da}
+        /* чіп висоти */
+        .hchip{
+            font-size:12px;
+            line-height:1;
+            border:1px solid #d1d5db;
+            border-radius:999px;
+            padding:6px 10px;
+            background:#f9fafb;
+            cursor:pointer;
+            user-select:none;
+
+            /* важливо для прогрес-бару */
+            position: relative;
+            display: inline-block;   /* ← дає коробку для absolute-вкладених */
+            padding-bottom: 16px;    /* місце під смужку */
+        }
+
+        /* відсоток + смужка прогресу */
+        .hchip .hpct{font-size:10px;color:#555;margin-left:6px}
+        .hchip .hbar{
+            position:absolute;
+            left:8px;
+            right:8px;
+            bottom:4px;
+            height:6px;             /* трішки вище для наочності */
+            background:#e5e7eb;
+            border-radius:999px;
+            overflow:hidden;
+        }
+        .hchip .hfill{
+            display:block;          /* гарантія, що займає висоту/ширину */
+            height:100%;
+            width:0;
+            background:#60a5fa;
+            transition:width .2s ease;
+        }
+
     </style>
 </head>
 <body>
@@ -168,30 +192,88 @@ while ($r = $st2->fetch(PDO::FETCH_ASSOC)) {
 </div>
 
 <script>
-    const PER_BALE_MIN=40;
-    const bales=<?=json_encode(array_values($bales),JSON_UNESCAPED_UNICODE)?>;
-    const preselected=<?=json_encode($pre,JSON_UNESCAPED_UNICODE)?>;
-    const orderNumber=<?=json_encode($order)?>;
+    const PER_BALE_MIN = 40;
+    const bales = <?= json_encode(array_values($bales), JSON_UNESCAPED_UNICODE) ?>;
+    const preselected = <?= json_encode($pre, JSON_UNESCAPED_UNICODE) ?>;
+    const orderNumber = <?= json_encode($order) ?>;
 
-    const selectedHeights=new Set();
-    const allHeights=(()=>{const s=new Set();bales.forEach(b=>b.strips.forEach(st=>s.add(Number(st.height))));return Array.from(s).sort((a,b)=>a-b);})();
+    // утиліта для id з висотою (14.5 -> "14_5")
+    const hid = h => String(h).replace(/\./g, '_');
+
+    // Множина обраних висот у фільтрі
+    const selectedHeights = new Set();
+
+    // Всі доступні висоти
+    const allHeights = (() => {
+        const s = new Set();
+        bales.forEach(b => b.strips.forEach(st => s.add(Number(st.height))));
+        return Array.from(s).sort((a,b)=>a-b);
+    })();
+
+    // Загальна кількість смуг по кожній висоті у всьому замовленні
+    const totalStripsByHeight = (() => {
+        const m = new Map();
+        bales.forEach(b => b.strips.forEach(s => {
+            const h = Number(s.height);
+            m.set(h, (m.get(h) || 0) + 1);
+        }));
+        return m; // Map<height, totalCount>
+    })();
+
     function buildHeightBar(){
-        const wrap=document.getElementById('heightBarWrap');const bar=document.getElementById('heightBar');
-        if(!allHeights.length){wrap.style.display='none';return;}
-        wrap.style.display='';bar.innerHTML='';
-        const reset=document.createElement('span');reset.className='hchip';reset.textContent='Скинути';reset.onclick=()=>{selectedHeights.clear();bar.querySelectorAll('.hchip').forEach(c=>c.classList.remove('active'));updateHeightHighlights();};bar.appendChild(reset);
-        allHeights.forEach(h=>{const chip=document.createElement('span');chip.className='hchip';chip.textContent='['+h+']';chip.dataset.h=h;chip.onclick=()=>{const val=Number(chip.dataset.h);if(selectedHeights.has(val)){selectedHeights.delete(val);chip.classList.remove('active');}else{selectedHeights.add(val);chip.classList.add('active');}updateHeightHighlights();};bar.appendChild(chip);});
+        const wrap = document.getElementById('heightBarWrap');
+        const bar  = document.getElementById('heightBar');
+        if(!allHeights.length){ wrap.style.display='none'; return; }
+        wrap.style.display='';
+        bar.innerHTML='';
+
+        // Скинути
+        const reset = document.createElement('span');
+        reset.className='hchip';
+        reset.textContent='Скинути';
+        reset.title='Очистити вибір висот';
+        reset.onclick=()=>{
+            selectedHeights.clear();
+            bar.querySelectorAll('.hchip').forEach(c=>c.classList.remove('active'));
+            updateHeightHighlights();
+        };
+        bar.appendChild(reset);
+
+        // Чіпи висот з % та прогрес-баром
+        allHeights.forEach(h=>{
+            const id = hid(h);
+            const chip = document.createElement('span');
+            chip.className='hchip';
+            chip.dataset.h = h;
+            chip.innerHTML = `[${h}] <span class="hpct" id="hpct-${id}">0%</span>
+                               <span class="hbar"><span class="hfill" id="hfill-${id}"></span></span>`;
+            chip.onclick=()=>{
+                const val = Number(chip.dataset.h);
+                if(selectedHeights.has(val)){ selectedHeights.delete(val); chip.classList.remove('active'); }
+                else{ selectedHeights.add(val); chip.classList.add('active'); }
+                updateHeightHighlights();
+            };
+            bar.appendChild(chip);
+        });
+        updateHeightProgress();
     }
 
-    let selected=Object.create(null);
-    (function initSelected(){const pre=preselected||{};for(const [ds,arr] of Object.entries(pre)){selected[ds]=[...new Set((arr||[]).map(n=>parseInt(n,10)).filter(n=>n>0))];}})();
+    let selected = Object.create(null);
+    (function initSelected(){
+        const pre = preselected || {};
+        for (const [ds, arr] of Object.entries(pre)) {
+            selected[ds] = [...new Set((arr||[]).map(n => parseInt(n,10)).filter(n => n>0))];
+        }
+    })();
 
-    function fmtDateISO(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-    function dowName(d){return['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][d.getDay()];}
+    function fmtDateISO(d){
+        return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    }
+    function dowName(d){ return ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][d.getDay()]; }
 
     function updateHeightHighlights(){
         document.querySelectorAll('.hval').forEach(span=>{
-            const h=Number(span.dataset.h);
+            const h = Number(span.dataset.h);
             if(selectedHeights.has(h)) span.classList.add('active'); else span.classList.remove('active');
         });
     }
@@ -210,44 +292,158 @@ while ($r = $st2->fetch(PDO::FETCH_ASSOC)) {
         });
     }
 
+    // Порахувати прогрес по кожній висоті і намалювати у чіпах
+    function updateHeightProgress(){
+        const planned = new Map(); // Map<height, count>
+        Object.values(selected).forEach(arr=>{
+            (arr||[]).forEach(bid=>{
+                const b = bales.find(x=>x.bale_id===bid);
+                if(!b) return;
+                b.strips.forEach(s=>{
+                    const h = Number(s.height);
+                    planned.set(h, (planned.get(h)||0)+1);
+                });
+            });
+        });
+
+        allHeights.forEach(h=>{
+            const id = hid(h);
+            const total = totalStripsByHeight.get(h) || 0;
+            const done  = planned.get(h) || 0;
+            const pct   = total ? Math.round(done*100/total) : 0;
+
+            const pctEl  = document.getElementById(`hpct-${id}`);
+            const fillEl = document.getElementById(`hfill-${id}`);
+            if (pctEl)  pctEl.textContent = `${pct}%`;
+            if (fillEl) fillEl.style.width = `${pct}%`;
+
+            const chip = document.querySelector(`.hchip[data-h="${h}"]`);
+            if (chip) chip.title = `Розплановано: ${done} з ${total} (${pct}%)`;
+        });
+    }
 
     function drawTable(){
-        const startVal=document.getElementById('startDate').value;
-        const days=parseInt(document.getElementById('daysCount').value,10);
-        if(!startVal||isNaN(days))return;
-        const start=new Date(startVal+'T00:00:00');
-        const container=document.getElementById('planArea');container.innerHTML='';
-        if(!bales.length){container.innerHTML='<div style="padding:10px;">Нет бухт по этой заявке.</div>';return;}
-        const table=document.createElement('table');
-        const thead=document.createElement('thead');
-        const headRow=document.createElement('tr');
-        headRow.innerHTML='<th>Бухта</th>';
-        for(let d=0;d<days;d++){const date=new Date(start);date.setDate(start.getDate()+d);const ds=fmtDateISO(date);headRow.innerHTML+=`<th>${ds}<span class="dow"><br>${dowName(date)}</span></th>`;}
-        thead.appendChild(headRow);table.appendChild(thead);
-        const tbody=document.createElement('tbody');
+        const startVal = document.getElementById('startDate').value;
+        const days = parseInt(document.getElementById('daysCount').value,10);
+        if(!startVal || isNaN(days)) return;
+
+        const start = new Date(startVal+'T00:00:00');
+        const container = document.getElementById('planArea');
+        container.innerHTML = '';
+
+        if(!bales.length){
+            container.innerHTML = '<div style="padding:10px;">Нет бухт по этой заявке.</div>';
+            return;
+        }
+
+        const table = document.createElement('table');
+
+        // thead
+        const thead = document.createElement('thead');
+        const headRow = document.createElement('tr');
+        headRow.innerHTML = '<th>Бухта</th>';
+        for(let d=0; d<days; d++){
+            const date = new Date(start); date.setDate(start.getDate()+d);
+            const ds = fmtDateISO(date);
+            headRow.innerHTML += `<th>${ds}<span class="dow"><br>${dowName(date)}</span></th>`;
+        }
+        thead.appendChild(headRow);
+        table.appendChild(thead);
+
+        // tbody
+        const tbody = document.createElement('tbody');
         bales.forEach(b=>{
-            const row=document.createElement('tr');
-            const uniqHeights=Array.from(new Set(b.strips.map(s=>Number(s.height))).values());
-            const left=document.createElement('td');left.className='left-label';left.dataset.baleId=b.bale_id;
-            left.innerHTML='<strong>Бухта '+b.bale_id+'</strong><div class="bale-label">'+uniqHeights.map(h=>`<span class="hval" data-h="${h}">[${h}]</span>`).join(' ')+'</div>';
+            const row = document.createElement('tr');
+
+            const uniqHeights = Array.from(new Set(b.strips.map(s=>Number(s.height))).values());
+            const tooltip = b.strips
+                .map(s => `${s.filter} [${s.height}] ${s.width}мм`)
+                .join('\n');
+            const left = document.createElement('td');
+            left.className = 'left-label';
+            left.dataset.baleId = b.bale_id;
+            left.title = tooltip;                    // ← ПОВЕРНЕНА підказка
+            left.innerHTML = '<strong>Бухта '+b.bale_id+'</strong><div class="bale-label">'
+                + uniqHeights.map(h=>`<span class="hval" data-h="${h}">[${h}]</span>`).join(' ')
+                + '</div>';
             row.appendChild(left);
-            for(let d=0;d<days;d++){const date=new Date(start);date.setDate(start.getDate()+d);const ds=fmtDateISO(date);const td=document.createElement('td');td.dataset.date=ds;td.dataset.baleId=b.bale_id;
-                if(selected[ds]&&selected[ds].includes(b.bale_id))td.classList.add('highlight');
-                td.onclick=()=>{const bid=b.bale_id;document.querySelectorAll(`td[data-bale-id="${bid}"]`).forEach(c=>c.classList.remove('highlight'));Object.keys(selected).forEach(k=>{const arr=selected[k];if(!arr)return;const i=arr.indexOf(bid);if(i>=0){arr.splice(i,1);if(!arr.length)delete selected[k];}});if(!selected[ds])selected[ds]=[];selected[ds].push(bid);td.classList.add('highlight');updateTotals();updateLeftMarkers();};
-                row.appendChild(td);}
+
+            for(let d=0; d<days; d++){
+                const date = new Date(start); date.setDate(start.getDate()+d);
+                const ds = fmtDateISO(date);
+                const td = document.createElement('td');
+                td.dataset.date = ds;
+                td.dataset.baleId = b.bale_id;
+
+                if (selected[ds] && selected[ds].includes(b.bale_id)) td.classList.add('highlight');
+
+                td.onclick = () => {
+                    const bid = b.bale_id;
+                    // зняти підсвітку з усіх клітинок цієї бухти
+                    document.querySelectorAll(`td[data-bale-id="${bid}"]`).forEach(c => c.classList.remove('highlight'));
+                    // прибрати зі всіх днів
+                    Object.keys(selected).forEach(k=>{
+                        const arr = selected[k];
+                        if (!arr) return;
+                        const i = arr.indexOf(bid);
+                        if (i>=0) { arr.splice(i,1); if(!arr.length) delete selected[k]; }
+                    });
+                    // додати на поточний день
+                    if (!selected[ds]) selected[ds] = [];
+                    selected[ds].push(bid);
+                    td.classList.add('highlight');
+
+                    updateTotals();
+                    updateLeftMarkers();
+                    updateHeightProgress();   // ← оновити прогрес у чіпах
+                };
+
+                row.appendChild(td);
+            }
+
             tbody.appendChild(row);
         });
-        table.appendChild(tbody);container.appendChild(table);
-        const totalsBar=document.createElement('div');totalsBar.id='totalsBar';totalsBar.style.gridTemplateColumns=`var(--leftcol) ${Array(days).fill('var(--daycol)').join(' ')}`;
-        const first=document.createElement('div');first.className='cell';first.innerHTML='<b>Завантаження (год)</b>';totalsBar.appendChild(first);
-        for(let d=0;d<days;d++){const date=new Date(start);date.setDate(start.getDate()+d);const ds=fmtDateISO(date);const c=document.createElement('div');c.className='cell';c.id='load-'+ds;totalsBar.appendChild(c);}
+
+        table.appendChild(tbody);
+        container.appendChild(table);
+
+        // Липкий підсумок годин
+        const totalsBar = document.createElement('div');
+        totalsBar.id = 'totalsBar';
+        totalsBar.style.gridTemplateColumns = `var(--leftcol) ${Array(days).fill('var(--daycol)').join(' ')}`;
+
+        const first = document.createElement('div');
+        first.className = 'cell';
+        first.innerHTML = '<b>Завантаження (год)</b>';
+        totalsBar.appendChild(first);
+
+        for(let d=0; d<days; d++){
+            const date = new Date(start); date.setDate(start.getDate()+d);
+            const ds = fmtDateISO(date);
+            const c = document.createElement('div');
+            c.className = 'cell';
+            c.id = 'load-'+ds;
+            totalsBar.appendChild(c);
+        }
         container.appendChild(totalsBar);
-        updateTotals();updateHeightHighlights();updateLeftMarkers();
+
+        updateTotals();
+        updateHeightHighlights();
+        updateLeftMarkers();
+        updateHeightProgress();  // ← після побудови таблиці
     }
 
     function updateTotals(){
-        document.querySelectorAll('[id^=load-]').forEach(el=>{el.textContent='';el.classList.remove('overload');});
-        Object.keys(selected).forEach(ds=>{const cnt=(selected[ds]||[]).length;const hours=cnt*(PER_BALE_MIN/60);const el=document.getElementById('load-'+ds);if(el){el.textContent=hours.toFixed(2);if(hours>7)el.classList.add('overload');}});
+        document.querySelectorAll('[id^=load-]').forEach(el=>{ el.textContent=''; el.classList.remove('overload'); });
+        Object.keys(selected).forEach(ds=>{
+            const cnt = (selected[ds]||[]).length;
+            const hours = cnt * (PER_BALE_MIN/60);
+            const el = document.getElementById('load-'+ds);
+            if (el){
+                el.textContent = hours.toFixed(2);
+                if (hours > 7) el.classList.add('overload');
+            }
+        });
     }
 
     function savePlan(){
@@ -321,18 +517,24 @@ while ($r = $st2->fetch(PDO::FETCH_ASSOC)) {
                 document.getElementById('daysCount').value = String(Math.max(1, Math.round((d2-d1)/(24*3600*1000))+1));
             }
 
-            // Перемалювати таблицю та оновити підсвітку висот
+            // Перемалювати таблицю та оновити індикатори
             drawTable();
             updateHeightHighlights();
             updateLeftMarkers();
+            updateHeightProgress();
         }catch(e){
             alert('Не удалось загрузить: '+e.message);
             console.error(e);
         }
     }
 
-
-    (function(){const inp=document.getElementById('startDate');const ds=new Date().toISOString().slice(0,10);if(!inp.value)inp.value=ds;buildHeightBar();drawTable();})();
+    (function(){
+        const inp = document.getElementById('startDate');
+        const ds = new Date().toISOString().slice(0,10);
+        if(!inp.value) inp.value = ds;
+        buildHeightBar();
+        drawTable();
+    })();
 </script>
 </body>
 </html>

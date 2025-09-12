@@ -4,11 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="В планирование сборки добавлено время работы по другим заявкам при планировании текущей">
+    <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="допрацьовано план раскрою">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/NP_cut_plan.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_cut_plan.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/NP_corrugation_plan.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_corrugation_plan.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/NP_roll_plan.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_roll_plan.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/add_salon_filter_into_db.php" beforeDir="false" afterPath="$PROJECT_DIR$/add_salon_filter_into_db.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -131,7 +130,7 @@
       <workItem from="1755165694246" duration="9409000" />
       <workItem from="1755233698449" duration="98025000" />
       <workItem from="1756794873917" duration="30084000" />
-      <workItem from="1757569924407" duration="12960000" />
+      <workItem from="1757569924407" duration="20666000" />
     </task>
     <task id="LOCAL-00001" summary="Добавлено окно просмотра параметров изделия">
       <created>1752823327851</created>
@@ -224,7 +223,14 @@
       <option name="project" value="LOCAL" />
       <updated>1757571017787</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary="допрацьовано план раскрою">
+      <created>1757663205241</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1757663205241</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -240,6 +246,7 @@
     <MESSAGE value="промежуточная стабильная версия с планированием сборки" />
     <MESSAGE value="Изменена авторизация" />
     <MESSAGE value="В планирование сборки добавлено время работы по другим заявкам при планировании текущей" />
-    <option name="LAST_COMMIT_MESSAGE" value="В планирование сборки добавлено время работы по другим заявкам при планировании текущей" />
+    <MESSAGE value="допрацьовано план раскрою" />
+    <option name="LAST_COMMIT_MESSAGE" value="допрацьовано план раскрою" />
   </component>
 </project>
