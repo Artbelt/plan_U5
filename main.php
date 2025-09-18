@@ -189,6 +189,7 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))){
                         Мониториг:  <p>
 
                         <form action='NP_full_build_plan.php' method='post' target="_blank"><input type='submit' value='План сборки'  style="height: 20px; width: 220px"></form>
+                        <form action='NP_full_build_plan.php' method='post' target="_blank"><input type='submit' value='План сборки'  style="height: 20px; width: 220px"></form>
                         <form action='NP_monitor.php' method='post' target="_blank"><input type='submit' value='Мониторинг'  style="height: 20px; width: 220px"></form>
 
                         <form action="worker_modules/tasks_corrugation.php" method="post" target="_blank">
@@ -196,6 +197,10 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))){
                         </form>
                         <form action="worker_modules/tasks_cut.php" method="post" target="_blank">
                             <input type="submit" value="Модуль оператора бумагорезки" style="height: 20px; width: 220px">
+
+                        </form>
+                        <form action="NP/corrugation_print.php" method="post" target="_blank">
+                            <input type="submit" value="План гофропакетчика " style="height: 20px; width: 220px">
                         <p>
                         Табель:  <p>
                         <form action="http://localhost/timekeeping/U5/index.php" method="post" target="_blank">
@@ -262,11 +267,72 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))){
 
                         show_weekly_production();
                         show_monthly_production();
+                        ?>
+                        <p>
 
-                        echo "</td></tr><tr><td></td></tr>"
-                            ."</table>"
-                            ."</td><td>";
 
+                            <div style="max-width:600px;padding:12px;border:1px solid #ddd;border-radius:10px;margin:12px 0;">
+                                <h4 style="margin:0 0 8px;">Поиск заявок по фильтру</h4>
+
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                    <label for="filterSelect">Фильтр:</label>
+                                    <?php
+                                    load_filters_into_select(); // <select name="analog_filter">
+                                    ?>
+                                </div>
+
+                                <div id="filterSearchResult" style="margin-top:12px;"></div>
+                            </div>
+
+                            <script>
+                                (function(){
+                                    const resultBox = document.getElementById('filterSearchResult');
+
+                                    function getSelectEl(){
+                                        return document.querySelector('select[name="analog_filter"]');
+                                    }
+
+                                    async function runSearch(){
+                                        const sel = getSelectEl();
+                                        if(!sel){ resultBox.innerHTML = '<div style="color:red">Не найден выпадающий список.</div>'; return; }
+                                        const val = sel.value.trim();
+                                        if(!val){ resultBox.innerHTML = '<div style="color:#666">Выберите фильтр…</div>'; return; }
+
+                                        resultBox.innerHTML = 'Загрузка…';
+
+                                        try{
+                                            const formData = new FormData();
+                                            formData.append('filter', val);
+
+                                            const resp = await fetch('search_filter_in_the_orders.php', {
+                                                method: 'POST',
+                                                body: formData
+                                            });
+
+                                            if(!resp.ok){
+                                                resultBox.innerHTML = `<div style="color:red">Ошибка запроса: ${resp.status} ${resp.statusText}</div>`;
+                                                return;
+                                            }
+
+                                            const html = await resp.text();
+                                            resultBox.innerHTML = html;
+                                        }catch(e){
+                                            resultBox.innerHTML = `<div style="color:red">Ошибка: ${e}</div>`;
+                                        }
+                                    }
+
+                                    const sel = getSelectEl();
+                                    if(sel){
+                                        sel.id = 'filterSelect'; // для label for
+                                        sel.addEventListener('change', runSearch);
+                                    }
+                                })();
+                            </script>
+
+                        </td></tr><tr><td></td></tr>
+                        </table>
+                        </td><td>
+                        <?php
                         /** ---------------------------------------------------------------------------------------------------------------- */
                         /**                                                 Раздел ЗАЯВКИ                                                    */
                         /** ---------------------------------------------------------------------------------------------------------------- */
@@ -348,6 +414,9 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))){
 
 
                         <?php
+
+
+
 
 
 

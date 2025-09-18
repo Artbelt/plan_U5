@@ -152,6 +152,28 @@ sort($dates);
         opacity:.5;
         cursor:not-allowed;
     }
+    .topCol h4{display:flex;align-items:center;justify-content:space-between}
+    .topShift{
+        border:1px solid #cbd5e1;
+        background:#fff;
+        border-radius:6px;
+        padding:2px 8px;
+        cursor:pointer;
+        font-size:14px; line-height:1;
+    }
+    .topShift:hover{background:#f1f5f9}
+    .topCol h4{display:flex;align-items:center;justify-content:space-between}
+    .topCascade{
+        border:1px solid #cbd5e1;
+        background:#fff;
+        border-radius:6px;
+        padding:2px 8px;
+        cursor:pointer;
+        font-size:14px; line-height:1;
+    }
+    .topCascade:hover{background:#f1f5f9}
+
+
     @media (max-width:560px){ .daysGrid{grid-template-columns:1fr;} .modal{min-width:280px;max-width:90vw;} }
 </style>
 
@@ -167,8 +189,12 @@ sort($dates);
         </div>
         <div class="gridTop">
             <?php foreach($dates as $d): ?>
-                <div class="col">
-                    <h4><?=$d?></h4>
+                <div class="col topCol" data-day="<?=$d?>">
+                    <h4>
+                        <span><?=$d?></span>
+                        <button class="topCascade" data-day="<?=$d?>" title="Зсунути всі дні від цього на +N">&rsaquo;</button>
+                    </h4>
+
                     <?php if(empty($pool[$d])): ?>
                         <div class="muted">нет</div>
                     <?php else: foreach($pool[$d] as $p): ?>
@@ -186,6 +212,8 @@ sort($dates);
                 </div>
             <?php endforeach; ?>
         </div>
+
+
     </div>
 
     <div class="panel" id="planPanel">
@@ -236,6 +264,67 @@ sort($dates);
     // Локальний ISO без UTC-зсуву
     const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const parseISO = s => { const [y,m,da] = s.split('-').map(Number); return new Date(y, m-1, da); };
+    const topGrid = document.querySelector('#topPanel .gridTop');
+    const nextISO = ds => { const d = parseISO(ds); d.setDate(d.getDate()+1); return iso(d); };
+
+    function topEnsureDayCol(ds){
+        let col = topGrid.querySelector(`.topCol[data-day="${ds}"]`);
+        if (col) return col;
+
+        col = document.createElement('div');
+        col.className = 'col topCol';
+        col.dataset.day = ds;
+        col.innerHTML = `
+    <h4><span>${ds}</span>
+      <button class="topShift" data-day="${ds}" title="Зсунути доступність на +1 день">&rsaquo;</button>
+    </h4>
+    <div class="muted">нет</div>
+  `;
+        topGrid.appendChild(col);
+        // оновити кількість колонок
+        topGrid.style.gridTemplateColumns = `repeat(${topGrid.querySelectorAll('.topCol').length}, minmax(220px,1fr))`;
+        // прив’язати клік
+        col.querySelector('.topShift').onclick = () => shiftTopDay(ds, 1);
+        return col;
+    }
+
+    function topSetEmptyState(col){
+        const hasPill = !!col.querySelector('.pill');
+        const ph = col.querySelector('.muted');
+        if (!hasPill && !ph){
+            const m = document.createElement('div'); m.className='muted'; m.textContent='нет'; col.appendChild(m);
+        } else if (hasPill && ph){ ph.remove(); }
+    }
+
+    function shiftTopDay(ds, delta=1){
+        if (delta<=0) return;
+        const from = topGrid.querySelector(`.topCol[data-day="${ds}"]`);
+        if (!from) return;
+
+        const pills = [...from.querySelectorAll('.pill')];
+        if (!pills.length) return;
+
+        // цільовий день (посунемо на delta)
+        let target = ds;
+        for (let i=0;i<delta;i++){ target = nextISO(target); topEnsureDayCol(target); }
+        const to = topGrid.querySelector(`.topCol[data-day="${target}"]`);
+
+        // переносимо всі плашки, оновлюємо cutDate
+        pills.forEach(p=>{
+            p.dataset.cutDate = target;
+            cutDateByKey.set(p.dataset.key, target);
+            to.appendChild(p);
+        });
+
+        topSetEmptyState(from);
+        topSetEmptyState(to);
+    }
+
+    // підвісити обробники на початкові кнопки верхньої сітки
+    document.querySelectorAll('.topShift').forEach(btn=>{
+        btn.onclick = () => shiftTopDay(btn.dataset.day, 1);
+    });
+
 
     const cutDateByKey = new Map(); // key => 'YYYY-MM-DD'
 
@@ -258,13 +347,14 @@ sort($dates);
     }
     function dayCount(ds){ return plan.has(ds) ? plan.get(ds).size : 0; }
 
+
     function dayPacks(ds){
-        const col = document.querySelector(`.col[data-day="${ds}"]`);
-        if(!col) return 0;
+        const col = getPlanCol(ds);
+        if (!col) return 0;
         let sum = 0;
         col.querySelectorAll('.dropzone .rowItem').forEach(r=>{
             const pk = parseInt(r.dataset.packs||'0',10);
-            if(!isNaN(pk)) sum += pk;
+            if (!isNaN(pk)) sum += pk;
         });
         return sum;
     }
@@ -380,17 +470,19 @@ sort($dates);
         planGrid.style.gridTemplateColumns = `repeat(${Math.max(1, days.length)}, minmax(220px, 1fr))`;
         refreshSaveState();
     }
-
+    function getPlanCol(ds){
+        return planGrid.querySelector(`.col[data-day="${ds}"]`);
+    }
     function recalcDayTotal(ds){
-        const col = document.querySelector(`.col[data-day="${ds}"]`);
-        if(!col) return;
+        const col = getPlanCol(ds);
+        if (!col) return;
         let sum = 0;
         col.querySelectorAll('.dropzone .rowItem').forEach(r=>{
             const pk = parseInt(r.dataset.packs||'0',10);
-            if(!isNaN(pk)) sum += pk;
+            if (!isNaN(pk)) sum += pk;
         });
         const out = col.querySelector('.dayTotal .n');
-        if(out) out.textContent = String(sum);
+        if (out) out.textContent = String(sum);
     }
 
     function addToPlan(targetDay, pillEl){
@@ -649,4 +741,31 @@ sort($dates);
         document.getElementById('rngStart').value = ds;
         renderPlanGrid(initialDays.length ? initialDays : [ds]);
     })();
+
+    function cascadeShiftFrom(ds){
+        const s = prompt(`На скільки днів зсунути всі дні ВІД ${ds} (включно)?\nДодатне число — вперед, від’ємне — назад.`, '1');
+        if (s === null) return;
+        const delta = parseInt(s, 10);
+        if (!Number.isFinite(delta) || delta === 0) { alert('Нічого не змінено'); return; }
+
+        fetch('NP/shift_roll_plan_days.php', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ order: orderNumber, start_date: ds, delta })
+        })
+            .then(async r => {
+                let j; try { j = await r.json(); }
+                catch { throw new Error('Backend не JSON'); }
+                if (!j.ok) throw new Error(j.error || 'Помилка');
+                alert(`Оновлено записів: ${j.affected}. Перезавантажую сторінку...`);
+                location.reload();
+            })
+            .catch(e => alert('Не вдалося зсунути: ' + e.message));
+    }
+
+    // прив’язка до кнопок у верхній таблиці
+    document.querySelectorAll('.topCascade').forEach(btn=>{
+        btn.onclick = ()=> cascadeShiftFrom(btn.dataset.day);
+    });
+
 </script>

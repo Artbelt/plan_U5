@@ -21,46 +21,55 @@ if (isset($_GET['ajax']) && $_GET['ajax']=='1') {
 
     // Единый запрос по выбранной заявке
     $sql = "
-    WITH bp AS (
-      SELECT
-        order_number,
-        TRIM(SUBSTRING_INDEX(filter_label,' [',1)) AS base_filter,
-        filter_label,
-        assign_date,
-        `count`
-      FROM build_plan
-      WHERE order_number = :ord
-    ),
-    p AS (
-      SELECT b.order_number, b.base_filter, b.filter_label, b.assign_date, b.`count`,
-             sfs.box, sfs.g_box
-      FROM bp b
-      JOIN salon_filter_structure pfs ON sfs.filter = b.base_filter
-    ),
-    o AS (
-      SELECT order_number, COALESCE(packaging_rate,1) AS packaging_rate
-      FROM orders WHERE order_number = :ord
-    )
-    SELECT
-      :ctype AS component_type,
-      CASE 
-        WHEN :ctype = 'box'       THEN p.box
-        WHEN :ctype = 'g_box'     THEN p.g_box
-      END AS component_name,
-      p.assign_date AS need_by_date,
-      p.filter_label,
-      p.base_filter,
-      CASE 
-        WHEN :ctype = 'g_box' 
-             THEN CEIL(p.`count` / NULLIF((SELECT packaging_rate FROM o LIMIT 1),0))
-        ELSE p.`count`
-      END AS qty
-    FROM p
-    WHERE
-      AND ( :ctype <> 'box'       OR (p.box IS NOT NULL AND p.box <> '') )
-      AND ( :ctype <> 'g_box'     OR (p.g_box IS NOT NULL AND p.g_box <> '') )
-    ORDER BY need_by_date, component_name, base_filter
-    ";
+    WITH bp AS (SELECT
+                order_number,
+                TRIM(SUBSTRING_INDEX(`filter`, ' [', 1)) AS base_filter,
+                `filter`           AS filter_label,
+                plan_date          AS need_by_date,
+                `count`
+              FROM build_plan
+              WHERE order_number = :ord
+            ),
+            p AS (
+                SELECT
+                b.order_number,
+                b.base_filter,
+                b.filter_label,
+                b.need_by_date,
+                b.`count`,
+                sfs.box,
+                sfs.g_box
+              FROM bp b
+              LEFT JOIN salon_filter_structure sfs
+                ON sfs.`filter` = b.base_filter
+            ),
+            o AS (
+                SELECT
+                order_number,
+                COALESCE(packaging_rate, 1) AS packaging_rate
+              FROM orders
+              WHERE order_number = :ord
+            )
+            SELECT
+            :ctype AS component_type,
+              CASE
+                WHEN :ctype = 'box'   THEN p.box
+                WHEN :ctype = 'g_box' THEN p.g_box
+              END AS component_name,
+              p.need_by_date AS need_by_date,
+              p.filter_label,
+              p.base_filter,
+              CASE
+                WHEN :ctype = 'g_box'
+                  THEN CEIL(p.`count` / NULLIF((SELECT packaging_rate FROM o LIMIT 1), 0))
+                ELSE p.`count`
+              END AS qty
+            FROM p
+            WHERE 1=1
+                AND ( :ctype <> 'box'   OR (p.box   IS NOT NULL AND p.box   <> '') )
+              AND ( :ctype <> 'g_box' OR (p.g_box IS NOT NULL AND p.g_box <> '') )
+            ORDER BY p.need_by_date, component_name, p.base_filter;";
+
     $stmt = $pdo->prepare($sql);
     $stmt->execute([':ord'=>$order, ':ctype'=>$ctype]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -228,7 +228,7 @@ function load_filters_into_select(){
     }
     sort($sorted_values);
     echo "<select name='analog_filter'>";
-    echo "<option value=''>выбор аналога</option>";
+    echo "<option value=''>выбор фильтра</option>";
     for ($x=0; $x < count($sorted_values); $x++){
         echo "<option value='".$sorted_values[$x]."'>".$sorted_values[$x]."</option>";
     }

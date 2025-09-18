@@ -10,7 +10,7 @@ $pass = "";
 $SHIFT_HOURS = 11.5;
 
 /* ===================== AJAX save/load/busy ===================== */
-if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy'], true)) {
+if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy','meta'], true)) {
     header('Content-Type: application/json; charset=utf-8');
     try{
         $pdo = new PDO($dsn,$user,$pass,[
@@ -162,6 +162,35 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy'], 
 
             echo json_encode(['ok'=>true,'data'=>$outHrs, 'heights'=>$outHei]); exit;
         }
+        /* -------- meta (rate/height по фильтрам) -------- */
+        /* -------- meta (rate/height по фильтрам) -------- */
+        if ($_GET['action'] === 'meta') {
+            $raw = file_get_contents('php://input');
+            $in  = json_decode($raw, true) ?: [];
+            $filters = array_values(array_filter(array_unique((array)($in['filters'] ?? []))));
+            header('Content-Type: application/json; charset=utf-8');
+
+            if (!$filters) { echo json_encode(['ok'=>true,'items'=>[]], JSON_UNESCAPED_UNICODE); exit; }
+
+            $ph = implode(',', array_fill(0, count($filters), '?'));
+            $st = $pdo->prepare("
+        SELECT
+            sfs.filter,
+            /* приводим к числу, NULL/0 -> 0 */
+            CAST(NULLIF(COALESCE(sfs.build_complexity,0),0) AS DECIMAL(10,3)) AS rate,
+            /* высоту тоже приводим к числу */
+            CAST(pps.p_p_height AS DECIMAL(10,3)) AS height
+        FROM salon_filter_structure sfs
+        LEFT JOIN paper_package_salon pps ON pps.p_p_name = sfs.paper_package
+        WHERE sfs.filter IN ($ph)
+    ");
+            $st->execute($filters);
+            $items = $st->fetchAll(PDO::FETCH_ASSOC);
+            echo json_encode(['ok'=>true, 'items'=>$items], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+
 
         echo json_encode(['ok'=>false,'error'=>'unknown action']); exit;
     } catch(Throwable $e){
@@ -383,6 +412,71 @@ try{
     .dayFoot{margin-top:6px;font-size:12px;color:#374151}
     .tot,.hrsB,.hrs{font-weight:700}
     .hrsHeights{color:#6b7280;font-weight:600;margin-left:4px}
+    /* окремі горизонтальні скрол-контейнери */
+    .scrollX{
+        overflow-x:auto;
+        overflow-y:hidden;
+        -webkit-overflow-scrolling:touch;
+        padding-bottom:4px;         /* щоб було місце під скролбар */
+    }
+    /* робимо внутрішні гріди шириною за контентом,
+       щоб з’являвся власний горизонтальний скрол */
+    .scrollX > .grid,
+    .scrollX > .gridDays{
+        width:max-content;          /* ключове — грід ширший за контейнер */
+        display:grid;
+    }
+
+    /* (необов'язково) симпатичний скролбар */
+    .scrollX::-webkit-scrollbar{height:10px}
+    .scrollX::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px}
+
+    /* скільки місця «залишити» під заголовок h2 та відступи */
+    :root{ --headroom: 86px; } /* підкрути за потреби */
+
+    /* контейнер, що ділить екран по горизонталі на 2 частини */
+    .split {
+        height: calc(100vh - var(--headroom));
+        display: grid;
+        grid-template-rows: 1fr 1fr;   /* верх/низ по 1/2 екрана */
+        gap: 10px;
+    }
+    .pane { min-height: 0; }         /* критично, щоб всередині працював overflow */
+
+    /* панель розтягується на всю висоту своєї «половинки» */
+    .panel-fit{
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* ВЕРТИКАЛЬНИЙ скролл для контенту всередині панелі */
+    .vscroll{
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;   /* вертикальний скрол саме тут */
+        overflow-x: hidden; /* горизонтальний віддаємо під .scrollX всередині */
+    }
+
+    /* ГОРИЗОНТАЛЬНИЙ скролл для грідів */
+    .scrollX{
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 4px;
+    }
+    .scrollX > .grid,
+    .scrollX > .gridDays{
+        width: max-content; /* щоб з'явився власний горизонтальний скрол */
+        display: grid;      /* не ламаємо сітку */
+    }
+
+    /* (необов’язково) симпатичні скролбари */
+    .scrollX::-webkit-scrollbar{height:10px}
+    .scrollX::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px}
+    .vscroll::-webkit-scrollbar{width:10px}
+    .vscroll::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px}
+
 </style>
 
 <div class="wrap">
@@ -399,41 +493,43 @@ try{
                 ?>
             </div>
         </div>
-        <div class="grid" id="topGrid">
-            <?php foreach($srcDates as $d): ?>
-                <div class="col">
-                    <h4><?=h($d)?></h4>
-                    <?php if (empty($pool[$d])): ?>
-                        <div class="muted">нет остатков</div>
-                    <?php else: foreach ($pool[$d] as $p):
-                        $htStr = $p['height'] !== null ? fmt_mm($p['height']) : null;
-                        $ht = $htStr !== null ? ('  <span class="muted">['.$htStr.']</span>') : '';
-                        ?>
-                        <div class="pill<?= ($p['available']<=0 ? ' disabled' : '') ?>"
-                             data-key="<?=h($p['key'])?>"
-                             data-source-date="<?=h($p['source_date'])?>"
-                             data-filter="<?=h($p['filter'])?>"
-                             data-avail="<?=$p['available']?>"
-                             data-rate="<?=$p['rate']?>"
-                             data-height="<?= $htStr !== null ? h($htStr) : '' ?>"
-                             title="Клик — добавить в день сборки">
-                            <div class="pillTop">
-                                <div>
-                                    <div class="pillName"><?=h($p['filter'])?><?= $ht ?></div>
-                                    <div class="pillSub">
-                                        Доступно: <b class="av"><?=$p['available']?></b> шт ·
-                                        Время: ~<b class="time">0.0</b> ч
+        <div class="scrollX" id="topScroll">
+            <div class="grid" id="topGrid">
+                <?php foreach($srcDates as $d): ?>
+                    <div class="col">
+                        <h4><?=h($d)?></h4>
+                        <?php if (empty($pool[$d])): ?>
+                            <div class="muted">нет остатков</div>
+                        <?php else: foreach ($pool[$d] as $p):
+                            $htStr = $p['height'] !== null ? fmt_mm($p['height']) : null;
+                            $ht = $htStr !== null ? ('  <span class="muted">['.$htStr.']</span>') : '';
+                            ?>
+                            <div class="pill<?= ($p['available']<=0 ? ' disabled' : '') ?>"
+                                 data-key="<?=h($p['key'])?>"
+                                 data-source-date="<?=h($p['source_date'])?>"
+                                 data-filter="<?=h($p['filter'])?>"
+                                 data-avail="<?=$p['available']?>"
+                                 data-rate="<?=$p['rate']?>"
+                                 data-height="<?= $htStr !== null ? h($htStr) : '' ?>"
+                                 title="Клик — добавить в день сборки">
+                                <div class="pillTop">
+                                    <div>
+                                        <div class="pillName"><?=h($p['filter'])?><?= $ht ?></div>
+                                        <div class="pillSub">
+                                            Доступно: <b class="av"><?=$p['available']?></b> шт ·
+                                            Время: ~<b class="time">0.0</b>
+                                        </div>
                                     </div>
+                                    <input class="qty" type="number" min="1" step="1"
+                                           value="<?=max(1, (int)$p['available'])?>"
+                                           max="<?=$p['available']?>"
+                                           title="Количество">
                                 </div>
-                                <input class="qty" type="number" min="1" step="1"
-                                       value="<?=max(1, (int)$p['available'])?>"
-                                       max="<?=$p['available']?>"
-                                       title="Количество">
                             </div>
-                        </div>
-                    <?php endforeach; endif; ?>
-                </div>
-            <?php endforeach; ?>
+                        <?php endforeach; endif; ?>
+                    </div>
+                <?php endforeach; ?>
+            </div>
         </div>
     </div>
 
@@ -447,38 +543,38 @@ try{
                 <button class="btn" id="btnSave">Сохранить план</button>
             </div>
         </div>
-
-        <div id="daysGrid" class="gridDays">
-            <?php foreach($buildDays as $d): ?>
-                <div class="col" data-day="<?=h($d)?>">
-                    <h4><?=h($d)?></h4>
-                    <div class="brigWrap">
-                        <div class="brig brig1">
-                            <h5>Бригада 1:
-                                <span class="totB" data-totb="<?=h($d)?>|1">0</span> шт ·
-                                Время: <span class="hrsB" data-hrsb="<?=h($d)?>|1">0.0</span> ч
-                                <span class="hrsHeights" data-hrsh="<?=h($d)?>|1"></span>
-                            </h5>
-                            <div class="dropzone" data-day="<?=h($d)?>" data-team="1"></div>
+        <div class="scrollX" id="daysScroll">
+            <div id="daysGrid" class="gridDays">
+                <?php foreach($buildDays as $d): ?>
+                    <div class="col" data-day="<?=h($d)?>">
+                        <h4><?=h($d)?></h4>
+                        <div class="brigWrap">
+                            <div class="brig brig1">
+                                <h5>Бригада 1:
+                                    <span class="totB" data-totb="<?=h($d)?>|1">0</span> шт ·
+                                    Время: <span class="hrsB" data-hrsb="<?=h($d)?>|1">0.0</span>
+                                    <span class="hrsHeights" data-hrsh="<?=h($d)?>|1"></span>
+                                </h5>
+                                <div class="dropzone" data-day="<?=h($d)?>" data-team="1"></div>
+                            </div>
+                            <div class="brig brig2">
+                                <h5>Бригада 2:
+                                    <span class="totB" data-totb="<?=h($d)?>|2">0</span> шт ·
+                                    Время: <span class="hrsB" data-hrsb="<?=h($d)?>|2">0.0</span>
+                                    <span class="hrsHeights" data-hrsh="<?=h($d)?>|2"></span>
+                                </h5>
+                                <div class="dropzone" data-day="<?=h($d)?>" data-team="2"></div>
+                            </div>
                         </div>
-                        <div class="brig brig2">
-                            <h5>Бригада 2:
-                                <span class="totB" data-totb="<?=h($d)?>|2">0</span> шт ·
-                                Время: <span class="hrsB" data-hrsb="<?=h($d)?>|2">0.0</span> ч
-                                <span class="hrsHeights" data-hrsh="<?=h($d)?>|2"></span>
-                            </h5>
-                            <div class="dropzone" data-day="<?=h($d)?>" data-team="2"></div>
+                        <div class="dayFoot">
+                            Итого за день:
+                            <span class="tot" data-tot-day="<?=h($d)?>">0</span> шт ·
+                            Время: <span class="hrs" data-hrs-day="<?=h($d)?>">0.0</span>
                         </div>
                     </div>
-                    <div class="dayFoot">
-                        Итого за день:
-                        <span class="tot" data-tot-day="<?=h($d)?>">0</span> шт ·
-                        Время: <span class="hrs" data-hrs-day="<?=h($d)?>">0.0</span> ч
-                    </div>
-                </div>
-            <?php endforeach; ?>
+                <?php endforeach; ?>
+            </div>
         </div>
-
         <div class="rangeBar" id="rangeBar" style="display:none">
             <label>Старт: <input type="date" id="rangeStart"></label>
             <label>Дней: <input type="number" id="rangeDays" min="1" value="5"></label>
@@ -609,7 +705,7 @@ try{
                 <div class="brig brig1">
                   <h5>Бригада 1:
                     <span class="totB" data-totb="${escapeHtml(day)}|1">0</span> шт ·
-                    Время: <span class="hrsB" data-hrsb="${escapeHtml(day)}|1">0.0</span> ч
+                    Время: <span class="hrsB" data-hrsb="${escapeHtml(day)}|1">0.0</span>
                     <span class="hrsHeights" data-hrsh="${escapeHtml(day)}|1"></span>
                   </h5>
                   <div class="dropzone" data-day="${escapeHtml(day)}" data-team="1"></div>
@@ -617,7 +713,7 @@ try{
                 <div class="brig brig2">
                   <h5>Бригада 2:
                     <span class="totB" data-totb="${escapeHtml(day)}|2">0</span> шт ·
-                    Время: <span class="hrsB" data-hrsb="${escapeHtml(day)}|2">0.0</span> ч
+                    Время: <span class="hrsB" data-hrsb="${escapeHtml(day)}|2">0.0</span>
                     <span class="hrsHeights" data-hrsh="${escapeHtml(day)}|2"></span>
                   </h5>
                   <div class="dropzone" data-day="${escapeHtml(day)}" data-team="2"></div>
@@ -626,7 +722,7 @@ try{
               <div class="dayFoot">
                 Итого за день:
                 <span class="tot" data-tot-day="${escapeHtml(day)}">0</span> шт ·
-                Время: <span class="hrs" data-hrs-day="${escapeHtml(day)}">0.0</span> ч
+                Время: <span class="hrs" data-hrs-day="${escapeHtml(day)}">0.0</span>
               </div>
             `;
             document.getElementById('daysGrid').appendChild(col);
@@ -753,8 +849,8 @@ try{
         <div class="rowLeft">
             <div><b>${escapeHtml(flt)}</b>${heightBadge}</div>
             <div class="sub">
-                Кол-во: <b class="cnt">${count}</b> шт ·
-                Время: <b class="h">${fmtH(rowHours)}</b> ч
+                <b class="cnt">${count}</b> шт ·
+                Время: <b class="h">${fmtH(rowHours)}</b>
             </div>
         </div>
         <div class="rowCtrls">

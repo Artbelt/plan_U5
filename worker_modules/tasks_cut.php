@@ -189,7 +189,7 @@ foreach ($rows_u2 as $r) {
 </form>
 
 <div class="section">
-    <h3>Задачи от У2</h3>
+    <h3>Задачи от У5</h3>
     <?php if ($bales_u2): ?>
         <table>
             <tbody>
