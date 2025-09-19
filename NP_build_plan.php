@@ -10,7 +10,7 @@ $pass = "";
 $SHIFT_HOURS = 11.5;
 
 /* ===================== AJAX save/load/busy ===================== */
-if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy','meta'], true)) {
+if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy','meta','orders'], true)) {
     header('Content-Type: application/json; charset=utf-8');
     try{
         $pdo = new PDO($dsn,$user,$pass,[
@@ -184,6 +184,7 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy','m
         LEFT JOIN paper_package_salon pps ON pps.p_p_name = sfs.paper_package
         WHERE sfs.filter IN ($ph)
     ");
+
             $st->execute($filters);
             $items = $st->fetchAll(PDO::FETCH_ASSOC);
             echo json_encode(['ok'=>true, 'items'=>$items], JSON_UNESCAPED_UNICODE);
@@ -843,14 +844,14 @@ try{
         row.dataset.hours = rowHours;
         if (height) row.dataset.height = height;
 
-        const heightBadge = height ? ` <span class="sub">· ${escapeHtml(String(height))} мм</span>` : '';
+        const heightBadge = height ? ` <span class="sub">[${escapeHtml(String(height))}]</span>` : '';
 
         row.innerHTML = `
         <div class="rowLeft">
             <div><b>${escapeHtml(flt)}</b>${heightBadge}</div>
             <div class="sub">
                 <b class="cnt">${count}</b> шт ·
-                Время: <b class="h">${fmtH(rowHours)}</b>
+                <b class="h">${fmtH(rowHours)}</b>ч
             </div>
         </div>
         <div class="rowCtrls">

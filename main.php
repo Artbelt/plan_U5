@@ -201,6 +201,10 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))){
                         </form>
                         <form action="NP/corrugation_print.php" method="post" target="_blank">
                             <input type="submit" value="План гофропакетчика " style="height: 20px; width: 220px">
+                        </form>
+                        <form action="buffer_stock.php" method="post" target="_blank">
+                            <input type="submit" value="Буфер гофропакетов" style="height: 20px; width: 220px">
+                        </form>
                         <p>
                         Табель:  <p>
                         <form action="http://localhost/timekeeping/U5/index.php" method="post" target="_blank">
@@ -283,6 +287,8 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))){
 
                                 <div id="filterSearchResult" style="margin-top:12px;"></div>
                             </div>
+
+
 
                             <script>
                                 (function(){

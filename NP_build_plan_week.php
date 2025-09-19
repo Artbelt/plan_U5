@@ -10,6 +10,25 @@ $SHIFT_HOURS = 11.5; // фактическая смена для расчёто�
 $order = $_GET['order'] ?? '';
 if ($order==='') { http_response_code(400); exit('Укажите ?order=...'); }
 function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8'); }
+// Подсказки по заявкам из corrugation_plan (только тут, без API)
+$orderSuggestions = [];
+try{
+    $pdoSug = new PDO($dsn,$user,$pass,[
+        PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC
+    ]);
+    $st = $pdoSug->query("
+        SELECT cp.order_number, MAX(cp.plan_date) AS last_date
+        FROM corrugation_plan cp
+        GROUP BY cp.order_number
+        ORDER BY last_date DESC
+        LIMIT 100
+    ");
+    $orderSuggestions = $st->fetchAll();
+}catch(Throwable $e){
+    $orderSuggestions = [];
+}
+
 ?>
 <!doctype html>
 <html lang="ru">
@@ -120,6 +139,13 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'U
     .chip.b1{ background:var(--brig1); border-color:#e6d8a3 }
     .chip.b2{ background:var(--brig2); border-color:#cfe0ff }
 
+    .orderBox{display:flex;gap:6px;align-items:center}
+    .orderInput{padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;width:170px}
+    .badgeOrder{font-size:12px;color:var(--muted)}
+
+    .orderBox{display:flex;gap:6px;align-items:center}
+    .orderInput{padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;width:170px}
+    .badgeOrder{font-size:12px;color:var(--muted)}
 
 
 </style>
