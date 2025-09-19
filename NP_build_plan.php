@@ -1,8 +1,5 @@
 <?php
 // NP_build_plan.php — план сборки салонных фильтров (2 бригады)
-// Часы считаются по норме (build_complexity, шт/смену): часы = (count / rate_per_shift) * SHIFT_HOURS
-// Время других заявок включено прямо в «Время» по бригадам и «Итого за день».
-// Высота бумаги берётся из paper_package_salon.p_p_height (мм) по связи sfs.paper_package = pps.p_p_name.
 
 $dsn  = "mysql:host=127.0.0.1;dbname=plan_u5;charset=utf8mb4";
 $user = "root";
@@ -162,8 +159,8 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy','m
 
             echo json_encode(['ok'=>true,'data'=>$outHrs, 'heights'=>$outHei]); exit;
         }
-        /* -------- meta (rate/height по фильтрам) -------- */
-        /* -------- meta (rate/height по фильтрам) -------- */
+
+        /* -------- meta -------- */
         if ($_GET['action'] === 'meta') {
             $raw = file_get_contents('php://input');
             $in  = json_decode($raw, true) ?: [];
@@ -174,44 +171,37 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy','m
 
             $ph = implode(',', array_fill(0, count($filters), '?'));
             $st = $pdo->prepare("
-        SELECT
-            sfs.filter,
-            /* приводим к числу, NULL/0 -> 0 */
-            CAST(NULLIF(COALESCE(sfs.build_complexity,0),0) AS DECIMAL(10,3)) AS rate,
-            /* высоту тоже приводим к числу */
-            CAST(pps.p_p_height AS DECIMAL(10,3)) AS height
-        FROM salon_filter_structure sfs
-        LEFT JOIN paper_package_salon pps ON pps.p_p_name = sfs.paper_package
-        WHERE sfs.filter IN ($ph)
-    ");
-
+                SELECT
+                    sfs.filter,
+                    CAST(NULLIF(COALESCE(sfs.build_complexity,0),0) AS DECIMAL(10,3)) AS rate,
+                    CAST(pps.p_p_height AS DECIMAL(10,3)) AS height
+                FROM salon_filter_structure sfs
+                LEFT JOIN paper_package_salon pps ON pps.p_p_name = sfs.paper_package
+                WHERE sfs.filter IN ($ph)
+            ");
             $st->execute($filters);
             $items = $st->fetchAll(PDO::FETCH_ASSOC);
             echo json_encode(['ok'=>true, 'items'=>$items], JSON_UNESCAPED_UNICODE);
             exit;
         }
-        /* -------- progress (агрегированный факт по позиции для заявки) -------- */
+
+        /* -------- progress -------- */
         if ($_GET['action'] === 'progress') {
             $order = $_GET['order'] ?? '';
             header('Content-Type: application/json; charset=utf-8');
             if ($order === '') { echo json_encode(['ok'=>false,'error'=>'no order']); exit; }
 
             $st = $pdo->prepare("
-        SELECT bp.filter,
-               SUM(bp.count)       AS planned,
-               SUM(bp.fact_count)  AS fact
-        FROM build_plan bp
-        WHERE bp.order_number = ?
-        GROUP BY bp.filter
-        ORDER BY bp.filter
-    ");
+                SELECT bp.filter, SUM(bp.count) AS planned, SUM(bp.fact_count) AS fact
+                FROM build_plan bp
+                WHERE bp.order_number = ?
+                GROUP BY bp.filter
+                ORDER BY bp.filter
+            ");
             $st->execute([$order]);
             $rows = $st->fetchAll(PDO::FETCH_ASSOC);
             echo json_encode(['ok'=>true,'items'=>$rows], JSON_UNESCAPED_UNICODE); exit;
         }
-
-
-
 
         echo json_encode(['ok'=>false,'error'=>'unknown action']); exit;
     } catch(Throwable $e){
@@ -239,7 +229,7 @@ try{
         PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC
     ]);
 
-    // источник: corrugation_plan + норма смены + высота бумаги из paper_package_salon
+    // источник: corrugation_plan + норма смены + высота бумаги
     $src = $pdo->prepare("
         SELECT
           cp.plan_date     AS source_date,
@@ -248,10 +238,8 @@ try{
           NULLIF(COALESCE(sfs.build_complexity, 0), 0) AS rate_per_shift,
           pps.p_p_height   AS paper_height
         FROM corrugation_plan cp
-        LEFT JOIN salon_filter_structure sfs
-               ON sfs.filter = cp.filter_label
-        LEFT JOIN paper_package_salon pps
-               ON pps.p_p_name = sfs.paper_package
+        LEFT JOIN salon_filter_structure sfs ON sfs.filter = cp.filter_label
+        LEFT JOIN paper_package_salon pps ON pps.p_p_name = sfs.paper_package
         WHERE cp.order_number = ?
         GROUP BY cp.plan_date, cp.filter_label, pps.p_p_height
         ORDER BY cp.plan_date, cp.filter_label
@@ -259,7 +247,7 @@ try{
     $src->execute([$order]);
     $rowsSrc = $src->fetchAll();
 
-    // уже разложено (сумма по бригадам) — для расчёта «Доступно» сверху
+    // уже разложено — для «Доступно»
     $bp  = $pdo->prepare("SELECT source_date, filter, SUM(count) AS assigned
                           FROM build_plan WHERE order_number=?
                           GROUP BY source_date, filter");
@@ -285,14 +273,14 @@ try{
             'source_date' => $d,
             'filter'      => $flt,
             'available'   => $avail,
-            'rate'        => $r['rate_per_shift'] ? (int)$r['rate_per_shift'] : 0, // шт/смену (11.5 ч)
-            'height'      => isset($r['paper_height']) && $r['paper_height']!==null ? (float)$r['paper_height'] : null, // мм
+            'rate'        => $r['rate_per_shift'] ? (int)$r['rate_per_shift'] : 0,
+            'height'      => isset($r['paper_height']) && $r['paper_height']!==null ? (float)$r['paper_height'] : null,
         ];
     }
     $srcDates = array_keys($srcDates); sort($srcDates);
 
-    // предварительный план текущей заявки
-    $prePlan = []; // $prePlan[day]['1'][] , $prePlan[day]['2'][]
+    // предварительный план
+    $prePlan = [];
     $pre = $pdo->prepare("SELECT plan_date, brigade, source_date, filter, count
                           FROM build_plan WHERE order_number=? ORDER BY plan_date, brigade, filter");
     $pre->execute([$order]);
@@ -306,8 +294,9 @@ try{
         ];
     }
 
-    // какие дни показать — непрерывный диапазон от min до max среди srcDates и prePlan
+    // какие дни показать — непрерывный диапазон
     $buildDays = [];
+    $interesting = array_unique(array_merge(array_keys($prePlan), array_keys($srcDates?['x'=>1]:[]) ? [] : [] ));
     $interesting = array_unique(array_merge(array_keys($prePlan), $srcDates));
     sort($interesting);
 
@@ -318,7 +307,6 @@ try{
             $buildDays[] = $d->format('Y-m-d');
         }
     } else {
-        // как и раньше — 7 следующих дней
         $start = new DateTime();
         for ($i = 0; $i < 7; $i++) {
             $buildDays[] = $start->format('Y-m-d');
@@ -326,10 +314,9 @@ try{
         }
     }
 
-
-    /* === стартовая занятость от других заявок на те же дни (по бригаде) + высоты === */
-    $busyByDayBrig = [];   // [$day][1|2] = ['cnt'=>int,'hrs'=>float]
-    $busyHeiByDay = [];    // [$day][1|2] = [heights...]
+    /* === стартовая занятость других заявок (часы+высоты) === */
+    $busyByDayBrig = [];
+    $busyHeiByDay = [];
     if ($buildDays) {
         $ph = implode(',', array_fill(0, count($buildDays), '?'));
         $q  = $pdo->prepare("
@@ -362,9 +349,8 @@ try{
         }
     }
 
-    // подготовим стартовые карты для JS
-    $busyInit = [];           // часы
-    $busyHeightsInit = [];    // высоты
+    $busyInit = [];
+    $busyHeightsInit = [];
     foreach ($busyByDayBrig as $d => $bb) {
         $busyInit[$d] = [
             1 => round(($bb[1]['hrs'] ?? 0), 1),
@@ -433,173 +419,61 @@ try{
     .dayFoot{margin-top:6px;font-size:12px;color:#374151}
     .tot,.hrsB,.hrs{font-weight:700}
     .hrsHeights{color:#6b7280;font-weight:600;margin-left:4px}
-    /* окремі горизонтальні скрол-контейнери */
-    .scrollX{
-        overflow-x:auto;
-        overflow-y:hidden;
-        -webkit-overflow-scrolling:touch;
-        padding-bottom:4px;         /* щоб було місце під скролбар */
-    }
-    /* робимо внутрішні гріди шириною за контентом,
-       щоб з’являвся власний горизонтальний скрол */
-    .scrollX > .grid,
-    .scrollX > .gridDays{
-        width:max-content;          /* ключове — грід ширший за контейнер */
-        display:grid;
-    }
 
-    /* (необов'язково) симпатичний скролбар */
-    .scrollX::-webkit-scrollbar{height:10px}
-    .scrollX::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px}
-
-    /* скільки місця «залишити» під заголовок h2 та відступи */
-    :root{ --headroom: 86px; } /* підкрути за потреби */
-
-    /* контейнер, що ділить екран по горизонталі на 2 частини */
-    .split {
-        height: calc(100vh - var(--headroom));
-        display: grid;
-        grid-template-rows: 1fr 1fr;   /* верх/низ по 1/2 екрана */
-        gap: 10px;
-    }
-    .pane { min-height: 0; }         /* критично, щоб всередині працював overflow */
-
-    /* панель розтягується на всю висоту своєї «половинки» */
-    .panel-fit{
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-    }
-
-    /* ВЕРТИКАЛЬНИЙ скролл для контенту всередині панелі */
-    .vscroll{
-        flex: 1;
-        min-height: 0;
-        overflow-y: auto;   /* вертикальний скрол саме тут */
-        overflow-x: hidden; /* горизонтальний віддаємо під .scrollX всередині */
-    }
-
-    /* ГОРИЗОНТАЛЬНИЙ скролл для грідів */
-    .scrollX{
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: 4px;
-    }
-    .scrollX > .grid,
-    .scrollX > .gridDays{
-        width: max-content; /* щоб з'явився власний горизонтальний скрол */
-        display: grid;      /* не ламаємо сітку */
-    }
-
-    /* (необов’язково) симпатичні скролбари */
+    /* скроллы */
+    .scrollX{ overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; padding-bottom:4px; }
+    .scrollX > .grid, .scrollX > .gridDays{ width:max-content; display:grid; }
     .scrollX::-webkit-scrollbar{height:10px}
     .scrollX::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px}
     .vscroll::-webkit-scrollbar{width:10px}
     .vscroll::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px}
-    /* компактный вид плашек ТОЛЬКО в верхней таблице */
-    #topGrid .pill{
-        padding:6px 8px;           /* было 8+ — сделал компактнее */
-        border-radius:8px;         /* можно 8 вместо 10 для визуальной «строже» */
-    }
-    #topGrid .pillTop{
-        gap:6px;                   /* плотнее заголовок */
-    }
-    #topGrid .pillName{
 
-        white-space:nowrap;        /* в одну строку */
-        overflow:hidden;
-        text-overflow:ellipsis;    /* троеточие при длинном имени */
-        max-width: 130px;          /* чтобы не раздувалось вместе с инпутом */
-        font-family: "Arial Narrow", Arial, "Nimbus Sans Narrow", system-ui, sans-serif;
-        font-size: 12px;   /* можно 12px если хочешь ещё компактнее */
-        line-height: 1.2;  /* чуть плотнее строки */
+    /* компактный вид плашек ТОЛЬКО вверху */
+    #topGrid .pill{ padding:6px 8px; border-radius:8px; }
+    #topGrid .pillTop{ gap:6px; }
+    #topGrid .pillName{
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        max-width:130px;
+        font-family:"Arial Narrow", Arial, "Nimbus Sans Narrow", system-ui, sans-serif;
+        font-size:12px; line-height:1.2;
     }
-    #topGrid .pillSub{
-        font-size:11px;            /* подпись компактнее */
-    }
-    #topGrid .qty{
-        width:40px;        /* было 72px */
-        padding:4px 6px;   /* можно чуть меньше внутренние отступы */
-        font-size:12px;    /* уменьшить текст */
-    }
-    /* Chrome, Safari, Edge */
-    #topGrid .qty::-webkit-outer-spin-button,
-    #topGrid .qty::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-    }
+    #topGrid .pillSub{ font-size:11px; }
+    #topGrid .qty{ width:40px; padding:4px 6px; font-size:12px; }
+    #topGrid .qty::-webkit-outer-spin-button, #topGrid .qty::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+
     /* компактный режим — змейка */
     .snakeGrid{
-        display: grid;
-        grid-auto-flow: column;
-        grid-template-rows: repeat(15, min-content);
-        grid-auto-columns: minmax(200px, 1fr);
-        gap: 4px;   /* ↓ было 8px, ставим меньше */
+        display:grid;
+        grid-auto-flow:column;
+        grid-template-rows:repeat(15, min-content);
+        grid-auto-columns:minmax(200px, 1fr);
+        gap:4px;
     }
-
-    .snakeGrid .pill{
-        margin: 0;          /* убираем возможные внешние отступы */
-        padding: 4px 6px;   /* можно компактнее внутри */
-    }
-
-    .snakeGrid .dayBadge{
-        margin: 2px 0;      /* уменьшить отступ бейджа от плашек */
-    }
-
-    /* бейдж дня между плашками */
+    .snakeGrid .pill{ margin:0; padding:4px 6px; }
+    .snakeGrid .dayBadge{ margin:2px 0; }
     .dayBadge{
-        border:1px solid #dbe3f0;
-        background:#f4f8ff;
-        border-radius:8px;
-        padding:6px 8px;
-        font-weight:600;
-        font-size:12px;
-        color:#374151;
+        border:1px solid #dbe3f0; background:#f4f8ff; border-radius:8px;
+        padding:6px 8px; font-weight:600; font-size:12px; color:#374151;
     }
 
-    /* ===== Плотный режим (низ) ===== */
-    .dense #daysGrid{ gap:8px } /* было 10px */
-    .dense #daysGrid .col{ padding-left:6px } /* было 8px */
+    /* Плотный режим (низ) */
+    .dense #daysGrid{ gap:8px }
+    .dense #daysGrid .col{ padding-left:6px }
     .dense #daysGrid h4{ margin:0 0 6px; font-size:12px }
-
-    /* карточки бригад */
-    .dense .brigWrap{ gap:4px }                        /* было 6px */
-    .dense .brig{ padding:4px; border-radius:6px }     /* было 6px и R=8px */
-    .dense .brig h5{
-        margin:0 0 4px; font-size:11px; line-height:1.2;
-        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    }
-
-    /* общий футер дня */
+    .dense .brigWrap{ gap:4px }
+    .dense .brig{ padding:4px; border-radius:6px }
+    .dense .brig h5{ margin:0 0 4px; font-size:11px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .dense .dayFoot{ margin-top:4px; font-size:12px }
-
-    /* строки позиций */
-    .dense .rowItem{
-        padding:4px 6px; margin:3px 0; border-radius:6px;  /* было 6/8 и margin 6 */
-    }
+    .dense .rowItem{ padding:4px 6px; margin:3px 0; border-radius:6px; }
     .dense .rowLeft b{ font-weight:600 }
     .dense .rowLeft .sub{ font-size:11px }
-
-    /* кнопки управления строкой */
-    .dense .rowCtrls .mv,
-    .dense .rowCtrls .rm{
-        width:22px; height:22px; padding:0;
-        display:flex; align-items:center; justify-content:center;
-    }
-
-    /* сетка дней — уже колонки */
-    .dense .gridDays{
-        grid-template-columns:repeat(<?=count($buildDays)?:1?>, minmax(200px,1fr)); /* было minmax(300px,1fr) */
-    }
-
-    /* цифры и часы в заголовках бригад чуток компактнее */
+    .dense .rowCtrls .mv, .dense .rowCtrls .rm{ width:22px; height:22px; padding:0; display:flex; align-items:center; justify-content:center; }
+    .dense .gridDays{ grid-template-columns:repeat(<?=count($buildDays)?:1?>, minmax(200px,1fr)); }
     .dense .totB, .dense .hrsB, .dense .hrsHeights{ font-weight:600 }
     .dense .hrsHeights{ font-size:11px }
 
-
-
-
+    /* плавная смена фона при подсветке */
+    #topGrid .pill, #daysGrid .rowItem{ transition: background-color .15s ease, border-color .15s ease; }
 </style>
 
 <div class="wrap">
@@ -614,6 +488,8 @@ try{
             </div>
             <div style="display:flex;align-items:center;gap:8px">
                 <button class="btn secondary" id="btnSnake">Компактный режим</button>
+                <!-- ПЕРЕКЛЮЧАТЕЛЬ ПОДСВЕТКИ -->
+                <button class="btn secondary" id="btnHeightColors">Цвет по высоте: Вкл</button>
                 <div class="muted">
                     <?php
                     $availCount=0; foreach($pool as $list){ foreach($list as $it){ $availCount+=$it['available']; } }
@@ -643,11 +519,9 @@ try{
                                  title="Клик — добавить в день сборки">
                                 <div class="pillTop">
                                     <div>
-                                        <!--- название + высота в верхних плашках -->
                                         <div class="pillName"><?=h($p['filter'])?><?= $ht ?></div>
                                         <div class="pillSub">
-                                             <b class="av"><?=$p['available']?></b> шт ·
-                                             ~<b class="time">0.0</b>ч
+                                            <b class="av"><?=$p['available']?></b> шт · ~<b class="time">0.0</b>ч
                                         </div>
                                     </div>
                                     <input class="qty" type="number" min="1" step="1"
@@ -742,34 +616,32 @@ try{
 
 <script>
     const ORDER = <?= json_encode($order) ?>;
-    const SHIFT_HOURS = <?= json_encode($SHIFT_HOURS) ?>; // 11.5 ч
+    const SHIFT_HOURS = <?= json_encode($SHIFT_HOURS) ?>;
 
     // ===== in-memory =====
-    // plan.get(day) => { '1': [ {source_date, filter, count, rate, height?} ], '2': [...] }
     const plan   = new Map();
-    const countsByTeam = new Map(); // {'1':cnt,'2':cnt,'sum':cnt}
-    const hoursByTeam  = new Map(); // {'1':hrs,'2':hrs,'sum':hrs}
+    const countsByTeam = new Map();
+    const hoursByTeam  = new Map();
 
     let lastDay  = null;
     let lastTeam = '1';
 
     const prePlan = <?= json_encode($prePlan, JSON_UNESCAPED_UNICODE) ?>;
 
-    // стартовая занятость от других заявок (часы) и высоты
+    // стартовые часы/высоты других заявок
     const BUSY_INIT = <?= json_encode($busyInit, JSON_UNESCAPED_UNICODE) ?>;
     const BUSY_HEIGHTS_INIT = <?= json_encode($busyHeightsInit, JSON_UNESCAPED_UNICODE) ?>;
 
-    const busyHours = new Map();   // Map(day -> {'1':hours, '2':hours})
+    const busyHours = new Map();
     Object.keys(BUSY_INIT || {}).forEach(d => {
         busyHours.set(d, {'1': BUSY_INIT[d][1] || 0, '2': BUSY_INIT[d][2] || 0});
     });
-
-    const busyHeights = new Map(); // Map(day -> {'1':[heights], '2':[heights]})
+    const busyHeights = new Map();
     Object.keys(BUSY_HEIGHTS_INIT || {}).forEach(d => {
         busyHeights.set(d, {'1': BUSY_HEIGHTS_INIT[d][1] || [], '2': BUSY_HEIGHTS_INIT[d][2] || []});
     });
 
-    // базовые доступности для плашек
+    // базовые доступности
     document.querySelectorAll('.pill').forEach(p=>{
         if (!p.dataset.avail0) p.dataset.avail0 = p.dataset.avail || '0';
     });
@@ -793,6 +665,60 @@ try{
         return [...document.querySelectorAll('#daysGrid .col[data-day]')].map(c=>c.dataset.day);
     }
 
+    /* ===== ПОДСВЕТКА ПО ВЫСОТЕ + ПЕРЕКЛЮЧАТЕЛЬ ===== */
+    const HEIGHT_COLORS_FIXED = {
+        '20':{bg:'#DCFCE7',bd:'#86EFAC'}, '25':{bg:'#E0F2FE',bd:'#93C5FD'},
+        '27':{bg:'#DBEAFE',bd:'#93C5FD'}, '30':{bg:'#FEF9C3',bd:'#FDE68A'},
+        '32':{bg:'#F3E8FF',bd:'#D8B4FE'}, '35':{bg:'#FFE4E6',bd:'#FDA4AF'},
+        '40':{bg:'#E2E8F0',bd:'#CBD5E1'},
+    };
+    const PALETTE = [
+        ['#E0F2FE','#93C5FD'], ['#DCFCE7','#86EFAC'], ['#FCE7F3','#F9A8D4'],
+        ['#FEF3C7','#FCD34D'], ['#F3E8FF','#D8B4FE'], ['#FFE4E6','#FDA4AF'],
+        ['#DDD6FE','#C4B5FD'], ['#CCFBF1','#5EEAD4']
+    ];
+    function hashToTheme(s){ let h=0; for(let i=0;i<s.length;i++) h=(h*31 + s.charCodeAt(i))>>>0; const [bg,bd]=PALETTE[h%PALETTE.length]; return {bg,bd}; }
+    function themeForHeight(raw){
+        if (raw==null) return null;
+        const txt = String(raw).trim(); if (!txt) return null;
+        const key = txt.replace(/[^\d.]/g,'');
+        return HEIGHT_COLORS_FIXED[key] || hashToTheme(txt);
+    }
+
+    // состояние переключателя (persist)
+    let heightColorOn = (localStorage.getItem('heightColorOn') ?? '1') !== '0';
+    const btnHC = document.getElementById('btnHeightColors');
+    function setHCLabel(){ if(btnHC) btnHC.textContent = 'Цвет по высоте: ' + (heightColorOn ? 'Вкл' : 'Выкл'); }
+    if (btnHC){
+        setHCLabel();
+        btnHC.addEventListener('click', ()=>{
+            heightColorOn = !heightColorOn;
+            localStorage.setItem('heightColorOn', heightColorOn ? '1' : '0');
+            setHCLabel();
+            applyHeightColors();
+        });
+    }
+
+    function applyHeightColors(){
+        const topPills = document.querySelectorAll('#topGrid .pill');
+        const rows = document.querySelectorAll('#daysGrid .rowItem');
+
+        if (!heightColorOn){
+            topPills.forEach(el=>{ el.style.backgroundColor=''; el.style.borderColor=''; });
+            rows.forEach(el=>{ el.style.backgroundColor=''; el.style.borderColor=''; });
+            return;
+        }
+        topPills.forEach(el=>{
+            const t = themeForHeight(el.dataset.height);
+            if (t){ el.style.backgroundColor=t.bg; el.style.borderColor=t.bd; }
+        });
+        rows.forEach(el=>{
+            const t = themeForHeight(el.dataset.height);
+            if (t){ el.style.backgroundColor=t.bg; el.style.borderColor=t.bd; }
+        });
+    }
+    /* ===== /ПОДСВЕТКА ===== */
+
     async function fetchBusyForDays(daysArr){
         if (!Array.isArray(daysArr) || !daysArr.length) return;
         try{
@@ -803,14 +729,12 @@ try{
             const data = await res.json();
             if (!data.ok) return;
 
-            // часы
             const map = data.data || {};
             daysArr.forEach(d=>{
                 const v = map[d] || {1:0,2:0};
                 busyHours.set(d, {'1': +v[1] || 0, '2': +v[2] || 0});
             });
 
-            // высоты (могут отсутствовать в старой версии)
             const hm = data.heights || {};
             daysArr.forEach(d=>{
                 const hv = hm[d] || {};
@@ -926,7 +850,7 @@ try{
     }
 
     function collectUsedFromPlan(){
-        const map = new Map(); // key = src|filter -> used (по штукам)
+        const map = new Map();
         plan.forEach(byTeam=>{
             ['1','2'].forEach(team=>{
                 (byTeam[team]||[]).forEach(r=>{
@@ -938,9 +862,8 @@ try{
         return map;
     }
 
-    // верхние плашки: пересчёт времени
     function updatePillTime(pill){
-        const rate = +pill.dataset.rate || 0;          // шт/смену
+        const rate = +pill.dataset.rate || 0;
         const qty  = +(pill.querySelector('.qty')?.value || 0);
         const hours = rate>0 ? (qty / rate) * SHIFT_HOURS : 0;
         const tEl = pill.querySelector('.time');
@@ -958,7 +881,7 @@ try{
         const dz = document.querySelector(`.dropzone[data-day="${cssEscape(day)}"][data-team="${cssEscape(team)}"]`);
         if (!dz) return;
 
-        const r = Math.max(0, +rate || 0);            // шт/смену
+        const r = Math.max(0, +rate || 0);
         const rowHours = r>0 ? (count / r) * SHIFT_HOURS : 0;
 
         plan.get(day)[team].push({source_date:src, filter:flt, count:count, rate:r, height:height ?? ''});
@@ -997,6 +920,7 @@ try{
         row.querySelector('.mvR').onclick = ()=> moveRow(row, +1);
 
         incTotals(day, team, count, rowHours);
+        applyHeightColors();
     }
 
     function removeRow(row){
@@ -1020,10 +944,10 @@ try{
 
         incTotals(day, team, -cnt, -hrs);
         row.remove();
+        applyHeightColors();
     }
 
     function moveRow(row, dir){
-        // dir = -1 (влево) или +1 (вправо)
         const days = getAllDays();
         const curDay = row.dataset.day;
         const i = days.indexOf(curDay);
@@ -1042,7 +966,6 @@ try{
         const hrs = +row.dataset.hours || 0;
         const height = row.dataset.height || '';
 
-        // убрать из старого дня
         const arr = plan.get(curDay)?.[team] || [];
         const idx = arr.findIndex(x =>
             x.source_date === src &&
@@ -1055,20 +978,18 @@ try{
             plan.get(curDay)[team] = arr;
         }
 
-        // добавить в новый день
         ensureDay(newDay);
         plan.get(newDay)[team].push({source_date:src, filter:flt, count:cnt, rate:r, height});
 
-        // переставить DOM
         const dzNew = document.querySelector(`.dropzone[data-day="${cssEscape(newDay)}"][data-team="${cssEscape(team)}"]`);
         if (dzNew) dzNew.appendChild(row);
 
-        // обновить итоги
         incTotals(curDay, team, -cnt, -hrs);
         incTotals(newDay, team, +cnt, +hrs);
 
         row.dataset.day = newDay;
         lastDay = newDay;
+        applyHeightColors();
     }
 
     // ===== модалка дня/бригады =====
@@ -1149,7 +1070,7 @@ try{
 
         const src  = pill.dataset.sourceDate;
         const flt  = pill.dataset.filter;
-        const rate = parseInt(pill.dataset.rate || '0', 10) || 0; // шт/смену
+        const rate = parseInt(pill.dataset.rate || '0', 10) || 0;
         const height = pill.dataset.height || '';
 
         addRowElement(day, team, src, flt, take, rate, height);
@@ -1160,7 +1081,7 @@ try{
         lastDay = day;
     }
 
-    // pre-render сохранённого плана
+    // пререндер сохранённого плана
     (function renderPre(){
         Object.keys(prePlan||{}).forEach(day=>{
             ensureDay(day);
@@ -1174,9 +1095,10 @@ try{
             });
             lastDay = day;
         });
+        applyHeightColors();
     })();
 
-    // скорректировать доступность после пререндеринга
+    // корректировка доступности после пререндеринга
     (function applyAvailAfterPre(){
         const used = collectUsedFromPlan();
         document.querySelectorAll('.pill').forEach(p=>{
@@ -1187,7 +1109,7 @@ try{
         });
     })();
 
-    // подтянуть «другие часы/высоты» на стартовые дни
+    // подтянуть «другие часы/высоты»
     fetchBusyForDays(getAllDays());
 
     // добавление диапазона дней
@@ -1290,21 +1212,22 @@ try{
                 updateAvailForPill(p, rest);
             });
 
-            // подтянуть занятость и высоты по дням и обновить «Время [высоты]»
             fetchBusyForDays(days);
+            applyHeightColors();
 
             alert('План сборки загружен.');
         }catch(e){
             alert('Не удалось загрузить: '+e.message);
         }
     }
+
+    // Змейка (верх)
     (function(){
         const btn = document.getElementById('btnSnake');
-        const topScroll = document.getElementById('topScroll');
         const topGrid   = document.getElementById('topGrid');
         if (!btn || !topGrid) return;
 
-        const PER_COL = 15;                          // сколько позиций в колонке
+        const PER_COL = 15;
         let snakeOn = false;
         let originalHTML = null;
 
@@ -1319,56 +1242,42 @@ try{
         function enableSnake(){
             if (snakeOn) return;
             snakeOn = true;
-            // запомним исходную разметку, чтобы уметь откатить
             if (originalHTML === null) originalHTML = topGrid.innerHTML;
 
-            // собираем ВСЕ плашки по дням (как они отрендерены PHP)
             const cols = [...topGrid.querySelectorAll('.col')];
             const items = [];
             cols.forEach(col=>{
                 const day = col.querySelector('h4')?.textContent?.trim() || '';
                 const pills = [...col.querySelectorAll('.pill')];
                 if (!pills.length) return;
-                // бейдж дня перед первой плашкой этого дня
                 items.push(makeDayBadge(day));
                 pills.forEach(p => items.push(p));
             });
 
-            // очистим грид и переключим класс
             topGrid.innerHTML = '';
             topGrid.classList.add('snakeGrid');
 
-            // положим элементы в грид и выставим координаты
             items.forEach((el, idx)=>{
-                // ВАЖНО: переносим ноды, не клонируем — события/датасеты сохраняются
                 topGrid.appendChild(el);
-                // позиционирование по сетке: 15 строк на колонку
                 const row = (idx % PER_COL) + 1;
                 const col = Math.floor(idx / PER_COL) + 1;
                 el.style.gridRow = String(row);
                 el.style.gridColumn = String(col);
-                // чуть сжать бейджи визуально
-                if (el.classList.contains('dayBadge')) {
-                    el.style.marginBottom = '2px';
-                }
+                if (el.classList.contains('dayBadge')) el.style.marginBottom = '2px';
             });
+            applyHeightColors();
         }
 
         function disableSnake(){
             if (!snakeOn) return;
             snakeOn = false;
-            // вернуть исходную разметку
             if (originalHTML !== null) {
                 topGrid.classList.remove('snakeGrid');
                 topGrid.innerHTML = originalHTML;
                 originalHTML = null;
 
-                // переинициализировать обработчики только для верхних плашек (они были навешаны ранее)
-                // минимальный ре-байнд, чтобы клики снова работали:
                 topGrid.querySelectorAll('.pill').forEach(pill=>{
-                    // время на плашках после восстановления
                     updatePillTime(pill);
-                    // восстановить клики
                     pill.addEventListener('click', (e)=>{
                         if (e.target.closest('.qty')) return;
                         const avail = +pill.dataset.avail || 0;
@@ -1386,6 +1295,7 @@ try{
                     const q = pill.querySelector('.qty');
                     if (q) q.addEventListener('input', ()=> updatePillTime(pill));
                 });
+                applyHeightColors();
             }
         }
 
@@ -1400,7 +1310,7 @@ try{
         });
     })();
 
-
+    // Плотный режим (низ)
     (function(){
         const btnDense = document.getElementById('btnDense');
         if (!btnDense) return;
@@ -1413,4 +1323,6 @@ try{
         });
     })();
 
+    // первичная подсветка
+    applyHeightColors();
 </script>
