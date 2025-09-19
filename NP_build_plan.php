@@ -558,6 +558,46 @@ try{
         color:#374151;
     }
 
+    /* ===== Плотный режим (низ) ===== */
+    .dense #daysGrid{ gap:8px } /* было 10px */
+    .dense #daysGrid .col{ padding-left:6px } /* было 8px */
+    .dense #daysGrid h4{ margin:0 0 6px; font-size:12px }
+
+    /* карточки бригад */
+    .dense .brigWrap{ gap:4px }                        /* было 6px */
+    .dense .brig{ padding:4px; border-radius:6px }     /* было 6px и R=8px */
+    .dense .brig h5{
+        margin:0 0 4px; font-size:11px; line-height:1.2;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+
+    /* общий футер дня */
+    .dense .dayFoot{ margin-top:4px; font-size:12px }
+
+    /* строки позиций */
+    .dense .rowItem{
+        padding:4px 6px; margin:3px 0; border-radius:6px;  /* было 6/8 и margin 6 */
+    }
+    .dense .rowLeft b{ font-weight:600 }
+    .dense .rowLeft .sub{ font-size:11px }
+
+    /* кнопки управления строкой */
+    .dense .rowCtrls .mv,
+    .dense .rowCtrls .rm{
+        width:22px; height:22px; padding:0;
+        display:flex; align-items:center; justify-content:center;
+    }
+
+    /* сетка дней — уже колонки */
+    .dense .gridDays{
+        grid-template-columns:repeat(<?=count($buildDays)?:1?>, minmax(200px,1fr)); /* было minmax(300px,1fr) */
+    }
+
+    /* цифры и часы в заголовках бригад чуток компактнее */
+    .dense .totB, .dense .hrsB, .dense .hrsHeights{ font-weight:600 }
+    .dense .hrsHeights{ font-size:11px }
+
+
 
 
 </style>
@@ -628,6 +668,7 @@ try{
         <div class="head">
             <b>Сетка дней сборки</b>
             <div style="display:flex;gap:8px;align-items:center">
+                <button class="btn secondary" id="btnDense">Плотный режим</button>
                 <button class="btn secondary" id="btnAddRange">Добавить дни</button>
                 <button class="btn secondary" id="btnLoad">Загрузить план</button>
                 <button class="btn" id="btnSave">Сохранить план</button>
@@ -1356,6 +1397,19 @@ try{
                 btn.textContent = 'Компактный режим';
                 disableSnake();
             }
+        });
+    })();
+
+
+    (function(){
+        const btnDense = document.getElementById('btnDense');
+        if (!btnDense) return;
+        let denseOn = false;
+
+        btnDense.addEventListener('click', ()=>{
+            denseOn = !denseOn;
+            document.body.classList.toggle('dense', denseOn);
+            btnDense.textContent = denseOn ? 'Обычный режим' : 'Плотный режим';
         });
     })();
 

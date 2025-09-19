@@ -4,10 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="додано тижневий план">
+    <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="сделан компакнтій режим для верхней таблиці">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/NP_build_plan.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_build_plan.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/NP_build_plan_week.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_build_plan_week.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -131,7 +130,7 @@
       <workItem from="1755165694246" duration="9409000" />
       <workItem from="1755233698449" duration="98025000" />
       <workItem from="1756794873917" duration="30084000" />
-      <workItem from="1757569924407" duration="61051000" />
+      <workItem from="1757569924407" duration="62526000" />
     </task>
     <task id="LOCAL-00001" summary="Добавлено окно просмотра параметров изделия">
       <created>1752823327851</created>
@@ -252,7 +251,21 @@
       <option name="project" value="LOCAL" />
       <updated>1758265159098</updated>
     </task>
-    <option name="localTasksCounter" value="18" />
+    <task id="LOCAL-00018" summary="чекпоинт настройки интерфейса плана сборки">
+      <created>1758277527382</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1758277527382</updated>
+    </task>
+    <task id="LOCAL-00019" summary="сделан компакнтій режим для верхней таблиці">
+      <created>1758277831197</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1758277831197</updated>
+    </task>
+    <option name="localTasksCounter" value="20" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -271,6 +284,8 @@
     <MESSAGE value="допрацьовано план раскрою" />
     <MESSAGE value="допрацьовано план гофрування" />
     <MESSAGE value="додано тижневий план" />
-    <option name="LAST_COMMIT_MESSAGE" value="додано тижневий план" />
+    <MESSAGE value="чекпоинт настройки интерфейса плана сборки" />
+    <MESSAGE value="сделан компакнтій режим для верхней таблиці" />
+    <option name="LAST_COMMIT_MESSAGE" value="сделан компакнтій режим для верхней таблиці" />
   </component>
 </project>
