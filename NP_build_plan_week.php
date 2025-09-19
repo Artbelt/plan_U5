@@ -147,6 +147,23 @@ try{
     .orderInput{padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;width:170px}
     .badgeOrder{font-size:12px;color:var(--muted)}
 
+    /* глобальная заливка прогресса (факт/план по позиции по всей заявке) */
+    .event .fillGlobal{
+        position:absolute; left:0; right:0; bottom:0;
+        background:rgba(22,163,74,.28);            /* зелёная полупрозрачная */
+        border-top:1px solid rgba(22,163,74,.55);
+        pointer-events:none;
+    }
+
+    /* тонкая шапка при перепроизводстве (факт > план) */
+    .event .overHat{
+        position:absolute; left:0; right:0; top:0; height:4px;
+        background:repeating-linear-gradient(45deg,
+        rgba(220,38,38,.5) 0, rgba(220,38,38,.5) 6px, transparent 6px, transparent 12px);
+        pointer-events:none;
+    }
+
+
 
 </style>
 
@@ -177,6 +194,7 @@ try{
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const API = 'NP_build_plan.php';
+
         if (!window.CSS || typeof CSS.escape !== 'function') {
             window.CSS = window.CSS || {}; CSS.escape = (s)=> String(s).replace(/[^a-zA-Z0-9_\-]/g, m => '\\' + m);
         }
@@ -194,6 +212,7 @@ try{
         const TINY_H    = 0.7;  // ≤0.7 ч — очень компактно: оставить только заголовок
         const TEAM_CAP = { '1': SHIFT_H, '2': 8 };  // вместимость дорожки: бр-1 = 11.5ч, бр-2 = 8ч
         const cap = (team) => +(TEAM_CAP[team] ?? SHIFT_H);
+
 
 
 

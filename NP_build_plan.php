@@ -10,7 +10,7 @@ $pass = "";
 $SHIFT_HOURS = 11.5;
 
 /* ===================== AJAX save/load/busy ===================== */
-if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy','meta','orders'], true)) {
+if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy','meta','orders','progress'], true)) {
     header('Content-Type: application/json; charset=utf-8');
     try{
         $pdo = new PDO($dsn,$user,$pass,[
@@ -190,6 +190,26 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy','m
             echo json_encode(['ok'=>true, 'items'=>$items], JSON_UNESCAPED_UNICODE);
             exit;
         }
+        /* -------- progress (агрегированный факт по позиции для заявки) -------- */
+        if ($_GET['action'] === 'progress') {
+            $order = $_GET['order'] ?? '';
+            header('Content-Type: application/json; charset=utf-8');
+            if ($order === '') { echo json_encode(['ok'=>false,'error'=>'no order']); exit; }
+
+            $st = $pdo->prepare("
+        SELECT bp.filter,
+               SUM(bp.count)       AS planned,
+               SUM(bp.fact_count)  AS fact
+        FROM build_plan bp
+        WHERE bp.order_number = ?
+        GROUP BY bp.filter
+        ORDER BY bp.filter
+    ");
+            $st->execute([$order]);
+            $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+            echo json_encode(['ok'=>true,'items'=>$rows], JSON_UNESCAPED_UNICODE); exit;
+        }
+
 
 
 
@@ -384,7 +404,7 @@ try{
     .muted{color:var(--muted)}
     .sub{font-size:12px;color:var(--muted)}
 
-    .grid{display:grid;grid-template-columns:repeat(<?=count($srcDates)?:1?>,minmax(260px,1fr));gap:10px}
+    .grid{display:grid;grid-template-columns:repeat(<?=count($srcDates)?:1?>,minmax(120px,1fr));gap:10px}
     .gridDays{display:grid;grid-template-columns:repeat(<?=count($buildDays)?:1?>,minmax(300px,1fr));gap:10px}
 
     .col{border-left:1px solid var(--line);padding-left:8px;min-height:200px}
@@ -477,11 +497,44 @@ try{
     .scrollX::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px}
     .vscroll::-webkit-scrollbar{width:10px}
     .vscroll::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px}
+    /* компактный вид плашек ТОЛЬКО в верхней таблице */
+    #topGrid .pill{
+        padding:6px 8px;           /* было 8+ — сделал компактнее */
+        border-radius:8px;         /* можно 8 вместо 10 для визуальной «строже» */
+    }
+    #topGrid .pillTop{
+        gap:6px;                   /* плотнее заголовок */
+    }
+    #topGrid .pillName{
+
+        white-space:nowrap;        /* в одну строку */
+        overflow:hidden;
+        text-overflow:ellipsis;    /* троеточие при длинном имени */
+        max-width: 130px;          /* чтобы не раздувалось вместе с инпутом */
+        font-family: "Arial Narrow", Arial, "Nimbus Sans Narrow", system-ui, sans-serif;
+        font-size: 12px;   /* можно 12px если хочешь ещё компактнее */
+        line-height: 1.2;  /* чуть плотнее строки */
+    }
+    #topGrid .pillSub{
+        font-size:11px;            /* подпись компактнее */
+    }
+    #topGrid .qty{
+        width:40px;        /* было 72px */
+        padding:4px 6px;   /* можно чуть меньше внутренние отступы */
+        font-size:12px;    /* уменьшить текст */
+    }
+    /* Chrome, Safari, Edge */
+    #topGrid .qty::-webkit-outer-spin-button,
+    #topGrid .qty::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
 
 </style>
 
 <div class="wrap">
-    <h2>План сборки (две бригады) — заявка <?=h($order)?></h2>
+    <b>План сборки заявки <?=h($order)?></b>
 
     <!-- ВЕРХ: остатки после гофры -->
     <div class="panel">
@@ -515,10 +568,11 @@ try{
                                  title="Клик — добавить в день сборки">
                                 <div class="pillTop">
                                     <div>
+                                        <!--- название + высота в верхних плашках -->
                                         <div class="pillName"><?=h($p['filter'])?><?= $ht ?></div>
                                         <div class="pillSub">
-                                            Доступно: <b class="av"><?=$p['available']?></b> шт ·
-                                            Время: ~<b class="time">0.0</b>
+                                             <b class="av"><?=$p['available']?></b> шт ·
+                                             ~<b class="time">0.0</b>ч
                                         </div>
                                     </div>
                                     <input class="qty" type="number" min="1" step="1"
