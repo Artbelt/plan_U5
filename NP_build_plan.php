@@ -529,6 +529,35 @@ try{
         -webkit-appearance: none;
         margin: 0;
     }
+    /* компактный режим — змейка */
+    .snakeGrid{
+        display: grid;
+        grid-auto-flow: column;
+        grid-template-rows: repeat(15, min-content);
+        grid-auto-columns: minmax(200px, 1fr);
+        gap: 4px;   /* ↓ было 8px, ставим меньше */
+    }
+
+    .snakeGrid .pill{
+        margin: 0;          /* убираем возможные внешние отступы */
+        padding: 4px 6px;   /* можно компактнее внутри */
+    }
+
+    .snakeGrid .dayBadge{
+        margin: 2px 0;      /* уменьшить отступ бейджа от плашек */
+    }
+
+    /* бейдж дня между плашками */
+    .dayBadge{
+        border:1px solid #dbe3f0;
+        background:#f4f8ff;
+        border-radius:8px;
+        padding:6px 8px;
+        font-weight:600;
+        font-size:12px;
+        color:#374151;
+    }
+
 
 
 </style>
@@ -539,12 +568,18 @@ try{
     <!-- ВЕРХ: остатки после гофры -->
     <div class="panel">
         <div class="head">
-            <div><b>Доступно к сборке (после гофры)</b> <span class="sub">клик по плашке — выбрать день и бригаду</span></div>
-            <div class="muted">
-                <?php
-                $availCount=0; foreach($pool as $list){ foreach($list as $it){ $availCount+=$it['available']; } }
-                echo 'Всего доступно: <b>'.number_format($availCount,0,'.',' ').'</b> шт';
-                ?>
+            <div>
+                <b>Доступно к сборке (после гофры)</b>
+                <span class="sub">клик по плашке — выбрать день и бригаду</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+                <button class="btn secondary" id="btnSnake">Компактный режим</button>
+                <div class="muted">
+                    <?php
+                    $availCount=0; foreach($pool as $list){ foreach($list as $it){ $availCount+=$it['available']; } }
+                    echo 'Всего доступно: <b>'.number_format($availCount,0,'.',' ').'</b> шт';
+                    ?>
+                </div>
             </div>
         </div>
         <div class="scrollX" id="topScroll">
@@ -1222,4 +1257,106 @@ try{
             alert('Не удалось загрузить: '+e.message);
         }
     }
+    (function(){
+        const btn = document.getElementById('btnSnake');
+        const topScroll = document.getElementById('topScroll');
+        const topGrid   = document.getElementById('topGrid');
+        if (!btn || !topGrid) return;
+
+        const PER_COL = 15;                          // сколько позиций в колонке
+        let snakeOn = false;
+        let originalHTML = null;
+
+        function makeDayBadge(day){
+            const d = document.createElement('div');
+            d.className = 'dayBadge';
+            d.textContent = day;
+            d.dataset.isDayBadge = '1';
+            return d;
+        }
+
+        function enableSnake(){
+            if (snakeOn) return;
+            snakeOn = true;
+            // запомним исходную разметку, чтобы уметь откатить
+            if (originalHTML === null) originalHTML = topGrid.innerHTML;
+
+            // собираем ВСЕ плашки по дням (как они отрендерены PHP)
+            const cols = [...topGrid.querySelectorAll('.col')];
+            const items = [];
+            cols.forEach(col=>{
+                const day = col.querySelector('h4')?.textContent?.trim() || '';
+                const pills = [...col.querySelectorAll('.pill')];
+                if (!pills.length) return;
+                // бейдж дня перед первой плашкой этого дня
+                items.push(makeDayBadge(day));
+                pills.forEach(p => items.push(p));
+            });
+
+            // очистим грид и переключим класс
+            topGrid.innerHTML = '';
+            topGrid.classList.add('snakeGrid');
+
+            // положим элементы в грид и выставим координаты
+            items.forEach((el, idx)=>{
+                // ВАЖНО: переносим ноды, не клонируем — события/датасеты сохраняются
+                topGrid.appendChild(el);
+                // позиционирование по сетке: 15 строк на колонку
+                const row = (idx % PER_COL) + 1;
+                const col = Math.floor(idx / PER_COL) + 1;
+                el.style.gridRow = String(row);
+                el.style.gridColumn = String(col);
+                // чуть сжать бейджи визуально
+                if (el.classList.contains('dayBadge')) {
+                    el.style.marginBottom = '2px';
+                }
+            });
+        }
+
+        function disableSnake(){
+            if (!snakeOn) return;
+            snakeOn = false;
+            // вернуть исходную разметку
+            if (originalHTML !== null) {
+                topGrid.classList.remove('snakeGrid');
+                topGrid.innerHTML = originalHTML;
+                originalHTML = null;
+
+                // переинициализировать обработчики только для верхних плашек (они были навешаны ранее)
+                // минимальный ре-байнд, чтобы клики снова работали:
+                topGrid.querySelectorAll('.pill').forEach(pill=>{
+                    // время на плашках после восстановления
+                    updatePillTime(pill);
+                    // восстановить клики
+                    pill.addEventListener('click', (e)=>{
+                        if (e.target.closest('.qty')) return;
+                        const avail = +pill.dataset.avail || 0;
+                        if (avail <= 0) return;
+                        const qtyEl = pill.querySelector('.qty');
+                        let qty = parseInt(qtyEl?.value ?? avail, 10);
+                        if (!Number.isFinite(qty) || qty <= 0) qty = avail;
+                        qty = Math.min(qty, avail);
+                        if (e.shiftKey && lastDay){
+                            addToDay(lastDay, lastTeam, pill, qty);
+                        } else {
+                            openDatePicker(pill, qty);
+                        }
+                    });
+                    const q = pill.querySelector('.qty');
+                    if (q) q.addEventListener('input', ()=> updatePillTime(pill));
+                });
+            }
+        }
+
+        btn.addEventListener('click', ()=>{
+            if (!snakeOn) {
+                btn.textContent = 'Обычный режим';
+                enableSnake();
+            } else {
+                btn.textContent = 'Компактный режим';
+                disableSnake();
+            }
+        });
+    })();
+
 </script>
