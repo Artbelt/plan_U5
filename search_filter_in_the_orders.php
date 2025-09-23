@@ -25,7 +25,7 @@ echo "Заявки, в которых присутствует эта позиц
 
 echo '<form action="show_order.php" method="post">';
 while ($orders_data = $result->fetch_assoc()){
-    echo "<input type='submit' name='order_number' value=".$orders_data['order_number']." style=\"height: 20px; width: 220px\">";
+    echo "<input type='submit' name='order_number' value=".$orders_data['order_number']." >";
 
     /** Выполняем запрос о количестве заказанных фильтров */
     $sql_count = "SELECT count FROM orders WHERE order_number='".$orders_data['order_number']."' AND filter ='".$filter."';";

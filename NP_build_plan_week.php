@@ -7,7 +7,9 @@ $user = "root";
 $pass = "";
 $SHIFT_HOURS = 11.5; // фактическая смена для расчётов
 
-$order = $_GET['order'] ?? '';
+
+
+$order = $_GET['order_number'] ?? '';
 if ($order==='') { http_response_code(400); exit('Укажите ?order=...'); }
 function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8'); }
 // Подсказки по заявкам из corrugation_plan (только тут, без API)

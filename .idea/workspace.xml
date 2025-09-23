@@ -4,9 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="сделан компакнтій режим для нижней таблиці">
+    <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="сделана теплловая карта вісот">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/NP_build_plan.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_build_plan.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/NP_build_plan_week.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_build_plan_week.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.php" beforeDir="false" afterPath="$PROJECT_DIR$/main.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/production_plans.php" beforeDir="false" afterPath="$PROJECT_DIR$/production_plans.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/search_filter_in_the_orders.php" beforeDir="false" afterPath="$PROJECT_DIR$/search_filter_in_the_orders.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/show_order.php" beforeDir="false" afterPath="$PROJECT_DIR$/show_order.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tools/tools.php" beforeDir="false" afterPath="$PROJECT_DIR$/tools/tools.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -130,7 +135,8 @@
       <workItem from="1755165694246" duration="9409000" />
       <workItem from="1755233698449" duration="98025000" />
       <workItem from="1756794873917" duration="30084000" />
-      <workItem from="1757569924407" duration="64206000" />
+      <workItem from="1757569924407" duration="65758000" />
+      <workItem from="1758285746630" duration="12573000" />
     </task>
     <task id="LOCAL-00001" summary="Добавлено окно просмотра параметров изделия">
       <created>1752823327851</created>
@@ -272,7 +278,14 @@
       <option name="project" value="LOCAL" />
       <updated>1758279059340</updated>
     </task>
-    <option name="localTasksCounter" value="21" />
+    <task id="LOCAL-00021" summary="сделана теплловая карта вісот">
+      <created>1758281195713</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1758281195713</updated>
+    </task>
+    <option name="localTasksCounter" value="22" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -294,6 +307,7 @@
     <MESSAGE value="чекпоинт настройки интерфейса плана сборки" />
     <MESSAGE value="сделан компакнтій режим для верхней таблиці" />
     <MESSAGE value="сделан компакнтій режим для нижней таблиці" />
-    <option name="LAST_COMMIT_MESSAGE" value="сделан компакнтій режим для нижней таблиці" />
+    <MESSAGE value="сделана теплловая карта вісот" />
+    <option name="LAST_COMMIT_MESSAGE" value="сделана теплловая карта вісот" />
   </component>
 </project>

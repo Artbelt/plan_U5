@@ -1,155 +1,226 @@
-<?php
-/** show_order.php — быстрый просмотр выбранной заявки (агрегирующий запрос, без N+1)
- *  Подключение к БД:
- *   - если есть $conn (mysqli) — используем его;
- *   - иначе, если есть $dsn/$user/$pass — создаём PDO;
- *   - иначе — выдаём понятную ошибку.
- */
-session_start();
-
-require_once('tools/tools.php');
-require_once('settings.php'); // может создавать $conn (mysqli) или что-то своё
-// require_once('style/table.txt'); // лучше выносить стили в .css
-
-$order_number = $_POST['order_number'] ?? '';
-if ($order_number === '') {
-    http_response_code(400);
-    echo 'Не указан номер заявки.';
-    exit;
-}
-
-/** ---------- Универсальный агрегирующий SQL (общий для PDO и mysqli) ---------- */
-$sql = "
-SELECT 
-    o.filter,
-    o.count,
-    o.marking,
-    o.personal_packaging,
-    o.personal_label,
-    o.group_packaging,
-    o.packaging_rate,
-    o.group_label,
-    o.remark,
-    COALESCE(SUM(mp.count_of_filters), 0)              AS produced,
-    GROUP_CONCAT(
-        CONCAT(DATE_FORMAT(mp.date_of_production, '%d.%m.%Y'), ' — ', mp.count_of_filters, ' шт')
-        ORDER BY mp.date_of_production ASC
-        SEPARATOR '\n'
-    )                                                   AS tooltip
-FROM orders o
-LEFT JOIN manufactured_production mp
-    ON mp.name_of_order  = o.order_number
-   AND mp.name_of_filter = o.filter
-WHERE o.order_number = ?
-GROUP BY 
-    o.filter, o.count, o.marking, o.personal_packaging, o.personal_label,
-    o.group_packaging, o.packaging_rate, o.group_label, o.remark
-ORDER BY o.filter
-";
-
-/** ---------- Попытки подключиться к БД ---------- */
-$rows = null;
-$used_driver = null;
-
-// Вариант 1: если уже есть mysqli-подключение ($conn)
-if (isset($conn) && $conn instanceof mysqli) {
-    $used_driver = 'mysqli';
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        http_response_code(500);
-        echo "DB error (prepare, mysqli): " . htmlspecialchars($conn->error);
-        exit;
-    }
-    $stmt->bind_param('s', $order_number);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    $rows = $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
-    $stmt->close();
-}
-// Вариант 2: если есть реквизиты для PDO ($dsn/$user/$pass)
-elseif (isset($dsn, $user, $pass)) {
-    try {
-        $pdo = new PDO($dsn, $user, $pass, [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4"
-        ]);
-        $used_driver = 'pdo';
-        $stmt = $pdo->prepare(str_replace('?', ':ord', $sql));
-        $stmt->execute([':ord' => $order_number]);
-        $rows = $stmt->fetchAll();
-    } catch (Throwable $e) {
-        http_response_code(500);
-        echo "DB error (PDO): " . htmlspecialchars($e->getMessage());
-        exit;
-    }
-}
-// Вариант 3: нет ни mysqli-коннекта, ни $dsn/$user/$pass
-else {
-    http_response_code(500);
-    echo "Не найдено подключение к БД. 
-Подключи mysqli (например, \$conn в settings.php/tools.php) ИЛИ определи \$dsn, \$user, \$pass для PDO.
-Пример для PDO в settings.php:
-\$dsn  = 'mysql:host=127.0.0.1;dbname=plan;charset=utf8mb4';
-\$user = 'root';
-\$pass = '';";
-    exit;
-}
-
-/** ---------- Итоги одним проходом ---------- */
-$total_in_order = 0;
-$total_produced = 0;
-foreach ($rows as $r) {
-    $total_in_order += (int)$r['count'];
-    $total_produced += (int)$r['produced'];
-}
-$total_left = $total_in_order - $total_produced;
-?>
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Заявка №<?= htmlspecialchars($order_number) ?></title>
+    <title>Заявка</title>
     <style>
-        body{font-family:Arial,sans-serif;margin:10px}
-        h3{font-size:1.5em;margin-bottom:10px}
-        button,input[type="submit"]{padding:8px 12px;margin:5px 0;font-size:14px;cursor:pointer}
-        #order_table{width:100%;border-collapse:collapse;font-size:14px;border:1px solid #000;margin-bottom:20px}
-        #order_table th,#order_table td{border:1px solid #000;padding:8px;text-align:left}
-        #order_table th{background:#f2f2f2}
-        #order_table tr:hover{background:#e0e0e0}
-        .filter-cell{display:flex;justify-content:space-between;align-items:center}
-        .filter-name{flex:1;padding-right:10px;word-break:break-word}
-        .info-btn{all:unset;display:inline-block;background:#007BFF;color:#fff;font-size:14px;padding:4px 8px;border-radius:4px;cursor:pointer}
-        .modal{display:none;position:fixed;z-index:1000;padding-top:60px;left:0;top:0;width:100%;height:100%;overflow:auto;background:rgba(0,0,0,.5)}
-        .modal-content{background:#fff;margin:auto;padding:20px;border-radius:8px;width:80%;max-width:700px;position:relative;max-height:90vh;overflow:auto;box-sizing:border-box}
-        .close{color:#aaa;position:absolute;top:10px;right:20px;font-size:28px;font-weight:bold;cursor:pointer}
-        @media(max-width:600px){
-            #order_table{font-size:12px;display:block;overflow-x:auto;white-space:nowrap}
-            #order_table th,#order_table td{padding:5px;min-width:80px}
-            h3{font-size:1.2em}
-            input[type="submit"],button:not(.info-btn){font-size:12px;padding:6px 10px;width:100%;box-sizing:border-box}
-            #order_table th:nth-child(5),#order_table td:nth-child(5),
-            #order_table th:nth-child(6),#order_table td:nth-child(6),
-            #order_table th:nth-child(7),#order_table td:nth-child(7),
-            #order_table th:nth-child(9),#order_table td:nth-child(9){display:none}
+        /* ===== Modern UI palette (to match main.php) ===== */
+        :root{
+            --bg:#f6f7f9;
+            --panel:#ffffff;
+            --ink:#1e293b;
+            --muted:#64748b;
+            --border:#e2e8f0;
+            --accent:#667eea;
+            --radius:14px;
+            --shadow:0 10px 25px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.06);
+            --shadow-soft:0 2px 8px rgba(0,0,0,0.08);
+        }
+        html,body{height:100%}
+        body{
+            margin:0; background:var(--bg); color:var(--ink);
+            font: 16px/1.6 "Inter","Segoe UI", Arial, sans-serif;
+            -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+        }
+
+        .container{ max-width:1200px; margin:0 auto; padding:16px; }
+
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: max-content;
+            max-width: 400px;
+            background-color: #333;
+            color: #fff;
+            text-align: left;
+            padding: 5px 10px;
+            border-radius: 6px;
+            position: absolute;
+            z-index: 10;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            white-space: pre-line;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Индикатор загрузки */
+        #loading {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15,23,42,0.25);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: #fff;
+            font-weight: bold;
+        }
+        .spinner {
+            border: 8px solid rgba(255,255,255,0.3);
+            border-top: 8px solid #fff;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-text {
+            font-size: 20px;
+            color: #fff;
+        }
+
+        /* Таблица */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            margin-top: 16px;
+            background: var(--panel);
+            border:1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-soft);
+            overflow: hidden;
+        }
+        th, td {
+            border-bottom: 1px solid var(--border);
+            padding: 10px 12px;
+            text-align: center;
+            color: var(--ink);
+        }
+        tr:last-child td{ border-bottom: 0; }
+        thead th{
+            background:#f8fafc;
+            font-weight:600;
+        }
+        h3{ margin:0; font-size:18px; font-weight:700; }
+
+        /* Buttons */
+        input[type='submit'], .btn{
+            appearance:none; cursor:pointer; border:none; color:#fff;
+            background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+            padding: 10px 16px; border-radius: 10px; font-weight:600; box-shadow: var(--shadow-soft);
+            transition: transform .15s ease, box-shadow .2s ease, filter .2s ease;
+        }
+        input[type='submit']:hover, .btn:hover{ transform: translateY(-1px); box-shadow: var(--shadow); filter: brightness(1.05); }
+        input[type='submit']:active, .btn:active{ transform: translateY(0); }
+
+        /* Responsive table */
+        .table-wrap{ overflow:auto; border-radius: var(--radius); box-shadow: var(--shadow); }
+        @media (max-width: 900px){
+            .container{ padding:16px; }
+            table{ font-size:13px; }
+            th, td{ padding: 8px 10px; }
         }
     </style>
 </head>
+
 <body>
 
-<h3>Заявка: <?= htmlspecialchars($order_number) ?></h3>
+<div id="loading">
+    <div class="spinner"></div>
+    <div class="loading-text">Загрузка...</div>
+</div>
 
-<button onclick="show_zero()">Позиции, выпуск которых = 0</button>
+<div class="container">
+    <?php
+    require('tools/tools.php');
+    require('settings.php');
+    require('style/table.txt');
 
-<form action="show_order_for_workers.php" method="post">
-    <input type="hidden" name="order_number" value="<?= htmlspecialchars($order_number) ?>">
-    <input type="submit" value="Подготовить спецификацию заявки">
-</form>
+    /**
+     * Рендер ячейки с тултипом по датам.
+     * $dateList — массив вида [дата1, кол-во1, дата2, кол-во2, ...]
+     * $totalQty — итоговое число, которое показываем в самой ячейке
+     */
+    function renderTooltipCell($dateList, $totalQty) {
+        if (empty($dateList)) {
+            return "<td>$totalQty</td>";
+        }
+        $tooltip = '';
+        for ($i = 0; $i < count($dateList); $i += 2) {
+            $tooltip .= $dateList[$i] . ' — ' . $dateList[$i + 1] . " шт\n";
+        }
+        return "<td><div class='tooltip'>$totalQty<span class='tooltiptext'>".htmlspecialchars(trim($tooltip))."</span></div></td>";
+    }
 
-<table id="order_table">
-    <tr>
+    /**
+     * Грузим FАCT гофропакетов из corrugation_plan:
+     * - по заявке и фильтру
+     * - суммируем fact_count
+     * - для тултипа возвращаем разбивку по plan_date (по каждой строке плана, где fact_count>0)
+     *
+     * Возвращает [ $dateList, $totalFact ] как в renderTooltipCell
+     */
+    function normalize_filter_label($label) {
+        $pos = mb_strpos($label, ' [');
+        if ($pos !== false) {
+            return trim(mb_substr($label, 0, $pos));
+        }
+        return trim($label);
+    }
+
+    function get_corr_fact_for_filter(PDO $pdo, string $orderNumber, string $filterLabel): array {
+        $filterLabel = normalize_filter_label($filterLabel);
+
+        $stmt = $pdo->prepare("
+        SELECT plan_date, COALESCE(fact_count,0) AS fact_count
+        FROM corrugation_plan
+        WHERE order_number = ?
+          AND TRIM(SUBSTRING_INDEX(filter_label, ' [', 1)) = ?
+          AND COALESCE(fact_count,0) > 0
+        ORDER BY plan_date
+    ");
+        $stmt->execute([$orderNumber, $filterLabel]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $dateList = [];
+        $total = 0;
+        foreach ($rows as $r) {
+            $dateList[] = $r['plan_date'];
+            $dateList[] = (int)$r['fact_count'];
+            $total += (int)$r['fact_count'];
+        }
+        return [$dateList, $total];
+    }
+
+    // Получаем номер заявки
+    $order_number = $_POST['order_number'] ?? '';
+
+    // Подключим отдельный PDO для выборок из corrugation_plan (факт гофропакетов)
+    $pdo_corr = new PDO("mysql:host=127.0.0.1;dbname=plan;charset=utf8mb4", "root", "");
+    $pdo_corr->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+    // Загружаем заявку (как и раньше)
+    $result = show_order($order_number);
+
+    // Инициализация счётчиков
+    $filter_count_in_order = 0;   // всего фильтров по заявке (план)
+    $filter_count_produced = 0;   // Всего изготовлено готовых фильтров (факт) — из select_produced_filters_by_order
+    $count = 0;                   // номер п/п
+    $corr_fact_summ = 0;          // суммарно изготовлено гофропакетов по всей заявке (из corrugation_plan)
+
+    // Отрисовка таблицы
+    echo "<h3>Заявка: ".htmlspecialchars($order_number)."</h3>";
+    echo "<div class='table-wrap'>";
+    echo "<table id='order_table'>";
+    echo "<tr>
         <th>№п/п</th>
         <th>Фильтр</th>
         <th>Количество, шт</th>
@@ -162,92 +233,80 @@ $total_left = $total_in_order - $total_produced;
         <th>Примечание</th>
         <th>Изготовлено, шт</th>
         <th>Остаток, шт</th>
-    </tr>
-    <?php $i=0; foreach ($rows as $r): $i++;
-        $left = (int)$r['count'] - (int)$r['produced']; ?>
-        <tr>
-            <td><?= $i ?></td>
-            <td class="filter-cell">
-                <span class="filter-name"><?= htmlspecialchars($r['filter']) ?></span>
-                <button class="info-btn" onclick="openModal('<?= htmlspecialchars($r['filter'], ENT_QUOTES) ?>')">i</button>
-            </td>
-            <td><?= (int)$r['count'] ?></td>
-            <td><?= htmlspecialchars($r['marking']) ?></td>
-            <td><?= htmlspecialchars($r['personal_packaging']) ?></td>
-            <td><?= htmlspecialchars($r['personal_label']) ?></td>
-            <td><?= htmlspecialchars($r['group_packaging']) ?></td>
-            <td><?= htmlspecialchars($r['packaging_rate']) ?></td>
-            <td><?= htmlspecialchars($r['group_label']) ?></td>
-            <td><?= htmlspecialchars($r['remark']) ?></td>
-            <td title="<?= htmlspecialchars($r['tooltip'] ?? '') ?>"><?= (int)$r['produced'] ?></td>
-            <td><?= $left ?></td>
-        </tr>
-    <?php endforeach; ?>
-    <tr>
+        <th>Изготовленные гофропакеты, шт</th>
+      </tr>";
+
+    while ($row = $result->fetch_assoc()) {
+        $count++;
+
+        // Готовые фильтры по заявке/фильтру (как было)
+        $prod_info = select_produced_filters_by_order($row['filter'], $order_number);
+        $date_list_filters = $prod_info[0]; // массив дат/кол-в
+        $total_qty_filters = $prod_info[1]; // итог изготовлено фильтров
+
+        $filter_count_in_order += (int)$row['count'];
+        $filter_count_produced += $total_qty_filters;
+
+        $difference = (int)$row['count'] - $total_qty_filters;
+
+        // Гофропакеты: теперь из corrugation_plan.fact_count
+        list($corr_date_list, $corr_total) = get_corr_fact_for_filter($pdo_corr, $order_number, $row['filter']);
+        $corr_fact_summ += (int)$corr_total;
+
+        echo "<tr>
+        <td>$count</td>
+        <td>".htmlspecialchars($row['filter'])."</td>
+        <td>".(int)$row['count']."</td>
+        <td>".htmlspecialchars($row['marking'])."</td>
+        <td>".htmlspecialchars($row['personal_packaging'])."</td>
+        <td>".htmlspecialchars($row['personal_label'])."</td>
+        <td>".htmlspecialchars($row['group_packaging'])."</td>
+        <td>".htmlspecialchars($row['packaging_rate'])."</td>
+        <td>".htmlspecialchars($row['group_label'])."</td>
+        <td>".htmlspecialchars($row['remark'])."</td>";
+
+        // Колонка «Изготовлено, шт» — готовые фильтры с тултипом по датам (как было)
+        echo renderTooltipCell($date_list_filters, $total_qty_filters);
+
+        // Остаток по фильтрам
+        echo "<td>".(int)$difference."</td>";
+
+        // Новая логика «Изготовленные гофропакеты, шт» — из corrugation_plan.fact_count (+ тултип по plan_date)
+        echo renderTooltipCell($corr_date_list, (int)$corr_total);
+
+        echo "</tr>";
+    }
+
+    // Итоговая строка
+    $summ_difference = $filter_count_in_order - $filter_count_produced;
+
+    echo "<tr>
         <td>Итого:</td>
         <td></td>
-        <td><?= $total_in_order ?></td>
-        <td colspan="7"></td>
-        <td><?= $total_produced ?></td>
-        <td><?= $total_left ?></td>
-    </tr>
-</table>
+        <td>".(int)$filter_count_in_order."</td>
+        <td colspan='7'></td>
+        <td>".(int)$filter_count_produced."</td>
+        <td>".(int)$summ_difference."*</td>
+        <td>".(int)$corr_fact_summ."*</td>
+      </tr>";
 
-<form action="hiding_order.php" method="post">
-    <input type="hidden" name="order_number" value="<?= htmlspecialchars($order_number) ?>">
-    <input type="submit" value="Отправить заявку в архив">
-</form>
+    echo "</table>";
+    echo "</div>";
+    echo "<p>* - без учета перевыполнения</p>";
+    ?>
 
-<!-- Модалка с подробностями фильтра -->
-<div id="filterModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeModal()">&times;</span>
-        <div id="modalBody">Загрузка...</div>
-    </div>
+    <br>
+    <form action='hiding_order.php' method='post' style="margin-top: 10px;">
+        <input type='hidden' name='order_number' value='<?= htmlspecialchars($order_number) ?>'>
+        <input type='submit' value='Отправить заявку в архив'>
+    </form>
+
 </div>
 
 <script>
-    function show_zero(){
-        const table = document.getElementById('order_table');
-        const newTable = document.createElement('table');
-        newTable.style.border='1px solid black';
-        newTable.style.borderCollapse='collapse';
-        newTable.style.fontSize='14px';
-        newTable.appendChild(table.rows[0].cloneNode(true));
-        for(let i=1;i<table.rows.length-1;i++){
-            const manufactured = parseInt(table.rows[i].cells[10].innerText||'0',10);
-            if(manufactured===0){ newTable.appendChild(table.rows[i].cloneNode(true)); }
-        }
-        const w = window.open('', 'Zero', 'width=800,height=600');
-        w.document.body.append('Позиции, производство которых не начато');
-        w.document.body.appendChild(newTable);
-    }
-
-    // Подсветка дублей в столбце "Фильтр"
-    (() => {
-        const table = document.getElementById('order_table');
-        const seen = {};
-        for (let i=1;i<table.rows.length-1;i++){
-            const cell = table.rows[i].cells[1];
-            const val  = (cell.textContent||'').trim();
-            if (seen[val]) { seen[val].style.backgroundColor='red'; cell.style.backgroundColor='red'; }
-            else { seen[val]=cell; }
-        }
-    })();
-
-    function openModal(filterId){
-        fetch('get_filter_details.php?id='+encodeURIComponent(filterId))
-            .then(r=>r.text())
-            .then(html=>{
-                document.getElementById('modalBody').innerHTML = html;
-                document.getElementById('filterModal').style.display = 'block';
-            });
-    }
-    function closeModal(){ document.getElementById('filterModal').style.display='none'; }
-    window.onclick = function(e){
-        const modal = document.getElementById('filterModal');
-        if (e.target === modal) modal.style.display='none';
-    };
+    window.addEventListener('load', function () {
+        document.getElementById('loading').style.display = 'none';
+    });
 </script>
 
 </body>

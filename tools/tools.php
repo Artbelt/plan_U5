@@ -166,44 +166,79 @@ function show_monthly_production(){
 
 
 /** Создание <SELECT> списка с перечнем заявок */
-function load_orders($list){
+//function load_orders($list){
+//
+//    global $mysql_host,$mysql_user,$mysql_user_pass,$mysql_database;
+//
+//    /** Создаем подключение к БД */
+//    $mysqli = new mysqli($mysql_host,$mysql_user,$mysql_user_pass,$mysql_database);
+//
+//    /** Выполняем запрос SQL для загрузки заявок*/
+//    $sql = "SELECT DISTINCT order_number, workshop FROM orders;";
+//
+//    /** Если запрос не удачный -> exit */
+//    if (!$result = $mysqli->query($sql)){ echo "Ошибка: Наш запрос не удался и вот почему: \n Запрос: " . $sql . "\n"."Номер ошибки: " . $mysqli->errno . "\n Ошибка: " . $mysqli->error . "\n";
+//        exit;
+//    }
+//
+//    if ($list == '0') {
+//
+//        /** Разбор массива значений для выпадающего списка */
+//        echo "<select id='selected_order'>";
+//        while ($orders_data = $result->fetch_assoc()) {
+//            echo "<option name='order_number' value=" . $orders_data['order_number'] . ">" . $orders_data['order_number'] . "</option>";
+//        }
+//        echo "</select>";
+//    } else {
+//        echo 'Перечень заявок';
+//        /** Разбор массива значений для списка чекбоксов */
+//        echo "<form action='orders_editor.php' method='post'>";
+//        while ($orders_data = $result->fetch_assoc()) {
+//            echo "<input type='checkbox' name='order_name[]'value=".$orders_data['order_number']." <label>".$orders_data['order_number'] ."</label><br>";
+//        }
+//        echo "<button type='submit'>Объединить для расчета</button>";
+//        echo "</form>";
+//
+//    }
+//    /** Закрываем соединение */
+//    $result->close();
+//    $mysqli->close();
+//}
 
+// СМОТРИ СТАРУЮ ВЕРСИЯ ФУНКЦИИ ВІШЕ!!!!!
+function load_orders($list){
     global $mysql_host,$mysql_user,$mysql_user_pass,$mysql_database;
 
-    /** Создаем подключение к БД */
     $mysqli = new mysqli($mysql_host,$mysql_user,$mysql_user_pass,$mysql_database);
-
-    /** Выполняем запрос SQL для загрузки заявок*/
     $sql = "SELECT DISTINCT order_number, workshop FROM orders;";
-
-    /** Если запрос не удачный -> exit */
-    if (!$result = $mysqli->query($sql)){ echo "Ошибка: Наш запрос не удался и вот почему: \n Запрос: " . $sql . "\n"."Номер ошибки: " . $mysqli->errno . "\n Ошибка: " . $mysqli->error . "\n";
+    if (!$result = $mysqli->query($sql)){
+        echo "Ошибка: {$mysqli->error}";
         exit;
     }
 
-    if ($list == '0') {
-
-        /** Разбор массива значений для выпадающего списка */
-        echo "<select id='selected_order'>";
-        while ($orders_data = $result->fetch_assoc()) {
-            echo "<option name='order_number' value=" . $orders_data['order_number'] . ">" . $orders_data['order_number'] . "</option>";
+    if ($list == 0) {
+        echo "<select id='selected_order' name='order_number'>";
+        while ($row = $result->fetch_assoc()) {
+            $val = htmlspecialchars($row['order_number'], ENT_QUOTES, 'UTF-8');
+            echo "<option value=\"$val\">$val</option>";
         }
         echo "</select>";
     } else {
         echo 'Перечень заявок';
-        /** Разбор массива значений для списка чекбоксов */
         echo "<form action='orders_editor.php' method='post'>";
-        while ($orders_data = $result->fetch_assoc()) {
-            echo "<input type='checkbox' name='order_name[]'value=".$orders_data['order_number']." <label>".$orders_data['order_number'] ."</label><br>";
+        while ($row = $result->fetch_assoc()) {
+            $val = htmlspecialchars($row['order_number'], ENT_QUOTES, 'UTF-8');
+            echo "<label><input type='checkbox' name='order_name[]' value=\"$val\"> $val</label><br>";
         }
         echo "<button type='submit'>Объединить для расчета</button>";
         echo "</form>";
-
     }
-    /** Закрываем соединение */
+
     $result->close();
     $mysqli->close();
 }
+
+
 
 /** СОздание <SELECT> списка с перечнем фильтров имеющихся в БД */
 function load_filters_into_select(){
