@@ -93,6 +93,169 @@
             background:var(--accent)!important; color:#fff!important;
         }
 
+        /* модальные окна */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: var(--panel);
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+        .close {
+            color: var(--muted);
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .close:hover {
+            color: var(--ink);
+        }
+        .modal-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .modal-buttons button {
+            width: 100%;
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 14px;
+        }
+
+        /* Стили для модального окна параметров фильтра */
+        .modal-body .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .modal-body .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        @media (max-width: 900px) {
+            .modal-body .row { 
+                grid-template-columns: 1fr; 
+            }
+        }
+
+        .modal-body .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 6px;
+        }
+
+        .modal-body .table th, 
+        .modal-body .table td {
+            border-bottom: 1px solid var(--border);
+            padding: 6px 4px;
+            text-align: left;
+            vertical-align: top;
+            font-size: 12px;
+        }
+
+        .modal-body .table th { 
+            width: 35%; 
+            color: var(--muted); 
+            font-weight: 600; 
+        }
+
+        .modal-body .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            border: 1px solid var(--border);
+            background: #fafafa;
+        }
+
+        .modal-body .yn-yes { 
+            color: #2e7d32; 
+            font-weight: 600; 
+        }
+
+        .modal-body .yn-no { 
+            color: #c62828; 
+            font-weight: 600; 
+        }
+
+        .modal-body .section-title { 
+            font-size: 13px; 
+            font-weight: 700; 
+            margin: 0 0 6px; 
+        }
+
+        .modal-body .small { 
+            font-size: 11px; 
+            color: var(--muted); 
+        }
+
+        .modal-body .value-mono { 
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; 
+        }
+
+        .modal-body .pair { 
+            display: flex; 
+            gap: 8px; 
+            align-items: center; 
+            flex-wrap: wrap; 
+        }
+
+        /* Стили для выпадающего списка фильтров */
+        .filter-suggestion-item {
+            padding: 8px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+            transition: background-color 0.2s;
+        }
+
+        .filter-suggestion-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .filter-suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .filter-suggestion-item.highlighted {
+            background-color: var(--accent-soft);
+            color: var(--accent);
+        }
+
         /* поля ввода/селекты */
         input[type="text"], input[type="date"], input[type="number"], input[type="password"],
         textarea, select{
@@ -277,26 +440,30 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))) {
         <!-- Контент: 3 колонки -->
         <tr class="content-row">
             <!-- Левая панель -->
-            <td class="panel panel--left" style="width:22%;">
+            <td class="panel panel--left" style="width:24%;">
                 <div class="section-title">Операции</div>
                 <div class="stack">
                     <a href="test.php" target="_blank" rel="noopener" class="stack"><button>Выпуск продукции</button></a>
-                    <form action="product_output_view.php" method="post" class="stack"><input type="submit" value="Обзор выпуска продукции"></form>
+                    <form action="product_output_view.php" method="post" class="stack" target="_blank"><input type="submit" value="Обзор выпуска продукции"></form>
+                    <button onclick="openDataEditor()">Редактор данных</button>
+                    <a href="NP_supply_requirements.php" target="_blank" rel="noopener" class="stack"><button>Потребность комплектующих</button></a>
                 </div>
 
                 <div class="section-title" style="margin-top:14px">Дополнения</div>
                 <div class="stack">
-                    <form action="BOX_CREATOR.htm" method="post" class="stack"><input type="submit" value="Расчет коробок"></form>
-                    <form action="BOX_CREATOR_2.htm" method="post" class="stack"><input type="submit" value="Максимальное количество"></form>
+                    <form action="BOX_CREATOR.htm" method="post" class="stack" target="_blank"><input type="submit" value="Расчет коробок"></form>
+                    <form action="BOX_CREATOR_2.htm" method="post" class="stack" target="_blank"><input type="submit" value="Максимальное количество"></form>
                 </div>
 
                 <div class="section-title" style="margin-top:14px">Мониторинг</div>
                 <div class="stack">
                     <form action='NP_full_build_plan.php' method='post' target="_blank" class="stack"><input type='submit' value='Полный план сборки'></form>
 
-                    <form action="NP_build_plan_week.php" method="get" target="_blank" class="stack">
-                        <?php load_orders(0); ?>
-                        <input type="submit" value="План сборки по заявке">
+                    <form action="NP_build_plan_week.php" method="get" target="_blank" style="display: flex; gap: 10px; align-items: end; width: 100%;">
+                        <div style="flex: 1;">
+                            <?php load_planned_orders(); ?>
+                        </div>
+                        <input type="submit" value="План по заявке" style="flex: 1; white-space: nowrap;">
                     </form>
 
                     <form action='NP_monitor.php' method='post' target="_blank" class="stack"><input type='submit' value='Мониторинг'></form>
@@ -319,10 +486,7 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))) {
                         <input type='hidden' name='workshop' value='<?php echo htmlspecialchars($workshop); ?>'>
                         <input type='submit' value='Добавить фильтр в БД(full)'>
                     </form>
-                    <form action='view_salon_filter_params.php' method='post' target='_blank' class="stack">
-                        <input type='hidden' name='workshop' value='<?php echo htmlspecialchars($workshop); ?>'>
-                        <input type='submit' value='Просмотреть параметры фильтра'>
-                    </form>
+                    <button onclick="openFilterParamsModal()">Просмотреть параметры фильтра</button>
                     <form action='add_filter_properties_into_db.php' method='post' target='_blank' class="stack">
                         <input type='hidden' name='workshop' value='<?php echo htmlspecialchars($workshop); ?>'>
                         <input type='submit' value='Изменить параметры фильтра'>
@@ -330,16 +494,13 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))) {
                 </div>
 
                 <div class="section-title" style="margin-top:14px">Объявление</div>
-                <form action="create_ad.php" method="post" class="stack">
-                    <input type="text" name="title" placeholder="Название объявления" required>
-                    <textarea name="content" placeholder="Текст объявления" required></textarea>
-                    <input type="date" name="expires_at" required>
-                    <button type="submit">Создать объявление</button>
-                </form>
+                <div class="stack">
+                    <button onclick="openCreateAdModal()">Создать объявление</button>
+                </div>
             </td>
 
             <!-- Центральная панель -->
-            <td class="panel panel--main">
+            <td class="panel panel--main" style="width:52%;">
                 <div class="section-title">Объявления</div>
                 <div class="stack-lg">
 
@@ -454,6 +615,901 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))) {
         </tr>
     </table>
 </div>
+
+<!-- Модальное окно редактора данных -->
+<div id="dataEditorModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Редактор данных</h2>
+            <span class="close" onclick="closeDataEditor()">&times;</span>
+        </div>
+        <div class="modal-buttons">
+            <button onclick="openProductEditor()">📊 Редактор выпущенной продукции</button>
+            <button onclick="openAuditLogs()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">📋 Логи аудита</button>
+            <button onclick="closeDataEditor()">❌ Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно редактора продукции -->
+<div id="productEditorModal" class="modal">
+    <div class="modal-content" style="max-width: 1200px;">
+        <div class="modal-header">
+            <h2 class="modal-title">Редактор выпущенной продукции</h2>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button onclick="openAuditLogs()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                    📋 Логи аудита
+                </button>
+                <span class="close" onclick="closeProductEditor()">&times;</span>
+            </div>
+        </div>
+            <div id="productEditorContent">
+                <div style="margin-bottom: 20px; padding: 16px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+                    <h4 style="margin: 0 0 12px 0; color: #495057;">📅 Выберите дату для редактирования</h4>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <input type="date" id="editDate" style="padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                        <button onclick="loadDataForDate()" style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                            🔍 Загрузить данные
+                        </button>
+                    </div>
+                </div>
+                <div id="dataTableContainer" style="display: none;">
+                    <!-- Здесь будет таблица с данными -->
+                </div>
+            </div>
+    </div>
+</div>
+
+<!-- Модальное окно добавления позиции -->
+<div id="addPositionModal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h2 class="modal-title">➕ Добавить позицию</h2>
+            <span class="close" onclick="closeAddPositionModal()">&times;</span>
+        </div>
+        <div id="addPositionContent">
+            <form id="addPositionForm">
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #374151;">Дата производства:</label>
+                    <input type="date" id="addPositionDate" required style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                </div>
+                
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #374151;">Название фильтра:</label>
+                    <select id="addPositionFilter" required style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                        <option value="">Выберите фильтр</option>
+                    </select>
+                </div>
+                
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #374151;">Количество:</label>
+                    <input type="number" id="addPositionQuantity" required min="1" placeholder="Введите количество" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                </div>
+                
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #374151;">Название заявки:</label>
+                    <select id="addPositionOrder" required style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                        <option value="">Выберите заявку</option>
+                    </select>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #374151;">Бригада:</label>
+                    <select id="addPositionTeam" required style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                        <option value="">Выберите бригаду</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <button type="button" onclick="closeAddPositionModal()" style="padding: 8px 16px; border: 1px solid #d1d5db; background: white; color: #374151; border-radius: 6px; cursor: pointer;">
+                        Отмена
+                    </button>
+                    <button type="submit" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        ➕ Добавить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Функции для модальных окон
+function openDataEditor() {
+    document.getElementById('dataEditorModal').style.display = 'block';
+}
+
+function closeDataEditor() {
+    document.getElementById('dataEditorModal').style.display = 'none';
+}
+
+function openProductEditor() {
+    document.getElementById('productEditorModal').style.display = 'block';
+    loadProductEditor();
+}
+
+function closeProductEditor() {
+    document.getElementById('productEditorModal').style.display = 'none';
+}
+
+function openAuditLogs() {
+    // Закрываем модальное окно редактора данных
+    closeDataEditor();
+    // Открываем страницу логов аудита в новой вкладке
+    window.open('audit_viewer.php', '_blank');
+}
+
+function closeAddPositionModal() {
+    document.getElementById('addPositionModal').style.display = 'none';
+}
+
+// Закрытие модальных окон при клике вне их
+window.onclick = function(event) {
+    const dataModal = document.getElementById('dataEditorModal');
+    const productModal = document.getElementById('productEditorModal');
+    const addPositionModal = document.getElementById('addPositionModal');
+    
+    if (event.target === dataModal) {
+        closeDataEditor();
+    }
+    if (event.target === productModal) {
+        closeProductEditor();
+    }
+    if (event.target === addPositionModal) {
+        closeAddPositionModal();
+    }
+}
+
+// Функция загрузки редактора продукции
+function loadProductEditor() {
+    // Устанавливаем сегодняшнюю дату по умолчанию
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('editDate').value = today;
+    
+    // Скрываем таблицу данных
+    document.getElementById('dataTableContainer').style.display = 'none';
+}
+
+// Функция загрузки данных по выбранной дате
+function loadDataForDate() {
+    const selectedDate = document.getElementById('editDate').value;
+    
+    if (!selectedDate) {
+        alert('Пожалуйста, выберите дату');
+        return;
+    }
+    
+    const container = document.getElementById('dataTableContainer');
+    container.innerHTML = '<p>Загрузка данных...</p>';
+    container.style.display = 'block';
+    
+    // AJAX запрос для загрузки данных по дате
+    const formData = new FormData();
+    formData.append('action', 'load_data_by_date');
+    formData.append('date', selectedDate);
+    
+    fetch('product_editor_api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.text();
+    })
+    .then(text => {
+        try {
+            const data = JSON.parse(text);
+            if (data.success) {
+                renderProductEditor(data.data, selectedDate);
+            } else {
+                container.innerHTML = `<p style="color: red;">Ошибка: ${data.error}</p>`;
+            }
+        } catch (e) {
+            container.innerHTML = `
+                <div style="color: red;">
+                    <p><strong>Ошибка парсинга JSON:</strong></p>
+                    <p>${e.message}</p>
+                    <p><strong>Ответ сервера:</strong></p>
+                    <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow: auto;">${text}</pre>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        container.innerHTML = `<p style="color: red;">Ошибка загрузки: ${error.message}</p>`;
+    });
+}
+
+// Функция отображения редактора продукции
+function renderProductEditor(data, selectedDate) {
+    const container = document.getElementById('dataTableContainer');
+    
+    if (data.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #6b7280;">
+                <h3>📅 ${selectedDate}</h3>
+                <p>Нет данных за выбранную дату</p>
+                <button onclick="addNewPosition('${selectedDate}')" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 16px;">
+                    ➕ Добавить позицию
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    // Группируем данные по бригаде (дата уже известна)
+    const groupedData = {};
+    data.forEach(item => {
+        const brigade = item.brigade || 'Не указана';
+        const key = brigade;
+        
+        if (!groupedData[key]) {
+            groupedData[key] = {
+                brigade: brigade,
+                items: []
+            };
+        }
+        groupedData[key].items.push(item);
+    });
+    
+    let html = `
+        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; color: #374151;">📅 ${selectedDate}</h3>
+            <button onclick="addNewPosition('${selectedDate}')" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                ➕ Добавить позицию
+            </button>
+        </div>
+    `;
+    
+    // Отображаем данные по группам
+    Object.values(groupedData).forEach(group => {
+        html += `
+            <div style="margin-bottom: 30px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;">
+                <h4 style="margin: 0 0 16px 0; color: #374151;">
+                    👥 Бригада ${group.brigade}
+                </h4>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <thead>
+                            <tr style="background: #f8fafc;">
+                                <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: left;">Фильтр</th>
+                                <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">Кол-во</th>
+                                <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">Заявка</th>
+                                <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+        
+        group.items.forEach(item => {
+            const filterName = item.filter_name || 'Не указан';
+            const quantity = item.quantity || 0;
+            const orderNumber = item.order_number || 'Не указан';
+            const itemId = item.virtual_id || '';
+            
+            html += `
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #e5e7eb;">${filterName}</td>
+                    <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">
+                        <input type="number" value="${quantity}" min="0" 
+                               onchange="updateQuantity('${itemId}', this.value)" 
+                               style="width: 60px; padding: 4px; border: 1px solid #d1d5db; border-radius: 4px;">
+                    </td>
+                    <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">
+                        <select onchange="moveToOrder('${itemId}', this.value)" 
+                                class="order-select" data-item-id="${itemId}"
+                                style="padding: 4px; border: 1px solid #d1d5db; border-radius: 4px; min-width: 100px;">
+                            <option value="${orderNumber}">${orderNumber}</option>
+                        </select>
+                    </td>
+                    <td style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">
+                        <button onclick="removePosition('${itemId}')" 
+                                data-item-id="${itemId}"
+                                style="background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                            🗑️ Удалить
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+    
+    // Загружаем заявки для всех выпадающих списков в таблице
+    loadOrdersForTableDropdowns();
+}
+
+// Функция загрузки заявок для выпадающих списков в таблице
+function loadOrdersForTableDropdowns() {
+    console.log('Начинаем загрузку заявок для таблицы...');
+    
+    const orderFormData = new FormData();
+    orderFormData.append('action', 'load_orders_for_dropdown');
+    
+    fetch('product_editor_api.php', {
+        method: 'POST',
+        body: orderFormData
+    })
+    .then(response => {
+        console.log('Ответ получен, статус:', response.status);
+        return response.text();
+    })
+    .then(text => {
+        console.log('Ответ сервера:', text);
+        try {
+            const data = JSON.parse(text);
+            if (data.success) {
+                console.log('Заявки получены:', data.orders);
+                // Находим все выпадающие списки заявок в таблице
+                const orderSelects = document.querySelectorAll('.order-select');
+                console.log('Найдено выпадающих списков:', orderSelects.length);
+                
+                orderSelects.forEach((select, index) => {
+                    const currentValue = select.querySelector('option').value;
+                    console.log(`Обрабатываем список ${index + 1}, текущее значение:`, currentValue);
+                    
+                    select.innerHTML = '';
+                    
+                    // Добавляем текущее значение как выбранное
+                    const currentOption = document.createElement('option');
+                    currentOption.value = currentValue;
+                    currentOption.textContent = currentValue;
+                    currentOption.selected = true;
+                    select.appendChild(currentOption);
+                    
+                    // Добавляем все заявки
+                    data.orders.forEach(order => {
+                        if (order !== currentValue) {
+                            const option = document.createElement('option');
+                            option.value = order;
+                            option.textContent = order;
+                            select.appendChild(option);
+                        }
+                    });
+                });
+                console.log('Заявки для таблицы загружены:', data.orders);
+            } else {
+                console.error('Ошибка загрузки заявок для таблицы:', data.error);
+            }
+        } catch (e) {
+            console.error('Ошибка парсинга заявок для таблицы:', e, text);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка загрузки заявок для таблицы:', error);
+    });
+}
+
+// Функции для работы с данными
+function updateQuantity(id, quantity) {
+    const formData = new FormData();
+    formData.append('action', 'update_quantity');
+    formData.append('id', id);
+    formData.append('quantity', quantity);
+    
+    fetch('product_editor_api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Количество успешно обновлено
+            console.log('Количество обновлено для ID:', id);
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Ошибка обновления: ' + error.message);
+    });
+}
+
+function moveToOrder(id, newOrderId) {
+    const formData = new FormData();
+    formData.append('action', 'move_to_order');
+    formData.append('id', id);
+    formData.append('new_order_id', newOrderId);
+    
+    fetch('product_editor_api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Позиция успешно перенесена');
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Ошибка переноса: ' + error.message);
+    });
+}
+
+function removePosition(id) {
+    if (!confirm('Вы уверены, что хотите удалить эту позицию?')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', 'remove_position');
+    formData.append('id', id);
+    
+    fetch('product_editor_api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Находим и удаляем строку из таблицы по data-атрибуту
+            const rowToRemove = document.querySelector(`button[data-item-id="${id}"]`).closest('tr');
+            if (rowToRemove) {
+                rowToRemove.remove();
+            }
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Ошибка удаления: ' + error.message);
+    });
+}
+
+function addNewPosition(selectedDate) {
+    if (!selectedDate) {
+        selectedDate = document.getElementById('editDate').value;
+    }
+    
+    if (!selectedDate) {
+        alert('Пожалуйста, выберите дату');
+        return;
+    }
+    
+    // Устанавливаем выбранную дату в форму
+    document.getElementById('addPositionDate').value = selectedDate;
+    
+    // Очищаем остальные поля
+    document.getElementById('addPositionFilter').value = '';
+    document.getElementById('addPositionQuantity').value = '';
+    document.getElementById('addPositionOrder').value = '';
+    document.getElementById('addPositionTeam').value = '';
+    
+    // Загружаем данные для выпадающих списков
+    loadFiltersAndOrders();
+    
+    // Открываем модальное окно
+    document.getElementById('addPositionModal').style.display = 'block';
+}
+
+// Функция загрузки фильтров и заявок
+function loadFiltersAndOrders() {
+    // Загружаем фильтры
+    const filterFormData = new FormData();
+    filterFormData.append('action', 'load_filters');
+    
+    fetch('product_editor_api.php', {
+        method: 'POST',
+        body: filterFormData
+    })
+    .then(response => response.text())
+    .then(text => {
+        try {
+            const data = JSON.parse(text);
+            if (data.success) {
+                const filterSelect = document.getElementById('addPositionFilter');
+                filterSelect.innerHTML = '<option value="">Выберите фильтр</option>';
+                data.filters.forEach(filter => {
+                    const option = document.createElement('option');
+                    option.value = filter;
+                    option.textContent = filter;
+                    filterSelect.appendChild(option);
+                });
+                console.log('Фильтры загружены:', data.filters);
+            } else {
+                console.error('Ошибка загрузки фильтров:', data.error);
+            }
+        } catch (e) {
+            console.error('Ошибка парсинга фильтров:', e, text);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка загрузки фильтров:', error);
+    });
+    
+    // Загружаем заявки
+    const orderFormData = new FormData();
+    orderFormData.append('action', 'load_orders');
+    
+    fetch('product_editor_api.php', {
+        method: 'POST',
+        body: orderFormData
+    })
+    .then(response => response.text())
+    .then(text => {
+        try {
+            const data = JSON.parse(text);
+            if (data.success) {
+                const orderSelect = document.getElementById('addPositionOrder');
+                orderSelect.innerHTML = '<option value="">Выберите заявку</option>';
+                data.orders.forEach(order => {
+                    const option = document.createElement('option');
+                    option.value = order;
+                    option.textContent = order;
+                    orderSelect.appendChild(option);
+                });
+                console.log('Заявки загружены:', data.orders);
+            } else {
+                console.error('Ошибка загрузки заявок:', data.error);
+            }
+        } catch (e) {
+            console.error('Ошибка парсинга заявок:', e, text);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка загрузки заявок:', error);
+    });
+}
+
+// Обработчик формы добавления позиции
+document.addEventListener('DOMContentLoaded', function() {
+    const addPositionForm = document.getElementById('addPositionForm');
+    if (addPositionForm) {
+        addPositionForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitAddPosition();
+        });
+    }
+});
+
+function submitAddPosition() {
+    const date = document.getElementById('addPositionDate').value;
+    const filter = document.getElementById('addPositionFilter').value;
+    const quantity = document.getElementById('addPositionQuantity').value;
+    const order = document.getElementById('addPositionOrder').value;
+    const team = document.getElementById('addPositionTeam').value;
+    
+    if (!date || !filter || !quantity || !order || !team) {
+        alert('Пожалуйста, заполните все поля');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', 'add_position');
+    formData.append('production_date', date);
+    formData.append('filter_name', filter);
+    formData.append('quantity', quantity);
+    formData.append('order_name', order);
+    formData.append('team', team);
+    
+    fetch('product_editor_api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Позиция успешно добавлена!');
+            closeAddPositionModal();
+            // Перезагружаем данные для выбранной даты
+            loadDataForDate();
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Ошибка добавления: ' + error.message);
+    });
+}
+
+// Функции для модального окна параметров фильтра
+function openFilterParamsModal() {
+    document.getElementById('filterParamsModal').style.display = 'block';
+}
+
+function closeFilterParamsModal() {
+    document.getElementById('filterParamsModal').style.display = 'none';
+}
+
+function loadFilterParams() {
+    const filterName = document.getElementById('filterNameInput').value.trim();
+    if (!filterName) {
+        alert('Введите имя фильтра');
+        return;
+    }
+
+    const contentDiv = document.getElementById('filterParamsContent');
+    contentDiv.innerHTML = '<div style="text-align: center; padding: 20px;"><div style="display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top: 2px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite;"></div><br>Загрузка параметров...</div>';
+
+    fetch('view_salon_filter_params.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'filter_name=' + encodeURIComponent(filterName)
+    })
+    .then(response => response.text())
+    .then(html => {
+        // Извлекаем только содержимое body из ответа
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const bodyContent = doc.body.innerHTML;
+        
+        // Убираем header и оставляем только данные
+        const dataStart = bodyContent.indexOf('<div class="card">');
+        if (dataStart !== -1) {
+            contentDiv.innerHTML = bodyContent.substring(dataStart);
+        } else {
+            contentDiv.innerHTML = '<p style="color: var(--danger); text-align: center; padding: 20px;">Фильтр не найден или произошла ошибка</p>';
+        }
+    })
+    .catch(error => {
+        contentDiv.innerHTML = '<p style="color: var(--danger); text-align: center; padding: 20px;">Ошибка загрузки: ' + error.message + '</p>';
+    });
+}
+
+// Переменные для автодополнения
+let filterSuggestions = [];
+let currentHighlightIndex = -1;
+
+// Функция поиска фильтров
+function searchFilters(query) {
+    if (query.length < 2) {
+        hideFilterSuggestions();
+        return;
+    }
+
+    // Загружаем список фильтров из БД
+    fetch('get_filter_list.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'query=' + encodeURIComponent(query)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.filters) {
+            filterSuggestions = data.filters;
+            showFilterSuggestions(data.filters);
+        } else {
+            hideFilterSuggestions();
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка загрузки фильтров:', error);
+        hideFilterSuggestions();
+    });
+}
+
+// Показать выпадающий список
+function showFilterSuggestions(filters) {
+    const suggestionsDiv = document.getElementById('filterSuggestions');
+    suggestionsDiv.innerHTML = '';
+    
+    if (filters.length === 0) {
+        suggestionsDiv.innerHTML = '<div class="filter-suggestion-item" style="color: var(--muted);">Фильтры не найдены</div>';
+    } else {
+        filters.forEach((filter, index) => {
+            const item = document.createElement('div');
+            item.className = 'filter-suggestion-item';
+            item.textContent = filter;
+            item.onclick = () => selectFilter(filter);
+            item.onmouseover = () => highlightSuggestion(index);
+            suggestionsDiv.appendChild(item);
+        });
+    }
+    
+    suggestionsDiv.style.display = 'block';
+    currentHighlightIndex = -1;
+}
+
+// Скрыть выпадающий список
+function hideFilterSuggestions() {
+    setTimeout(() => {
+        document.getElementById('filterSuggestions').style.display = 'none';
+    }, 200);
+}
+
+// Выделить элемент в списке
+function highlightSuggestion(index) {
+    const items = document.querySelectorAll('.filter-suggestion-item');
+    items.forEach((item, i) => {
+        item.classList.toggle('highlighted', i === index);
+    });
+    currentHighlightIndex = index;
+}
+
+// Выбрать фильтр
+function selectFilter(filterName) {
+    document.getElementById('filterNameInput').value = filterName;
+    hideFilterSuggestions();
+    loadFilterParams();
+}
+
+// Обработка клавиш в поле ввода
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('filterNameInput');
+    if (input) {
+        input.addEventListener('keydown', function(e) {
+            const suggestionsDiv = document.getElementById('filterSuggestions');
+            const items = suggestionsDiv.querySelectorAll('.filter-suggestion-item');
+            
+            if (suggestionsDiv.style.display === 'block' && items.length > 0) {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    currentHighlightIndex = Math.min(currentHighlightIndex + 1, items.length - 1);
+                    highlightSuggestion(currentHighlightIndex);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    currentHighlightIndex = Math.max(currentHighlightIndex - 1, -1);
+                    if (currentHighlightIndex === -1) {
+                        items.forEach(item => item.classList.remove('highlighted'));
+                    } else {
+                        highlightSuggestion(currentHighlightIndex);
+                    }
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (currentHighlightIndex >= 0 && items[currentHighlightIndex]) {
+                        selectFilter(items[currentHighlightIndex].textContent);
+                    } else {
+                        loadFilterParams();
+                    }
+                } else if (e.key === 'Escape') {
+                    hideFilterSuggestions();
+                }
+            }
+        });
+    }
+});
+
+// Функции для модального окна создания объявления
+function openCreateAdModal() {
+    document.getElementById('createAdModal').style.display = 'block';
+    // Устанавливаем дату по умолчанию (через неделю)
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 7);
+    document.querySelector('input[name="expires_at"]').value = tomorrow.toISOString().split('T')[0];
+}
+
+function closeCreateAdModal() {
+    document.getElementById('createAdModal').style.display = 'none';
+    document.getElementById('createAdForm').reset();
+}
+
+function submitAd(event) {
+    event.preventDefault();
+    
+    const form = document.getElementById('createAdForm');
+    const formData = new FormData(form);
+    
+    // Показываем индикатор загрузки
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Создание...';
+    submitBtn.disabled = true;
+    
+    fetch('create_ad.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.text())
+    .then(data => {
+        if (data.includes('success') || data.includes('успешно')) {
+            alert('Объявление успешно создано!');
+            closeCreateAdModal();
+            // Перезагружаем страницу для обновления списка объявлений
+            location.reload();
+        } else {
+            alert('Ошибка при создании объявления: ' + data);
+        }
+    })
+    .catch(error => {
+        alert('Ошибка при создании объявления: ' + error.message);
+    })
+    .finally(() => {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+    });
+}
+
+// Закрытие модальных окон при клике вне их
+window.onclick = function(event) {
+    const filterModal = document.getElementById('filterParamsModal');
+    const adModal = document.getElementById('createAdModal');
+    
+    if (event.target === filterModal) {
+        closeFilterParamsModal();
+    } else if (event.target === adModal) {
+        closeCreateAdModal();
+    }
+}
+</script>
+
+<!-- Модальное окно для просмотра параметров фильтра -->
+<div id="filterParamsModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 700px; max-height: 70vh; overflow-y: auto;">
+        <div class="modal-header">
+            <h3 class="modal-title">Просмотр параметров фильтра</h3>
+            <span class="close" onclick="closeFilterParamsModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div style="margin-bottom: 16px; position: relative;">
+                <input type="text" id="filterNameInput" placeholder="Введите имя фильтра (например: AF1593)" 
+                       style="width: 300px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px;"
+                       oninput="searchFilters(this.value)" onfocus="searchFilters(this.value)" onblur="hideFilterSuggestions()">
+                <div id="filterSuggestions" style="position: absolute; top: 50px; left: 0; width: 300px; background: white; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; display: none; max-height: 200px; overflow-y: auto;">
+                </div>
+                <button onclick="loadFilterParams()" style="padding: 10px 20px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; margin-left: 10px;">
+                    Показать параметры
+                </button>
+            </div>
+            <div id="filterParamsContent">
+                <p style="color: var(--muted); text-align: center; padding: 20px;">
+                    Введите имя фильтра и нажмите "Показать параметры"
+                </p>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- Модальное окно для создания объявления -->
+    <div id="createAdModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px; max-height: 80vh; overflow-y: auto; overflow-x: hidden;">
+            <div class="modal-header">
+                <h3 class="modal-title">📢 Создать объявление</h3>
+                <span class="close" onclick="closeCreateAdModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="createAdForm" onsubmit="submitAd(event)">
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: 500;">Название объявления:</label>
+                        <input type="text" name="title" placeholder="Введите название объявления" required
+                               style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px;">
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 6px; font-weight: 500;">Текст объявления:</label>
+                        <textarea name="content" placeholder="Введите текст объявления" required
+                                  style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; min-height: 120px; resize: vertical;"></textarea>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; justify-content: space-between; align-items: end; flex-wrap: wrap;">
+                        <div style="min-width: 160px; max-width: 180px;">
+                            <label style="display: block; margin-bottom: 6px; font-weight: 500; font-size: 14px;">Дата окончания:</label>
+                            <input type="date" name="expires_at" required
+                                   style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px;">
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-shrink: 0;">
+                            <button type="button" onclick="closeCreateAdModal()" 
+                                    style="padding: 10px 20px; background: var(--muted); color: white; border: none; border-radius: 8px; cursor: pointer;">
+                                Отмена
+                            </button>
+                            <button type="submit" 
+                                    style="padding: 10px 20px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer;">
+                                Создать объявление
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
 </body>
 </html>

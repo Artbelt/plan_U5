@@ -1,5 +1,5 @@
 <?php
-$pdo = new PDO("mysql:host=127.0.0.1;dbname=plan_u5;charset=utf8mb4", "root", "");
+$pdo = new PDO("mysql:host=127.0.0.1;dbname=plan_U5;charset=utf8mb4", "root", "");
 $date = $_GET['date'] ?? date('Y-m-d');
 
 // грузим сырые строки
@@ -73,90 +73,485 @@ function greenShadeStyle(int $plan, int $fact): string {
     <title>Задания гофромашины</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <style>
-        body{font-family:sans-serif;background:#f0f0f0;padding:10px}
-        h2{text-align:center;margin:6px 0 12px}
+        :root {
+            --primary-color: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary-color: #059669;
+            --secondary-dark: #047857;
+            --accent-color: #dc2626;
+            --accent-dark: #b91c1c;
+            --success-color: #16a34a;
+            --success-dark: #15803d;
+            --warning-color: #d97706;
+            --warning-dark: #b45309;
+            --info-color: #0891b2;
+            --info-dark: #0e7490;
+            --light-color: #f8fafc;
+            --dark-color: #1e293b;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --border-radius: 6px;
+            --border-radius-sm: 4px;
+            --border-radius-lg: 8px;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            --transition: all 0.15s ease-in-out;
+        }
 
-        .section{max-width:900px;margin:0 auto;background:#fff;padding:10px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--gray-800);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--gray-800);
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .section {
+            background: white;
+            padding: 24px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+            border: 1px solid var(--gray-200);
+        }
 
         /* NAV */
-        .nav{max-width:900px;margin:0 auto 10px;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
-        .nav a, .nav button{
-            border:1px solid #d1d5db;background:#fff;padding:6px 10px;border-radius:8px;cursor:pointer;
-            box-shadow:0 1px 2px rgba(0,0,0,.05)
+        .nav {
+            max-width: 900px;
+            margin: 0 auto 30px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            background: white;
+            padding: 16px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--gray-200);
         }
-        .nav a:hover, .nav button:hover{background:#f9fafb}
-        .nav input[type="date"]{padding:6px 10px;border:1px solid #d1d5db;border-radius:8px}
 
-        table{border-collapse:collapse;width:100%;font-size:14px}
-        th,td{border:1px solid #ddd;padding:6px 8px;text-align:center}
-        thead th{background:#f5f5f5}
-        tbody tr:nth-child(even){background:#fafafa}
+        .nav a, .nav button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: var(--border-radius-sm);
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav a:hover, .nav button:hover {
+            background: var(--primary-dark);
+        }
+
+        .nav input[type="date"] {
+            padding: 10px 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: var(--border-radius-sm);
+            font-size: 14px;
+            font-weight: 400;
+            background: white;
+            transition: var(--transition);
+        }
+
+        .nav input[type="date"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 14px;
+            background: white;
+            border: 1px solid var(--gray-200);
+        }
+
+        th, td {
+            border: 1px solid var(--gray-200);
+            padding: 12px 8px;
+            text-align: center;
+        }
+
+        thead th {
+            background: var(--gray-100);
+            font-weight: 600;
+            color: var(--gray-700);
+            font-size: 13px;
+        }
+
+        tbody tr:nth-child(even) {
+            background: var(--gray-50);
+        }
+
+        tbody tr:hover {
+            background: var(--gray-100);
+        }
 
         /* выполнено — только оформление текста; фон задаём инлайном */
-        .is-done td{ text-decoration: line-through; color:#0f3d0f }
+        .is-done td {
+            text-decoration: line-through;
+            color: var(--success-dark);
+            font-weight: 600;
+        }
 
         /* >>> tiny save & qty */
         /* узкое поле количества */
-        input[type="number"].qty{
-            width:65px;              /* ещё уже */
-            padding:2px 3px;
-            text-align:center;
+        input[type="number"].qty {
+            width: 80px;
+            padding: 8px 12px;
+            text-align: center;
             font-variant-numeric: tabular-nums;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--border-radius-sm);
+            font-size: 14px;
+            font-weight: 600;
+            transition: var(--transition);
+            background: white;
         }
+
+        input[type="number"].qty:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
         /* убираем стрелки у number */
         input[type="number"].qty::-webkit-outer-spin-button,
-        input[type="number"].qty::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
-        input[type="number"].qty{ -moz-appearance: textfield; }
+        input[type="number"].qty::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type="number"].qty {
+            -moz-appearance: textfield;
+        }
 
         /* крошечная кнопка ✓ */
-        button.save{
-            padding:4px 6px;
-            font-size:13px;
-            line-height:1;
-            cursor:pointer;
-            border:1px solid #d1d5db;
-            background:#fff;
-            border-radius:8px;
-            min-width:30px;          /* чтобы удобно кликалось */
+        button.save {
+            padding: 6px 10px;
+            font-size: 13px;
+            line-height: 1;
+            cursor: pointer;
+            border: none;
+            background: var(--success-color);
+            color: white;
+            border-radius: var(--border-radius-sm);
+            min-width: 36px;
+            font-weight: 500;
+            transition: var(--transition);
         }
-        button.save:hover{background:#f0f2f5}
+
+        button.save:hover {
+            background: var(--success-dark);
+        }
+
         /* <<< tiny save & qty */
 
-        @media (max-width:600px){
-            .nav{gap:6px}
-            table{font-size:13px}
-            th,td{padding:4px}
-            input[type="number"].qty{ width:44px; padding:2px 2px; } /* еще компактнее на мобиле */
-            button.save{ padding:4px 6px; font-size:12px; min-width:26px; }
+        .no-data {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--gray-500);
+            font-size: 16px;
+            font-weight: 400;
         }
-        @media (max-width:600px){
-            /* таблица держит заданные ширины колонок */
-            table{ table-layout: fixed; }
 
-            /* фиксируем ширину колонки "Факт" */
-            thead th:nth-child(4),
-            tbody td:nth-child(4){ width: 112px; } /* подправь число под себя */
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
 
-            /* внутри "Факт": одна строка, без переносов */
-            tbody td:nth-child(4){
-                display: flex;                 /* ряд */
-                align-items: center;
-                justify-content: center;
-                gap: 6px;                      /* расстояние между полем и кнопкой */
-                white-space: nowrap;           /* запрет переносов */
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 24px;
+            border-radius: var(--border-radius);
+            width: 90%;
+            max-width: 800px;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            border: 1px solid var(--gray-200);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin: 0;
+        }
+
+        .close {
+            color: var(--gray-400);
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: var(--transition);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--border-radius-sm);
+        }
+
+        .close:hover {
+            color: var(--danger-color);
+            background-color: var(--gray-100);
+        }
+
+        .search-form {
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: var(--border-radius-sm);
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .search-results {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--border-radius-sm);
+        }
+
+        .search-result-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--gray-100);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .search-result-item:hover {
+            background-color: var(--gray-50);
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-date {
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 14px;
+        }
+
+        .result-details {
+            margin-top: 4px;
+            color: var(--gray-600);
+            font-size: 13px;
+        }
+
+        .result-order-number {
+            background: var(--primary-color);
+            color: white;
+            padding: 4px 8px;
+            border-radius: var(--border-radius-sm);
+            font-weight: 700;
+            font-size: 14px;
+            display: inline-block;
+            margin-right: 8px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .result-plan {
+            color: var(--success-color);
+            font-weight: 500;
+        }
+
+        .result-fact {
+            color: var(--warning-color);
+            font-weight: 500;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 30px 20px;
+            color: var(--gray-500);
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
             }
 
-            /* чтобы длинный Фильтр не толкал верстку — режем с троеточием */
-            tbody td:nth-child(2){
-                overflow: hidden;
-                text-overflow: ellipsis;
+            h2 {
+                font-size: 1.25rem;
+                margin-bottom: 16px;
+            }
+
+            .section {
+                padding: 16px;
+            }
+
+            .nav {
+                gap: 6px;
+                padding: 12px;
+                margin-bottom: 20px;
+            }
+
+            .nav a, .nav button {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+
+            table {
+                font-size: 13px;
+            }
+
+            th, td {
+                padding: 10px 6px;
+            }
+
+            input[type="number"].qty {
+                width: 60px;
+                padding: 6px 8px;
+                font-size: 13px;
+            }
+
+            button.save {
+                padding: 6px 10px;
+                font-size: 13px;
+                min-width: 35px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            /* растягиваем таблицу на всю ширину */
+            .section {
+                padding: 12px;
+                margin: 0 -10px 20px -10px;
+                border-radius: 0;
+            }
+
+            table {
+                width: 100%;
+                table-layout: auto;
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px 4px;
+                word-wrap: break-word;
+            }
+
+            /* колонка "Заявка" - минимальная ширина */
+            thead th:nth-child(1),
+            tbody td:nth-child(1) {
+                width: 15%;
+                min-width: 60px;
+            }
+
+            /* колонка "Фильтр" - максимальная ширина */
+            thead th:nth-child(2),
+            tbody td:nth-child(2) {
+                width: 45%;
+                text-align: left;
+                padding-left: 8px;
+            }
+
+            /* колонка "План" - средняя ширина */
+            thead th:nth-child(3),
+            tbody td:nth-child(3) {
+                width: 15%;
+                min-width: 50px;
+            }
+
+            /* колонка "Факт" - фиксированная ширина */
+            thead th:nth-child(4),
+            tbody td:nth-child(4) {
+                width: 25%;
+                min-width: 100px;
+            }
+
+            /* внутри "Факт": одна строка, без переносов */
+            tbody td:nth-child(4) {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
                 white-space: nowrap;
             }
 
-            /* поле ещё уже (если нужно) */
-            input[type="number"].qty{ width: 44px; }  /* можно 40–42px, если хватает */
-        }
+            /* поле количества */
+            input[type="number"].qty {
+                width: 45px;
+                padding: 4px 6px;
+                font-size: 12px;
+            }
 
+            /* кнопка сохранения */
+            button.save {
+                padding: 4px 8px;
+                font-size: 11px;
+                min-width: 30px;
+            }
+        }
     </style>
     <script>
         // навигация по датам
@@ -257,17 +652,110 @@ function greenShadeStyle(int $plan, int $fact): string {
             const di = document.getElementById('date-input');
             if (di) di.addEventListener('change', onDateChange);
         });
+
+        // Функции для модального окна поиска
+        function openFilterSearch() {
+            document.getElementById('filterSearchModal').style.display = 'block';
+            document.getElementById('filterSearchInput').focus();
+        }
+
+        function closeFilterSearch() {
+            document.getElementById('filterSearchModal').style.display = 'none';
+            document.getElementById('filterSearchInput').value = '';
+            document.getElementById('searchResults').innerHTML = '<div class="no-results">Введите название фильтра для поиска</div>';
+        }
+
+        // Закрытие модального окна при клике вне его
+        window.onclick = function(event) {
+            const modal = document.getElementById('filterSearchModal');
+            if (event.target === modal) {
+                closeFilterSearch();
+            }
+        }
+
+        // Поиск фильтров
+        async function searchFilters() {
+            const searchTerm = document.getElementById('filterSearchInput').value.trim();
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (searchTerm.length < 2) {
+                resultsDiv.innerHTML = '<div class="no-results">Введите минимум 2 символа для поиска</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch('search_filter_positions.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'filter_name=' + encodeURIComponent(searchTerm)
+                });
+
+                const data = await response.json();
+                
+                if (data.success && data.results.length > 0) {
+                    displaySearchResults(data.results);
+                } else {
+                    resultsDiv.innerHTML = '<div class="no-results">Позиции с таким фильтром не найдены</div>';
+                }
+            } catch (error) {
+                console.error('Ошибка поиска:', error);
+                resultsDiv.innerHTML = '<div class="no-results">Ошибка при поиске. Попробуйте еще раз.</div>';
+            }
+        }
+
+        // Отображение результатов поиска
+        function displaySearchResults(results) {
+            const resultsDiv = document.getElementById('searchResults');
+            let html = '';
+
+            results.forEach(result => {
+                const planSum = result.plan_sum || 0;
+                const factSum = result.fact_sum || 0;
+                const ratio = planSum > 0 ? (factSum / planSum * 100).toFixed(1) : 0;
+                
+                html += `
+                    <div class="search-result-item" onclick="goToDate('${result.plan_date}')">
+                        <div class="result-date">${result.plan_date}</div>
+                        <div class="result-details">
+                            <span class="result-order-number">${result.order_number}</span>${result.filter_label}<br>
+                            План: <span class="result-plan">${planSum} шт</span> | 
+                            Факт: <span class="result-fact">${factSum} шт</span> | 
+                            Выполнено: ${ratio}%
+                        </div>
+                    </div>
+                `;
+            });
+
+            resultsDiv.innerHTML = html;
+        }
+
+        // Переход к найденной дате
+        function goToDate(date) {
+            closeFilterSearch();
+            setDateAndReload(date);
+        }
     </script>
 </head>
 <body>
-
+    <div class="container">
 <h2>Задания гофромашины на <?= htmlspecialchars($date) ?></h2>
 
 <div class="nav">
-    <a href="?date=<?= htmlspecialchars($prevDate) ?>" title="День назад">⬅️</a>
+            <a href="?date=<?= htmlspecialchars($prevDate) ?>" title="День назад">
+                ⬅️ 
+            </a>
     <input id="date-input" type="date" value="<?= htmlspecialchars($date) ?>" />
-    <a href="?date=<?= htmlspecialchars($nextDate) ?>" title="День вперёд">➡️</a>
-    <a href="?date=<?= htmlspecialchars($today) ?>" title="Сегодня">Сегодня</a>
+            <a href="?date=<?= htmlspecialchars($nextDate) ?>" title="День вперёд">
+                ➡️
+            </a>
+            <a href="?date=<?= htmlspecialchars($today) ?>" title="Сегодня">
+                Сегодня
+            </a>
+            <button onclick="openFilterSearch()" title="Найти позицию по фильтру">
+                Найти позицию
+            </button>
 </div>
 
 <div class="section">
@@ -294,9 +782,17 @@ function greenShadeStyle(int $plan, int $fact): string {
                 $style  = greenShadeStyle((int)$g['plan_sum'], (int)$g['fact_sum']); // начальный фон
                 ?>
                 <tr id="<?= $rowId ?>" class="<?= $isDone ? 'is-done' : '' ?>" <?= $style ?>>
-                    <td><?= htmlspecialchars($g['order_number']) ?></td>
-                    <td><?= htmlspecialchars($g['filter_label']) ?></td>
-                    <td><?= (int)$g['plan_sum'] ?></td>
+                                <td>
+                                    <strong><?= htmlspecialchars($g['order_number']) ?></strong>
+                                </td>
+                                <td>
+                                    <?= htmlspecialchars($g['filter_label']) ?>
+                                </td>
+                                <td>
+                                    <span style="font-weight: 600; color: var(--primary-color);">
+                                        <?= (int)$g['plan_sum'] ?>
+                                    </span>
+                                </td>
                     <td>
                         <input
                             type="number" class="qty" id="<?= $inputId ?>"
@@ -313,9 +809,35 @@ function greenShadeStyle(int $plan, int $fact): string {
             </tbody>
         </table>
     <?php else: ?>
-        <p style="text-align:center">Заданий нет</p>
+                <div class="no-data">
+                    Заданий на эту дату нет
+                </div>
     <?php endif; ?>
+        </div>
 </div>
 
+    <!-- Modal для поиска позиций по фильтру -->
+    <div id="filterSearchModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Поиск позиций по фильтру</h2>
+                <span class="close" onclick="closeFilterSearch()">&times;</span>
+            </div>
+            <div class="search-form">
+                <input 
+                    type="text" 
+                    id="filterSearchInput" 
+                    class="search-input" 
+                    placeholder="Введите название фильтра для поиска..."
+                    onkeyup="searchFilters()"
+                >
+            </div>
+            <div id="searchResults" class="search-results">
+                <div class="no-results">
+                    Введите название фильтра для поиска
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

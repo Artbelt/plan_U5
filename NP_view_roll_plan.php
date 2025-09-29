@@ -10,7 +10,7 @@ if ($order==='') die('Не указан параметр order.');
 
 $sql = "
 SELECT
-  r.id, r.bale_id, r.work_date, r.done,
+  r.id, r.bale_id, r.work_date, COALESCE(r.done, 0) as done,
   c.filter, TRIM(SUBSTRING_INDEX(c.filter,' [',1)) AS base_filter,
   c.width, c.height, c.length
 FROM roll_plans r
@@ -48,6 +48,7 @@ foreach ($rows as $r) {
 }
 uksort($bales, fn($a,$b)=>($bales[$a]['plan_date'] <=> $bales[$b]['plan_date']) ?: ($bales[$a]['bale_id'] <=> $bales[$b]['bale_id']));
 $total_bales = count($bales);
+$done_bales = array_sum(array_column($bales, 'done'));
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -69,6 +70,9 @@ $total_bales = count($bales);
         .hdr-left{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
         .tag{font-size:11px;padding:1px 6px;border-radius:999px;border:1px solid var(--line);background:#fff;white-space:nowrap}
         .ok{color:var(--ok);border-color:#c9f2d9;background:#f1f9f4}
+        .done{background:#f0f9ff;border-color:#bfdbfe;opacity:0.8}
+        .done .hdr{background:#e0f2fe;border-radius:6px;padding:4px 6px;margin:-2px -2px 4px -2px}
+        .done .tag.ok{background:#dcfce7;border-color:#bbf7d0;color:#166534}
         .mono{font-variant-numeric:tabular-nums;white-space:nowrap}
         table{width:100%;border-collapse:collapse;font-size:11px}
         th,td{border:1px solid var(--line);padding:3px 5px;text-align:center;vertical-align:middle}
@@ -96,7 +100,7 @@ $total_bales = count($bales);
 
 <div class="panel">
     <button class="btn" onclick="window.print()">Печать</button>
-    <span class="muted">Бухт: <?= (int)$total_bales ?></span>
+    <span class="muted">Бухт: <?= (int)$total_bales ?> | Порезано: <strong><?= (int)$done_bales ?></strong> | Осталось: <strong><?= (int)($total_bales - $done_bales) ?></strong></span>
 </div>
 
 <div class="grid">
@@ -105,7 +109,7 @@ $total_bales = count($bales);
     <?php else: foreach ($bales as $b):
         $leftover = max(0, 1200 - $b['total_width']); // считаем, но НЕ выводим сумму ширин
         ?>
-        <div class="card">
+        <div class="card <?= $b['done']?'done':'' ?>">
             <div class="hdr">
                 <div class="hdr-left">
                     <strong class="mono"><?= htmlspecialchars($b['plan_date']) ?></strong>
@@ -114,7 +118,7 @@ $total_bales = count($bales);
                     <span class="muted">остаток: <strong class="mono"><?= (float)$leftover ?> мм</strong></span>
                     <span class="muted">длина: <strong class="mono"><?= (int)$b['length'] ?> м</strong></span>
                 </div>
-                <div class="tag <?= $b['done']?'ok':'' ?>"><?= $b['done']?'Готово':'Запланировано' ?></div>
+                <div class="tag <?= $b['done']?'ok':'' ?>"><?= $b['done']?'✓ Порезано':'Запланировано' ?></div>
             </div>
 
             <table>

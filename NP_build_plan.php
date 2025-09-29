@@ -174,9 +174,22 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy','m
                 SELECT
                     sfs.filter,
                     CAST(NULLIF(COALESCE(sfs.build_complexity,0),0) AS DECIMAL(10,3)) AS rate,
-                    CAST(pps.p_p_height AS DECIMAL(10,3)) AS height
+                    COALESCE(
+                        CAST(pps.p_p_height AS DECIMAL(10,3)),
+                        CAST(cp.height AS DECIMAL(10,3))
+                    ) AS height,
+                    sfs.paper_package,
+                    pps.p_p_height as raw_height,
+                    cp.height as cut_height
                 FROM salon_filter_structure sfs
                 LEFT JOIN paper_package_salon pps ON pps.p_p_name = sfs.paper_package
+                LEFT JOIN (
+                    SELECT filter, height 
+                    FROM cut_plans 
+                    WHERE height IS NOT NULL 
+                    GROUP BY filter 
+                    HAVING COUNT(*) > 0
+                ) cp ON cp.filter = sfs.filter
                 WHERE sfs.filter IN ($ph)
             ");
             $st->execute($filters);

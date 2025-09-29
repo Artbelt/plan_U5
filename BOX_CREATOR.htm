@@ -1,21 +1,111 @@
+<!doctype html>
+<html lang="ru">
 <head>
-<meta charset=UTF-8>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>Расчет коробок</title>
     <style>
-        .c {
-            border: 1px solid #333; /* Рамка */
-            display: inline-block;
-            padding: 5px 15px; /* Поля */
-            text-decoration: none; /* Убираем подчёркивание */
-            color: #000; /* Цвет текста */
+        /* ===== Pro UI (neutral + single accent) ===== */
+        :root{
+            --bg:#f6f7f9;
+            --panel:#ffffff;
+            --ink:#1f2937;
+            --muted:#6b7280;
+            --border:#e5e7eb;
+            --accent:#2457e6;
+            --accent-ink:#ffffff;
+            --radius:12px;
+            --shadow:0 2px 12px rgba(2,8,20,.06);
+            --shadow-soft:0 1px 8px rgba(2,8,20,.05);
         }
-        .c:hover {
-            box-shadow: 0 0 5px rgba(0,0,0,0.3); /* Тень */
-            background: linear-gradient(to bottom, #fcfff4, #e9e9ce); /* Градиент */
-            color: #a00;
+        html,body{height:100%}
+        body{
+            margin:0; background:var(--bg); color:var(--ink);
+            font:14px/1.45 "Segoe UI", Roboto, Arial, sans-serif;
+            -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+        }
+        a{color:var(--accent); text-decoration:none}
+        a:hover{text-decoration:underline}
+
+        /* контейнер и сетка */
+        .container{ max-width:1280px; margin:0 auto; padding:16px; }
+
+        /* панели */
+        .panel{
+            background:var(--panel);
+            border:1px solid var(--border);
+            border-radius:var(--radius);
+            box-shadow:var(--shadow);
+            padding:16px;
+            margin-bottom:16px;
+        }
+        .section-title{
+            font-size:15px; font-weight:600; color:#111827;
+            margin:0 0 12px; padding-bottom:6px; border-bottom:1px solid var(--border);
+        }
+
+        /* кнопки (единый стиль) */
+        button, input[type="submit"], .btn{
+            appearance:none;
+            border:1px solid transparent;
+            cursor:pointer;
+            background:var(--accent);
+            color:var(--accent-ink);
+            padding:7px 14px;
+            border-radius:9px;
+            font-weight:600;
+            transition:background .2s, box-shadow .2s, transform .04s, border-color .2s;
+            box-shadow:0 3px 6px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08);
+            text-decoration:none;
+            display:inline-block;
+        }
+        button:hover, input[type="submit"]:hover, .btn:hover{ 
+            background:#1e47c5; 
+            box-shadow:0 2px 8px rgba(2,8,20,.10); 
+            transform:translateY(-1px); 
+        }
+        button:active, input[type="submit"]:active, .btn:active{ transform:translateY(0); }
+        button:disabled, input[type="submit"]:disabled{
+            background:#e5e7eb; color:#9ca3af; border-color:#e5e7eb; box-shadow:none; cursor:not-allowed;
+        }
+
+        /* поля ввода/селекты */
+        input[type="text"], input[type="date"], input[type="number"], input[type="password"],
+        textarea, select{
+            min-width:180px; padding:7px 10px;
+            border:1px solid var(--border); border-radius:9px;
+            background:#fff; color:var(--ink); outline:none;
+            transition:border-color .2s, box-shadow .2s;
+        }
+        input:focus, textarea:focus, select:focus{
+            border-color:#c7d2fe; box-shadow:0 0 0 3px #e0e7ff;
+        }
+
+        /* инфоблоки */
+        .alert{
+            background:#fffbe6; border:1px solid #f4e4a4; color:#634100;
+            padding:10px; border-radius:9px; margin:12px 0; font-weight:600;
+        }
+        .muted{color:var(--muted); font-size:12px}
+
+        /* форма */
+        .form-group{
+            display:flex; align-items:center; gap:12px; margin-bottom:12px;
+        }
+        .form-group label{
+            font-weight:600; min-width:120px; color:var(--ink);
+        }
+        .form-group input{
+            flex:1; max-width:200px;
+        }
+
+        /* адаптив */
+        @media (max-width:768px){
+            .form-group{flex-direction:column; align-items:stretch; gap:6px}
+            .form-group label{min-width:auto}
+            .form-group input{max-width:none}
         }
     </style>
-    <title></title>
-	
 </head>
 <script>
     /*' WriteDXFPolygon creates a minimal DXF file that only contains
@@ -245,13 +335,35 @@
 
 </script>
 <body>
+<div class="container">
+    <div class="panel">
+        <div class="section-title">Расчет коробок</div>
+        <p class="muted">Создание DXF схемы для производства коробок</p>
+    </div>
 
-<pre>
-Номер ящика  <label for="name"></label><input type="text" id="name" placeholder="AF ХХХХ"/><br>
-Длина ящика  <label for="length"></label><input type="text" id="length" placeholder="ХХХ"/><br>
-Ширина ящика <label for="width"></label><input type="text" id="width" placeholder="ХХХ"/><br>
-Высота ящика <label for="height"></label><input type="text" id="height" placeholder="ХХХ"/><br>
-</pre>
+    <div class="panel">
+        <div class="section-title">Параметры ящика</div>
+        <div class="form-group">
+            <label for="name">Номер ящика:</label>
+            <input type="text" id="name" placeholder="AF ХХХХ"/>
+        </div>
+        <div class="form-group">
+            <label for="length">Длина ящика:</label>
+            <input type="text" id="length" placeholder="ХХХ"/>
+        </div>
+        <div class="form-group">
+            <label for="width">Ширина ящика:</label>
+            <input type="text" id="width" placeholder="ХХХ"/>
+        </div>
+        <div class="form-group">
+            <label for="height">Высота ящика:</label>
+            <input type="text" id="height" placeholder="ХХХ"/>
+        </div>
+    </div>
 
-<a class="c" onclick="save()">Создать схему ящика</a>
+    <div class="panel">
+        <a class="btn" onclick="save()">📦 Создать схему ящика</a>
+    </div>
+</div>
 </body>
+</html>

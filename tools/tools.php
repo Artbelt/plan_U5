@@ -240,6 +240,34 @@ function load_orders($list){
 
 
 
+/** Создание <SELECT> списка с перечнем распланированных заявок */
+function load_planned_orders(){
+    global $mysql_host,$mysql_user,$mysql_user_pass,$mysql_database;
+
+    $mysqli = new mysqli($mysql_host,$mysql_user,$mysql_user_pass,$mysql_database);
+    
+    // Получаем только заявки, которые есть в таблице build_plan (распланированные)
+    $sql = "SELECT DISTINCT o.order_number, o.workshop 
+            FROM orders o 
+            INNER JOIN build_plan bp ON o.order_number = bp.order_number 
+            ORDER BY o.order_number DESC";
+    
+    if (!$result = $mysqli->query($sql)){
+        echo "Ошибка: {$mysqli->error}";
+        exit;
+    }
+
+    echo "<select id='selected_order' name='order_number'>";
+    while ($row = $result->fetch_assoc()) {
+        $val = htmlspecialchars($row['order_number'], ENT_QUOTES, 'UTF-8');
+        echo "<option value=\"$val\">$val</option>";
+    }
+    echo "</select>";
+    
+    $result->close();
+    $mysqli->close();
+}
+
 /** СОздание <SELECT> списка с перечнем фильтров имеющихся в БД */
 function load_filters_into_select(){
 

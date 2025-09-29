@@ -4,14 +4,29 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="сделана теплловая карта вісот">
+    <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="сделана теплловая карта высот">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BOX_CREATOR.htm" beforeDir="false" afterPath="$PROJECT_DIR$/BOX_CREATOR.htm" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/BOX_CREATOR_2.htm" beforeDir="false" afterPath="$PROJECT_DIR$/BOX_CREATOR_2.htm" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/NP_build_plan_week.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_build_plan_week.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Planned_order_for_salon.php" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Planned_order_for_salon_2times.php" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/[DEL]order_planning_U2.php" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/buffer_stock.php" beforeDir="false" afterPath="$PROJECT_DIR$/buffer_stock.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/check_tarif.php" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/enter_old.php" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/fix_date.php" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/fix_tariffs.php" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/main.php" beforeDir="false" afterPath="$PROJECT_DIR$/main.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/production_plans.php" beforeDir="false" afterPath="$PROJECT_DIR$/production_plans.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/search_filter_in_the_orders.php" beforeDir="false" afterPath="$PROJECT_DIR$/search_filter_in_the_orders.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/show_order.php" beforeDir="false" afterPath="$PROJECT_DIR$/show_order.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/tools/tools.php" beforeDir="false" afterPath="$PROJECT_DIR$/tools/tools.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/new_order.php" beforeDir="false" afterPath="$PROJECT_DIR$/new_order.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/planning_manager.php" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/product_output_view.php" beforeDir="false" afterPath="$PROJECT_DIR$/product_output_view.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test2.php" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_bin.php" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/test_roll_cutting.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trash/order_planning_U2.php" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trash/product_output_processing.php" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Задачи.txt" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -137,6 +152,8 @@
       <workItem from="1756794873917" duration="30084000" />
       <workItem from="1757569924407" duration="65758000" />
       <workItem from="1758285746630" duration="12573000" />
+      <workItem from="1758616129107" duration="145000" />
+      <workItem from="1758699342664" duration="584000" />
     </task>
     <task id="LOCAL-00001" summary="Добавлено окно просмотра параметров изделия">
       <created>1752823327851</created>
@@ -285,7 +302,14 @@
       <option name="project" value="LOCAL" />
       <updated>1758281195713</updated>
     </task>
-    <option name="localTasksCounter" value="22" />
+    <task id="LOCAL-00022" summary="сделана теплловая карта высот">
+      <created>1758616230555</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1758616230555</updated>
+    </task>
+    <option name="localTasksCounter" value="23" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -308,6 +332,7 @@
     <MESSAGE value="сделан компакнтій режим для верхней таблиці" />
     <MESSAGE value="сделан компакнтій режим для нижней таблиці" />
     <MESSAGE value="сделана теплловая карта вісот" />
-    <option name="LAST_COMMIT_MESSAGE" value="сделана теплловая карта вісот" />
+    <MESSAGE value="сделана теплловая карта высот" />
+    <option name="LAST_COMMIT_MESSAGE" value="сделана теплловая карта высот" />
   </component>
 </project>

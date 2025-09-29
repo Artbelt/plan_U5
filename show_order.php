@@ -128,6 +128,182 @@
             table{ font-size:13px; }
             th, td{ padding: 8px 10px; }
         }
+
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: var(--panel);
+            margin: auto;
+            padding: 0;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            max-width: 600px;
+            max-height: 80vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .modal-header {
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .close {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close:hover {
+            opacity: 0.7;
+        }
+
+        .modal-body {
+            padding: 12px 16px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .zero-position-item {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 6px;
+            padding: 6px 10px;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .zero-position-info {
+            flex: 1;
+        }
+
+        .zero-position-filter {
+            font-weight: 600;
+            color: #92400e;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .zero-position-planned {
+            color: #6b7280;
+            font-size: 0.8rem;
+            font-weight: normal;
+        }
+
+        .zero-position-details {
+            color: #6b7280;
+            font-size: 0.75rem;
+            margin-top: 2px;
+        }
+
+        .zero-position-count {
+            background: #f59e0b;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .no-zero-positions {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+            font-size: 1rem;
+        }
+
+        .no-zero-positions .icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .zero-positions-header {
+            margin: 0 0 12px 0;
+            font-size: 1rem;
+            color: #374151;
+            font-weight: 600;
+        }
+
+        /* Мобильная адаптация для модального окна */
+        @media (max-width: 768px) {
+            .modal-content {
+                max-width: 95%;
+                max-height: 85vh;
+            }
+
+            .modal-header {
+                padding: 10px 12px;
+            }
+
+            .modal-title {
+                font-size: 1.1rem;
+            }
+
+            .close {
+                font-size: 20px;
+            }
+
+            .modal-body {
+                padding: 10px 12px;
+            }
+
+            .zero-position-item {
+                padding: 5px 8px;
+                margin-bottom: 3px;
+            }
+
+            .zero-position-filter {
+                font-size: 0.9rem;
+                gap: 6px;
+            }
+
+            .zero-position-planned {
+                font-size: 0.75rem;
+            }
+
+            .zero-position-details {
+                font-size: 0.7rem;
+            }
+
+            .zero-position-count {
+                padding: 3px 6px;
+                font-size: 0.8rem;
+            }
+
+            .zero-positions-header {
+                font-size: 0.9rem;
+                margin-bottom: 8px;
+            }
+        }
     </style>
 </head>
 
@@ -204,7 +380,7 @@
     $order_number = $_POST['order_number'] ?? '';
 
     // Подключим отдельный PDO для выборок из corrugation_plan (факт гофропакетов)
-    $pdo_corr = new PDO("mysql:host=127.0.0.1;dbname=plan;charset=utf8mb4", "root", "");
+    $pdo_corr = new PDO("mysql:host=127.0.0.1;dbname=plan_u5;charset=utf8mb4", "root", "");
     $pdo_corr->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
     // Загружаем заявку (как и раньше)
@@ -296,17 +472,157 @@
     ?>
 
     <br>
-    <form action='hiding_order.php' method='post' style="margin-top: 10px;">
-        <input type='hidden' name='order_number' value='<?= htmlspecialchars($order_number) ?>'>
-        <input type='submit' value='Отправить заявку в архив'>
-    </form>
+    <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
+        <button onclick="showZeroProductionPositions()" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+            ⚠️ Позиции выпуск которых = 0
+        </button>
+        <button onclick="openWorkersSpecification()" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);">
+            👷 Спецификация для рабочих
+        </button>
+        <form action='hiding_order.php' method='post' style="margin: 0;">
+            <input type='hidden' name='order_number' value='<?= htmlspecialchars($order_number) ?>'>
+            <input type='submit' value='Отправить заявку в архив'>
+        </form>
+    </div>
 
+</div>
+
+<!-- Модальное окно для позиций с нулевым выпуском -->
+<div id="zeroProductionModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h2 class="modal-title">⚠️ Позиции с нулевым выпуском</h2>
+            <span class="close" onclick="closeZeroProductionModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="zeroProductionContent">
+                <p>Загрузка данных...</p>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
     window.addEventListener('load', function () {
         document.getElementById('loading').style.display = 'none';
     });
+
+    // Функция для показа модального окна с позициями нулевого выпуска
+    function showZeroProductionPositions() {
+        const modal = document.getElementById('zeroProductionModal');
+        const content = document.getElementById('zeroProductionContent');
+        
+        // Показываем модальное окно
+        modal.style.display = 'flex';
+        
+        // Загружаем данные
+        loadZeroProductionData();
+    }
+
+    // Функция для закрытия модального окна
+    function closeZeroProductionModal() {
+        document.getElementById('zeroProductionModal').style.display = 'none';
+    }
+
+    // Функция для загрузки данных о позициях с нулевым выпуском
+    function loadZeroProductionData() {
+        const content = document.getElementById('zeroProductionContent');
+        content.innerHTML = '<p>Загрузка данных...</p>';
+        
+        // Получаем данные из таблицы на странице
+        const table = document.getElementById('order_table');
+        const rows = table.querySelectorAll('tr');
+        const zeroPositions = [];
+        
+        // Пропускаем заголовок и итоговую строку
+        for (let i = 1; i < rows.length - 1; i++) {
+            const row = rows[i];
+            const cells = row.querySelectorAll('td');
+            
+            if (cells.length >= 12) {
+                const filter = cells[1].textContent.trim();
+                const plannedCount = parseInt(cells[2].textContent) || 0;
+                const producedCount = parseInt(cells[10].textContent) || 0;
+                const remark = cells[9].textContent.trim();
+                
+                if (producedCount === 0 && plannedCount > 0) {
+                    zeroPositions.push({
+                        filter: filter,
+                        plannedCount: plannedCount,
+                        producedCount: producedCount,
+                        remark: remark
+                    });
+                }
+            }
+        }
+        
+        // Отображаем результаты
+        displayZeroPositions(zeroPositions);
+    }
+
+    // Функция для отображения позиций с нулевым выпуском
+    function displayZeroPositions(positions) {
+        const content = document.getElementById('zeroProductionContent');
+        
+        if (positions.length === 0) {
+            content.innerHTML = `
+                <div class="no-zero-positions">
+                    <span class="icon">✅</span>
+                    <p>Отлично! Все позиции имеют выпуск больше 0</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = `<div class="zero-positions-header">Найдено позиций с нулевым выпуском: ${positions.length}</div>`;
+        
+        positions.forEach((position, index) => {
+            html += `
+                <div class="zero-position-item">
+                    <div class="zero-position-info">
+                        <div class="zero-position-filter">
+                            ${position.filter}
+                            <span class="zero-position-planned">(${position.plannedCount} шт)</span>
+                        </div>
+                        ${position.remark ? `<div class="zero-position-details">Примечание: ${position.remark}</div>` : ''}
+                    </div>
+                    <div class="zero-position-count">0 шт</div>
+                </div>
+            `;
+        });
+        
+        content.innerHTML = html;
+    }
+
+    // Функция для открытия спецификации для рабочих
+    function openWorkersSpecification() {
+        const orderNumber = '<?= htmlspecialchars($order_number) ?>';
+        
+        // Создаем форму для POST запроса
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'show_order_for_workers.php';
+        form.target = '_blank';
+        
+        // Добавляем скрытое поле с номером заявки
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'order_number';
+        input.value = orderNumber;
+        
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+    }
+
+    // Закрытие модального окна при клике вне его
+    window.onclick = function(event) {
+        const modal = document.getElementById('zeroProductionModal');
+        if (event.target === modal) {
+            closeZeroProductionModal();
+        }
+    }
 </script>
 
 </body>
