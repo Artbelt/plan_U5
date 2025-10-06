@@ -1,4 +1,86 @@
-<?php /** Запуск сессии */ session_start(); ?>
+<?php
+// Проверяем авторизацию через новую систему
+require_once('../auth/includes/config.php');
+require_once('../auth/includes/auth-functions.php');
+
+// Подключаем файлы настроек/инструментов
+require_once('settings.php');
+require_once('tools/tools.php');
+
+// Инициализация системы авторизации
+initAuthSystem();
+
+// Запуск сессии
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+$auth = new AuthManager();
+$session = $auth->checkSession();
+
+if (!$session) {
+    header('Location: ../auth/login.php');
+    exit;
+}
+
+// Получаем информацию о пользователе
+$db = Database::getInstance();
+$users = $db->select("SELECT * FROM auth_users WHERE id = ?", [$session['user_id']]);
+$user = $users[0] ?? null;
+
+// Если пользователь не найден, используем данные из сессии
+if (!$user) {
+    $user = [
+        'full_name' => $session['full_name'] ?? 'Пользователь',
+        'phone' => $session['phone'] ?? ''
+    ];
+}
+
+$userDepartments = $db->select("
+    SELECT ud.department_code, r.name as role_name, r.display_name as role_display_name
+    FROM auth_user_departments ud
+    JOIN auth_roles r ON ud.role_id = r.id
+    WHERE ud.user_id = ?
+", [$session['user_id']]);
+
+// Проверяем, есть ли у пользователя доступ к цеху U5
+$hasAccessToU5 = false;
+$userRole = null;
+foreach ($userDepartments as $dept) {
+    if ($dept['department_code'] === 'U5') {
+        $hasAccessToU5 = true;
+        $userRole = $dept['role_name'];
+        break;
+    }
+}
+
+// Определяем текущий цех
+$currentDepartment = $_SESSION['auth_department'] ?? 'U5';
+
+// Если отдел пустой в сессии, но у пользователя есть доступ к U5, устанавливаем U5
+if (empty($_SESSION['auth_department']) && $hasAccessToU5) {
+    $currentDepartment = 'U5';
+    $_SESSION['auth_department'] = 'U5'; // Обновляем сессию
+}
+
+// Если нет доступа к U5, показываем предупреждение, но не блокируем
+if (!$hasAccessToU5) {
+    echo "<div style='background: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; margin: 10px; border-radius: 5px;'>";
+    echo "<h3>⚠️ Внимание: Нет доступа к цеху U5</h3>";
+    echo "<p>Ваши доступные цеха: ";
+    $deptNames = [];
+    foreach ($userDepartments as $dept) {
+        $deptNames[] = $dept['department_code'] . " (" . $dept['role_name'] . ")";
+    }
+    echo implode(", ", $deptNames);
+    echo "</p>";
+    echo "<p><a href='../index.php'>← Вернуться на главную страницу</a></p>";
+    echo "</div>";
+    
+    // Устанавливаем роль по умолчанию для отображения
+    $userRole = 'guest';
+}
+?>
 <!doctype html>
 <html lang="ru">
 <head>
@@ -368,57 +450,29 @@
 <body>
 
 <?php
-/** подключение файлов настроек/инструментов */
-require_once('settings.php');
-require_once('tools/tools.php');
+/** подключение файлов настроек/инструментов уже выполнено в начале файла */
 
 global $mysql_host, $mysql_user, $mysql_user_pass, $mysql_database;
 
-/** --- Блок авторизации --- */
-if ((isset($_GET['user_name']))&&(!$_SESSION)) {
-    if (!$_GET['user_name']) { echo '<div class="alert">вы не ввели имя</div><div><a href="index.php">назад</a></div>'; exit; }
-}
-if ((isset($_GET['user_pass']))&&(!$_SESSION)) {
-    if (!$_GET['user_pass']) { echo '<div class="alert">вы не ввели пароль</div><div><a href="index.php">назад</a></div>'; exit; }
-}
+// Устанавливаем переменные для совместимости со старым кодом
+$workshop = $currentDepartment;
+$advertisement = 'Информация';
 
-if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))) {
-    $user = $_SESSION['user'];
-    $workshop = $_SESSION['workshop'];
-    $advertisement = '~~~~~';
-} else {
-    $user = $_GET['user_name'];
-    $password = $_GET['user_pass'];
-    $workshop = $_GET['workshop'];
-    $advertisement = 'SOME INFORMATION';
-
-    $mysqli = new mysqli($mysql_host, $mysql_user, $mysql_user_pass, $mysql_database);
-    if ($mysqli->connect_errno) {
-        echo 'Возникла проблема на сайте' . "Номер ошибки: " . $mysqli->connect_errno . "\n" . "Ошибка: " . $mysqli->connect_error . "\n"; exit;
-    }
-    $sql = "SELECT * FROM users WHERE user = '$user';";
-    if (!$result = $mysqli->query($sql)) {
-        echo "Ошибка: Наш запрос не удался и вот почему: \nЗапрос: $sql\nНомер ошибки: ".$mysqli->errno."\nОшибка: ".$mysqli->error."\n"; exit;
-    }
-    if ($result->num_rows === 0) { echo '<div class="alert">Нет такого пользователя</div><div><a href="index.php">назад</a></div>'; exit; }
-    $user_data = $result->fetch_assoc();
-    if ($password != $user_data['pass']) { echo '<div class="alert">Ошибка доступа</div><div><a href="index.php">назад</a></div>'; exit; }
-
-    $access = false;
-    switch ($workshop) {
-        case 'ZU': if ($user_data['ZU'] > 0) $access = true; break;
-        case 'U1': if ($user_data['U1'] > 0) $access = true; break;
-        case 'U2': if ($user_data['U2'] > 0) $access = true; break;
-        case 'U3': if ($user_data['U3'] > 0) $access = true; break;
-        case 'U4': if ($user_data['U4'] > 0) $access = true; break;
-        case 'U5': if ($user_data['U5'] > 0) $access = true; break;
-        case 'U6': if ($user_data['U6'] > 0) $access = true; break;
-    }
-    if (!$access) { echo '<div class="alert">Доступ к данному подразделению закрыт</div><div><a href="index.php">назад</a></div>'; exit; }
-
-    $_SESSION['user'] = $user;
-    $_SESSION['workshop'] = $workshop;
-}
+// Добавляем аккуратную панель авторизации
+echo "<!-- Аккуратная панель авторизации -->
+<div style='position: fixed; top: 10px; right: 10px; background: white; padding: 12px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; border: 1px solid #e5e7eb;'>
+    <div style='display: flex; align-items: center; gap: 12px;'>
+        <div style='width: 32px; height: 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;'>
+            " . mb_substr($user['full_name'] ?? 'П', 0, 1, 'UTF-8') . "
+        </div>
+        <div>
+            <div style='font-weight: 600; font-size: 14px; color: #1f2937;'>" . htmlspecialchars($user['full_name'] ?? 'Пользователь') . "</div>
+            <div style='font-size: 12px; color: #6b7280;'>" . htmlspecialchars($user['phone'] ?? '') . "</div>
+            <div style='font-size: 11px; color: #9ca3af;'>" . $currentDepartment . " • " . ucfirst($userRole ?? 'guest') . "</div>
+        </div>
+        <a href='../auth/logout.php' style='padding: 6px 12px; background: #f3f4f6; color: #374151; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: 500; transition: background-color 0.2s;' onmouseover='this.style.background=\"#e5e7eb\"' onmouseout='this.style.background=\"#f3f4f6\"'>Выход</a>
+    </div>
+</div>";
 ?>
 
 <div class="container">
@@ -435,11 +489,10 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))) {
                         <span class="system-name">Система управления</span>
                     </div>
                     <div class="topbar-center">
-                        Подразделение: <strong><?php echo htmlspecialchars($workshop); ?></strong>
+                       
                     </div>
                     <div class="topbar-right">
-                        Пользователь: <strong><?php echo htmlspecialchars($user); ?></strong>
-                        <a href="logout.php" class="logout-btn">⎋ Выход</a>
+                        <!-- Панель авторизации перенесена вверх -->
                     </div>
                 </div>
             </td>
@@ -451,10 +504,10 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))) {
         <!-- Контент: 3 колонки -->
         <tr class="content-row">
             <!-- Левая панель -->
-            <td class="panel panel--left" style="width:24%;">
+            <td class="panel panel--left" style="width:30%;">
                 <div class="section-title">Операции</div>
                 <div class="stack">
-                    <a href="test.php" target="_blank" rel="noopener" class="stack"><button>Выпуск продукции</button></a>
+                    <a href="product_output.php" target="_blank" rel="noopener" class="stack"><button>Выпуск продукции</button></a>
                     <form action="product_output_view.php" method="post" class="stack" target="_blank"><input type="submit" value="Обзор выпуска продукции"></form>
                     <button onclick="openDataEditor()">Редактор данных</button>
                     <a href="NP_supply_requirements.php" target="_blank" rel="noopener" class="stack"><button>Потребность комплектующих</button></a>
@@ -511,7 +564,7 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))) {
             </td>
 
             <!-- Центральная панель -->
-            <td class="panel panel--main" style="width:52%;">
+            <td class="panel panel--main" style="width:40%;">
                 <div class="section-title">Объявления</div>
                 <div class="stack-lg">
 
@@ -552,7 +605,7 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))) {
             </td>
 
             <!-- Правая панель -->
-            <td class="panel panel--right" style="width:24%;">
+            <td class="panel panel--right" style="width:30%;">
                 <?php
                 /* загрузка заявок */
                 $mysqli = new mysqli($mysql_host, $mysql_user, $mysql_user_pass, $mysql_database);
