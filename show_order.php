@@ -1,8 +1,13 @@
+<?php
+// Получаем номер заявки для заголовка
+$order_number = $_POST['order_number'] ?? '';
+$page_title = $order_number ? $order_number : "Заявка";
+?>
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Заявка</title>
+    <title><?= htmlspecialchars($page_title) ?></title>
     <style>
         /* ===== Modern UI palette (to match main.php) ===== */
         :root{
@@ -376,8 +381,7 @@
         return [$dateList, $total];
     }
 
-    // Получаем номер заявки
-    $order_number = $_POST['order_number'] ?? '';
+    // Номер заявки уже получен в начале файла
 
     // Подключим отдельный PDO для выборок из corrugation_plan (факт гофропакетов)
     $pdo_corr = new PDO("mysql:host=127.0.0.1;dbname=plan_u5;charset=utf8mb4", "root", "");

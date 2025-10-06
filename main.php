@@ -294,6 +294,17 @@
             background:var(--accent)!important; color:#fff!important;
             border:none!important; box-shadow:0 1px 4px rgba(2,8,20,.06);
         }
+        
+        /* оранжевые кнопки для перепланирования */
+        .saved-orders input[type="submit"].replanning-btn{
+            background:#f59e0b!important; color:#fff!important;
+            box-shadow:0 1px 4px rgba(245, 158, 11, 0.3);
+        }
+        
+        .saved-orders input[type="submit"].replanning-btn:hover{
+            background:#d97706!important;
+            box-shadow:0 2px 8px rgba(245, 158, 11, 0.4);
+        }
 
         /* карточка поиска */
         .search-card{
@@ -546,7 +557,7 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))) {
                 /* загрузка заявок */
                 $mysqli = new mysqli($mysql_host, $mysql_user, $mysql_user_pass, $mysql_database);
                 if ($mysqli->connect_errno) { echo 'Возникла проблема на сайте'; exit; }
-                $sql = "SELECT DISTINCT order_number, workshop, hide FROM orders;";
+                $sql = "SELECT DISTINCT order_number, workshop, hide, status FROM orders;";
                 if (!$result = $mysqli->query($sql)){
                     echo "Ошибка: Наш запрос не удался\n"; exit;
                 }
@@ -560,7 +571,9 @@ if ((isset($_SESSION['user'])&&(isset($_SESSION['workshop'])))) {
                     while ($orders_data = $result->fetch_assoc()){
                         if ($orders_data['hide'] != 1){
                             $val = htmlspecialchars($orders_data['order_number']);
-                            echo "<input type='submit' name='order_number' value='{$val}'>";
+                            $status = $orders_data['status'] ?? 'normal';
+                            $class = ($status === 'replanning') ? ' class="replanning-btn"' : '';
+                            echo "<input type='submit' name='order_number' value='{$val}'{$class}>";
                         }
                     }
                     echo '</form>';

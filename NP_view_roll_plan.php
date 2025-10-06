@@ -70,9 +70,10 @@ $done_bales = array_sum(array_column($bales, 'done'));
         .hdr-left{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
         .tag{font-size:11px;padding:1px 6px;border-radius:999px;border:1px solid var(--line);background:#fff;white-space:nowrap}
         .ok{color:var(--ok);border-color:#c9f2d9;background:#f1f9f4}
-        .done{background:#f0f9ff;border-color:#bfdbfe;opacity:0.8}
-        .done .hdr{background:#e0f2fe;border-radius:6px;padding:4px 6px;margin:-2px -2px 4px -2px}
-        .done .tag.ok{background:#dcfce7;border-color:#bbf7d0;color:#166534}
+        .done{background:#dcfce7;border:2px solid #16a34a;opacity:1;box-shadow:0 2px 8px rgba(34,197,94,0.3)}
+        .done .hdr{background:#16a34a;color:white;border-radius:6px;padding:4px 6px;margin:-2px -2px 4px -2px;}
+        .done .hdr .muted{color:white !important}
+        .done .tag.ok{background:#16a34a;border-color:#15803d;color:white;font-weight:bold}
         .mono{font-variant-numeric:tabular-nums;white-space:nowrap}
         table{width:100%;border-collapse:collapse;font-size:11px}
         th,td{border:1px solid var(--line);padding:3px 5px;text-align:center;vertical-align:middle}
@@ -113,9 +114,9 @@ $done_bales = array_sum(array_column($bales, 'done'));
             <div class="hdr">
                 <div class="hdr-left">
                     <strong class="mono"><?= htmlspecialchars($b['plan_date']) ?></strong>
-                    <span>Бухта <strong><?= htmlspecialchars($b['bale_id']) ?></strong></span>
+                    <span>Бухта: <strong><?= htmlspecialchars($b['bale_id']) ?></strong></span>
                     <!-- Убрали «∑ ширин ...», оставили только остаток и длину -->
-                    <span class="muted">остаток: <strong class="mono"><?= (float)$leftover ?> мм</strong></span>
+                    <span class="muted">ост.: <strong class="mono"><?= (float)$leftover ?> мм</strong></span>
                     <span class="muted">длина: <strong class="mono"><?= (int)$b['length'] ?> м</strong></span>
                 </div>
                 <div class="tag <?= $b['done']?'ok':'' ?>"><?= $b['done']?'✓ Порезано':'Запланировано' ?></div>

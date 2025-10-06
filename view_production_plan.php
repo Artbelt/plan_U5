@@ -14,6 +14,12 @@ try {
 $order = $_GET['order'] ?? '';
 if (!$order) die("Не указан номер заявки.");
 
+// Получаем статус заявки
+$stmt = $pdo->prepare("SELECT status FROM orders WHERE order_number = ?");
+$stmt->execute([$order]);
+$orderStatus = $stmt->fetch(PDO::FETCH_ASSOC);
+$isReplanning = ($orderStatus['status'] ?? 'normal') === 'replanning';
+
 /* ---------- ПЛАН (build_plan) ---------- */
 $stmt = $pdo->prepare("
     SELECT plan_date, filter, `count`
@@ -175,6 +181,35 @@ function sumFactForDayMap($map){ $s=0; foreach($map as $v) $s+=(int)$v; return $
             text-underline-offset:2px;
         }
 
+        /* Красная полоса объявления */
+        .announcement-bar {
+            background: linear-gradient(90deg, #f59e0b, #fbbf24);
+            color: white;
+            padding: 12px 20px;
+            text-align: center;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            margin-bottom: 16px;
+        }
+
+        .announcement-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .announcement-icon {
+            font-size: 18px;
+        }
+
+        .announcement-text {
+            font-size: 14px;
+        }
+
         @media(max-width:900px){.calendar{grid-template-columns:repeat(3,1fr)}}
         @media(max-width:600px){.calendar{grid-template-columns:repeat(2,1fr)}}
         @media print{
@@ -188,6 +223,15 @@ function sumFactForDayMap($map){ $s=0; foreach($map as $v) $s+=(int)$v; return $
 <body>
 
 <h1>План и факт сборки — заявка № <?= htmlspecialchars($order) ?></h1>
+
+<?php if ($isReplanning): ?>
+<div class="announcement-bar">
+    <div class="announcement-content">
+        <span class="announcement-icon">⚠️</span>
+        <span class="announcement-text">План в стадии перепланирования, данные о датах могут быть изменены</span>
+    </div>
+</div>
+<?php endif; ?>
 
 <div class="toolbar">
     <div style="text-align:center; margin-bottom:15px;">
