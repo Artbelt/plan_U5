@@ -16,7 +16,7 @@ try{
 
     // Достаём план по заявке
     $st = $pdo->prepare("
-        SELECT id, plan_date, filter_label, `count`, done, fact_count, status
+        SELECT id, plan_date, filter_label, `count`, fact_count
         FROM corrugation_plan
         WHERE order_number = ?
         ORDER BY plan_date, filter_label
@@ -150,7 +150,7 @@ try{
                         <?php
                         $pl = (int)$it['count'];
                         $fc = (int)$it['fact_count'];
-                        $done = (int)$it['done'] === 1;
+                        $done = ($fc >= $pl && $pl > 0);
                         $statusTxt = $done ? 'Выполнено' : (($fc>0 && $fc<$pl) ? 'В работе' : 'Запланировано');
                         ?>
                         <tr>

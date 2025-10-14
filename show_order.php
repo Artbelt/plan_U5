@@ -480,6 +480,9 @@ $page_title = $order_number ? $order_number : "Заявка";
         <button onclick="showZeroProductionPositions()" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
             ⚠️ Позиции выпуск которых = 0
         </button>
+        <button onclick="checkGofraPackages()" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);">
+            🔍 Проверка гофропакетов
+        </button>
         <button onclick="openWorkersSpecification()" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);">
             👷 Спецификация для рабочих
         </button>
@@ -500,6 +503,42 @@ $page_title = $order_number ? $order_number : "Заявка";
         </div>
         <div class="modal-body">
             <div id="zeroProductionContent">
+                <p>Загрузка данных...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для проверки гофропакетов -->
+<div id="gofraCheckModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h2 class="modal-title">🔍 Проверка гофропакетов</h2>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="printGofraCheck()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                    🖨️ Печать
+                </button>
+                <span class="close" onclick="closeGofraCheckModal()">&times;</span>
+            </div>
+        </div>
+        <div class="modal-body">
+            <!-- Фильтры для типов проблем -->
+            <div id="gofraFilters" style="margin-bottom: 15px; padding: 10px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
+                <div style="font-weight: bold; margin-bottom: 8px; color: #374151;">🔍 Фильтр по типу проблемы:</div>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" id="filterNoGofra" checked style="margin: 0;">
+                        <span style="color: #dc2626; font-weight: bold;">Нет гофропакетов</span>
+                        <span style="color: #64748b; font-size: 12px;">(0 гофропакетов, но есть выпуск)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                        <input type="checkbox" id="filterShortage" checked style="margin: 0;">
+                        <span style="color: #f59e0b; font-weight: bold;">Недостаток</span>
+                        <span style="color: #64748b; font-size: 12px;">(недостаток ≥ 20 штук)</span>
+                    </label>
+                </div>
+            </div>
+            <div id="gofraCheckContent">
                 <p>Загрузка данных...</p>
             </div>
         </div>
@@ -620,11 +659,270 @@ $page_title = $order_number ? $order_number : "Заявка";
         document.body.removeChild(form);
     }
 
+    // Функция для проверки гофропакетов
+    function checkGofraPackages() {
+        const modal = document.getElementById('gofraCheckModal');
+        const content = document.getElementById('gofraCheckContent');
+        
+        // Показываем модальное окно
+        modal.style.display = 'flex';
+        
+        // Загружаем данные
+        loadGofraCheckData();
+        
+        // Добавляем обработчики событий для фильтров
+        const filterNoGofra = document.getElementById('filterNoGofra');
+        const filterShortage = document.getElementById('filterShortage');
+        
+        // Удаляем старые обработчики, если они есть
+        filterNoGofra.removeEventListener('change', loadGofraCheckData);
+        filterShortage.removeEventListener('change', loadGofraCheckData);
+        
+        // Добавляем новые обработчики
+        filterNoGofra.addEventListener('change', loadGofraCheckData);
+        filterShortage.addEventListener('change', loadGofraCheckData);
+    }
+
+    // Функция для закрытия модального окна проверки гофропакетов
+    function closeGofraCheckModal() {
+        document.getElementById('gofraCheckModal').style.display = 'none';
+    }
+
+    // Функция для печати таблицы проверки гофропакетов
+    function printGofraCheck() {
+        const orderNumber = '<?= htmlspecialchars($order_number) ?>';
+        const content = document.getElementById('gofraCheckContent');
+        
+        // Создаем новое окно для печати
+        const printWindow = window.open('', '_blank', 'width=800,height=600');
+        
+        // Формируем HTML для печати
+        const printHTML = `
+            <!DOCTYPE html>
+            <html lang="ru">
+            <head>
+                <meta charset="UTF-8">
+                <title>Проверка гофропакетов - ${orderNumber}</title>
+                <style>
+                    body { 
+                        font-family: Arial, sans-serif; 
+                        margin: 20px; 
+                        font-size: 12px;
+                        line-height: 1.4;
+                    }
+                    h1 { 
+                        color: #dc2626; 
+                        text-align: center; 
+                        margin-bottom: 20px;
+                        font-size: 18px;
+                    }
+                    h2 { 
+                        color: #374151; 
+                        margin: 15px 0 10px 0;
+                        font-size: 14px;
+                    }
+                    table { 
+                        width: 100%; 
+                        border-collapse: collapse; 
+                        margin-bottom: 20px;
+                        font-size: 11px;
+                    }
+                    th, td { 
+                        border: 1px solid #374151; 
+                        padding: 6px; 
+                        text-align: center;
+                    }
+                    th { 
+                        background-color: #f3f4f6; 
+                        font-weight: bold;
+                    }
+                    .no-problems { 
+                        text-align: center; 
+                        color: #10b981; 
+                        font-weight: bold;
+                        padding: 20px;
+                    }
+                    .problem-count { 
+                        color: #dc2626; 
+                        font-weight: bold; 
+                        margin-bottom: 10px;
+                    }
+                    .description { 
+                        color: #6b7280; 
+                        margin-bottom: 15px;
+                        font-size: 10px;
+                    }
+                    @media print {
+                        body { margin: 0; }
+                        h1 { font-size: 16px; }
+                    }
+                </style>
+            </head>
+            <body>
+                <h1>🔍 Проверка гофропакетов</h1>
+                <h2>Заявка: ${orderNumber}</h2>
+                <p style="color: #6b7280; font-size: 11px;">Дата проверки: ${new Date().toLocaleDateString('ru-RU')}</p>
+                <p style="color: #374151; font-size: 11px; margin: 10px 0;">Проверяются позиции с проблемами гофропакетов:</p>
+                <ul style="color: #6b7280; font-size: 10px; margin: 5px 0 15px 0;">
+                    <li>• Гофропакетов = 0, но выпущено фильтров > 0</li>
+                    <li>• Недостаток гофропакетов ≥ 20 штук</li>
+                </ul>
+                
+                ${content.innerHTML}
+                
+                <div style="margin-top: 30px; font-size: 10px; color: #6b7280; text-align: center;">
+                    Документ сформирован автоматически системой планирования производства
+                </div>
+            </body>
+            </html>
+        `;
+        
+        // Записываем HTML в новое окно
+        printWindow.document.write(printHTML);
+        printWindow.document.close();
+        
+        // Ждем загрузки и открываем диалог печати
+        printWindow.onload = function() {
+            printWindow.focus();
+            printWindow.print();
+        };
+    }
+
+    // Функция для загрузки данных о гофропакетах
+    function loadGofraCheckData() {
+        const content = document.getElementById('gofraCheckContent');
+        content.innerHTML = '<p>Загрузка данных...</p>';
+        
+        // Получаем настройки фильтров
+        const showNoGofra = document.getElementById('filterNoGofra').checked;
+        const showShortage = document.getElementById('filterShortage').checked;
+        
+        // Получаем данные из таблицы на странице
+        const table = document.getElementById('order_table');
+        const rows = table.querySelectorAll('tr');
+        const problemPositions = [];
+        
+        // Пропускаем заголовок и итоговую строку
+        for (let i = 1; i < rows.length - 1; i++) {
+            const row = rows[i];
+            const cells = row.querySelectorAll('td');
+            
+            if (cells.length >= 13) {
+                const num = cells[0].textContent.trim();
+                const filter = cells[1].textContent.trim();
+                const plan = cells[2].textContent.trim();
+                // Извлекаем только число из ячейки, игнорируя тултип
+                // Ищем первый элемент с текстом (число) в ячейке
+                const producedElement = cells[10].querySelector('.tooltip') || cells[10];
+                const gofraElement = cells[12].querySelector('.tooltip') || cells[12];
+                
+                const produced = producedElement.firstChild ? producedElement.firstChild.textContent.trim() : cells[10].textContent.trim();
+                const gofra = gofraElement.firstChild ? gofraElement.firstChild.textContent.trim() : cells[12].textContent.trim();
+                
+                const gofraCount = parseInt(gofra) || 0;
+                const producedCount = parseInt(produced) || 0;
+                const shortage = Math.max(0, producedCount - gofraCount);
+                
+                // Определяем тип проблемы и проверяем фильтры
+                let problemType = '';
+                let shouldShow = false;
+                
+                if (gofraCount === 0 && producedCount > 0) {
+                    problemType = 'Нет гофропакетов';
+                    shouldShow = showNoGofra;
+                } else if (gofraCount < producedCount && producedCount > 0 && shortage >= 20) {
+                    problemType = 'Недостаток';
+                    shouldShow = showShortage;
+                }
+                
+                if (shouldShow) {
+                    problemPositions.push({
+                        num: num,
+                        filter: filter,
+                        plan: plan,
+                        produced: producedCount,
+                        gofra: gofraCount,
+                        problemType: problemType,
+                        shortage: shortage
+                    });
+                }
+            }
+        }
+        
+        // Формируем HTML с результатами
+        if (problemPositions.length === 0) {
+            let message = '';
+            if (!showNoGofra && !showShortage) {
+                message = 'Выберите хотя бы один тип проблемы для отображения.';
+            } else {
+                message = 'Для выбранных типов проблем ничего не найдено.';
+            }
+            
+            content.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <p style="color: #10b981; font-size: 18px; font-weight: bold;">✅ ${message}</p>
+                    <p style="color: #64748b;">Проверьте настройки фильтров или убедитесь, что данные корректны.</p>
+                </div>
+            `;
+        } else {
+            // Формируем список активных фильтров
+            let activeFilters = [];
+            if (showNoGofra) activeFilters.push('Гофропакетов = 0, но выпущено фильтров > 0');
+            if (showShortage) activeFilters.push('Недостаток гофропакетов ≥ 20 штук');
+            
+            let html = `
+                <div style="margin-bottom: 10px;">
+                    <p style="color: #dc2626; font-weight: bold;">⚠️ Обнаружено проблемных позиций: ${problemPositions.length}</p>
+                    <p style="color: #64748b; font-size: 14px;">Активные фильтры:</p>
+                    <ul style="color: #64748b; font-size: 13px; margin: 5px 0;">
+                        ${activeFilters.map(filter => `<li>• ${filter}</li>`).join('')}
+                    </ul>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <tr style="background: #f1f5f9;">
+                        <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: left;">№</th>
+                        <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: left;">Фильтр</th>
+                        <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">План, шт</th>
+                        <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">Выпущено фильтров, шт</th>
+                        <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">Гофропакетов, шт</th>
+                        <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">Недостаток, шт</th>
+                        <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">Тип проблемы</th>
+                    </tr>
+            `;
+            
+            problemPositions.forEach(pos => {
+                // Цвет для типа проблемы
+                let typeColor = pos.problemType === 'Нет гофропакетов' ? '#dc2626' : '#f59e0b';
+                let typeBg = pos.problemType === 'Нет гофропакетов' ? '#fee2e2' : '#fef3c7';
+                
+                html += `
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #e2e8f0;">${pos.num}</td>
+                        <td style="padding: 8px; border: 1px solid #e2e8f0;">${pos.filter}</td>
+                        <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center;">${pos.plan}</td>
+                        <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center; color: #10b981; font-weight: bold;">${pos.produced}</td>
+                        <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center; color: #dc2626; font-weight: bold;">${pos.gofra}</td>
+                        <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center; color: #dc2626; font-weight: bold;">${pos.shortage}</td>
+                        <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center; background: ${typeBg}; color: ${typeColor}; font-weight: bold; font-size: 12px;">${pos.problemType}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</table>';
+            content.innerHTML = html;
+        }
+    }
+
     // Закрытие модального окна при клике вне его
     window.onclick = function(event) {
-        const modal = document.getElementById('zeroProductionModal');
-        if (event.target === modal) {
+        const zeroModal = document.getElementById('zeroProductionModal');
+        const gofraModal = document.getElementById('gofraCheckModal');
+        
+        if (event.target === zeroModal) {
             closeZeroProductionModal();
+        }
+        if (event.target === gofraModal) {
+            closeGofraCheckModal();
         }
     }
 </script>

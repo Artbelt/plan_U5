@@ -18,9 +18,7 @@ try{
       plan_date DATE DEFAULT NULL,
       filter TEXT DEFAULT NULL,
       count INT(11) DEFAULT NULL,
-      done TINYINT(1) NOT NULL DEFAULT 0,
       fact_count INT(11) NOT NULL DEFAULT 0,
-      status TINYINT(1) NOT NULL DEFAULT 0,
       PRIMARY KEY (id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
@@ -106,13 +104,24 @@ try{
 
     $pdo->beginTransaction();
 
+    // Сохраняем информацию о fact_count для существующих записей
+    $existingFacts = [];
+    $stmt = $pdo->prepare("SELECT bale_id, strip_no, fact_count FROM corrugation_plan WHERE order_number=?");
+    $stmt->execute([$order]);
+    while ($row = $stmt->fetch()) {
+        $key = $row['bale_id'] . ':' . $row['strip_no'];
+        if ($row['fact_count'] > 0) {
+            $existingFacts[$key] = (int)$row['fact_count'];
+        }
+    }
+
     // Полное пересохранение плана по заявке
     $del = $pdo->prepare("DELETE FROM corrugation_plan WHERE order_number=?");
     $del->execute([$order]);
 
     $sql = "INSERT INTO corrugation_plan
-        (order_number, plan_date, {$filterCol}, count, bale_id, strip_no, done, fact_count, status)
-        VALUES (?,?,?,?,?,?,0,0,0)";
+        (order_number, plan_date, {$filterCol}, count, bale_id, strip_no, fact_count)
+        VALUES (?,?,?,?,?,?,?)";
     $ins = $pdo->prepare($sql);
 
     foreach ($items as $it){
@@ -125,7 +134,11 @@ try{
         if (!$ds || !$bid || !$sn) continue;
         if (!preg_match('~^\d{4}-\d{2}-\d{2}$~', $ds)) continue;
 
-        $ins->execute([$order, $ds, $flt, $cnt, $bid, $sn]);
+        // Восстанавливаем fact_count если он был
+        $key = $bid . ':' . $sn;
+        $factCount = isset($existingFacts[$key]) ? $existingFacts[$key] : 0;
+
+        $ins->execute([$order, $ds, $flt, $cnt, $bid, $sn, $factCount]);
     }
 
     $pdo->commit();

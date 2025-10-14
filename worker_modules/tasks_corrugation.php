@@ -50,7 +50,7 @@ function greenShadeStyle(int $plan, int $fact): string {
 
     $h = 120;     // оттенок зелёного
     $s = 60;      // насыщенность
-    $L_dark  = 35; // тёмный (при >=100%)
+    $L_dark  = 65; // тёмный (при >=100%)
     $L_light = 85; // светлый (при 80%)
 
     if ($ratio >= 1) {
@@ -76,12 +76,12 @@ function greenShadeStyle(int $plan, int $fact): string {
         :root {
             --primary-color: #2563eb;
             --primary-dark: #1d4ed8;
-            --secondary-color: #059669;
-            --secondary-dark: #047857;
+            --secondary-color:rgb(13, 209, 147);
+            --secondary-dark:rgb(37, 216, 165);
             --accent-color: #dc2626;
             --accent-dark: #b91c1c;
-            --success-color: #16a34a;
-            --success-dark: #15803d;
+            --success-color:rgb(33, 236, 108);
+            --success-dark:rgb(31, 32, 31);
             --warning-color: #d97706;
             --warning-dark: #b45309;
             --info-color: #0891b2;
@@ -611,11 +611,11 @@ function greenShadeStyle(int $plan, int $fact): string {
 
             const items = JSON.parse(itemsJson);
 
-            // распределение общего факта по строкам (не превышая их план)
+            // распределение общего факта по строкам
             let rest = val, dist = [];
             for (const it of items){
                 if (rest <= 0){ dist.push({id:it.id,fact:0}); continue; }
-                const take = Math.min(rest, Number(it.count));
+                const take = rest; // берем весь остаток (без ограничения планом)
                 dist.push({id:it.id,fact:take}); rest -= take;
             }
 

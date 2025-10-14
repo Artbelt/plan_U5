@@ -45,12 +45,28 @@ foreach ($rows as $r) {
 
 /* Уже сохранённые назначения (для первичного заполнения) */
 $pre = [];
-$st2 = $pdo->prepare("SELECT work_date, bale_id FROM roll_plans WHERE order_number=?");
+$st2 = $pdo->prepare("SELECT work_date, bale_id, done FROM roll_plans WHERE order_number=?");
 $st2->execute([$order]);
 while ($r = $st2->fetch(PDO::FETCH_ASSOC)) {
     $d = $r['work_date'];
     if (!isset($pre[$d])) $pre[$d] = [];
     $pre[$d][] = (int)$r['bale_id'];
+}
+
+/* Получаем информацию о порезанных бухтах (done=1) */
+$doneBales = [];
+$st3 = $pdo->prepare("SELECT bale_id FROM roll_plans WHERE order_number=? AND done=1");
+$st3->execute([$order]);
+while ($r = $st3->fetch(PDO::FETCH_ASSOC)) {
+    $doneBales[] = (int)$r['bale_id'];
+}
+
+/* Получаем информацию о бухтах, которые должны быть порезаны до текущей даты, но не порезаны */
+$overdueBales = [];
+$st4 = $pdo->prepare("SELECT bale_id FROM roll_plans WHERE order_number=? AND work_date <= CURDATE() AND (done IS NULL OR done = 0)");
+$st4->execute([$order]);
+while ($r = $st4->fetch(PDO::FETCH_ASSOC)) {
+    $overdueBales[] = (int)$r['bale_id'];
 }
 ?>
 <!DOCTYPE html>
@@ -93,12 +109,15 @@ while ($r = $st2->fetch(PDO::FETCH_ASSOC)) {
         th:not(:first-child),td:not(:first-child){width:var(--daycol)}
         .highlight{background:#d1ecf1 !important;outline:1px solid #0bb}
         .overload{background:#f8d7da !important}
+        
+        /* Ячейки порезанных бухт */
+        td.cell-done{background:#e8f5e9 !important;pointer-events:none;opacity:0.7}
 
         /* Липкий перший стовпець */
         th:first-child {
-            position: sticky;
-            left: 0;
-            z-index: 5;
+            position: sticky !important;
+            left: 0 !important;
+            z-index: 10 !important;
             background: #f0f3f8;
             width: var(--leftcol);
             min-width: var(--leftcol);
@@ -107,9 +126,9 @@ while ($r = $st2->fetch(PDO::FETCH_ASSOC)) {
             white-space: normal;
         }
         td.left-label {
-            position: sticky;
-            left: 0;
-            z-index: 4;
+            position: sticky !important;
+            left: 0 !important;
+            z-index: 9 !important;
             background: #fff;
             width: var(--leftcol);
             min-width: var(--leftcol);
@@ -120,6 +139,14 @@ while ($r = $st2->fetch(PDO::FETCH_ASSOC)) {
 
         /* ПІДСВІТКА обраних бухт (ліва клітинка) */
         td.left-label.bale-picked{background:#fff7cc !important;box-shadow:inset 4px 0 0 #f59e0b}
+        
+        /* Порезанные бухты (done=1) */
+        td.left-label.bale-done{background:#d1f4e0 !important;box-shadow:inset 4px 0 0 #10b981}
+        td.left-label.bale-done::after{content:"✓";position:absolute;right:8px;top:50%;transform:translateY(-50%);color:#10b981;font-weight:bold;font-size:16px;z-index:1}
+        
+        /* Бухты, которые должны быть порезаны, но еще не порезаны */
+        td.left-label.bale-overdue{background:#fef3c7 !important;box-shadow:inset 4px 0 0 #f59e0b}
+        td.left-label.bale-overdue::after{content:"⚠";position:absolute;right:8px;top:50%;transform:translateY(-50%);color:#f59e0b;font-weight:bold;font-size:16px;z-index:1}
 
         /* тільки окремі висоти */
         .hval{padding:1px 4px;border-radius:4px;margin-right:2px;border:1px solid transparent}
@@ -196,6 +223,8 @@ while ($r = $st2->fetch(PDO::FETCH_ASSOC)) {
     const bales = <?= json_encode(array_values($bales), JSON_UNESCAPED_UNICODE) ?>;
     const preselected = <?= json_encode($pre, JSON_UNESCAPED_UNICODE) ?>;
     const orderNumber = <?= json_encode($order) ?>;
+    const doneBales = <?= json_encode($doneBales) ?>;
+    const overdueBales = <?= json_encode($overdueBales) ?>;
 
     // утиліта для id з висотою (14.5 -> "14_5")
     const hid = h => String(h).replace(/\./g, '_');
@@ -362,7 +391,21 @@ while ($r = $st2->fetch(PDO::FETCH_ASSOC)) {
             const left = document.createElement('td');
             left.className = 'left-label';
             left.dataset.baleId = b.bale_id;
-            left.title = tooltip;                    // ← ПОВЕРНЕНА підказка
+            
+            // Проверяем статус бухты
+            const isDone = doneBales.includes(b.bale_id);
+            const isOverdue = overdueBales.includes(b.bale_id);
+            
+            if (isDone) {
+                left.classList.add('bale-done');
+                left.title = tooltip + '\n\n✓ Порезана';
+            } else if (isOverdue) {
+                left.classList.add('bale-overdue');
+                left.title = tooltip + '\n\n⚠ Должна быть порезана';
+            } else {
+                left.title = tooltip;
+            }
+            
             left.innerHTML = '<strong>Бухта '+b.bale_id+'</strong><div class="bale-label">'
                 + uniqHeights.map(h=>`<span class="hval" data-h="${h}">[${h}]</span>`).join(' ')
                 + '</div>';
@@ -374,6 +417,11 @@ while ($r = $st2->fetch(PDO::FETCH_ASSOC)) {
                 const td = document.createElement('td');
                 td.dataset.date = ds;
                 td.dataset.baleId = b.bale_id;
+
+                // Если бухта порезана, делаем ячейки неактивными
+                if (isDone) {
+                    td.classList.add('cell-done');
+                }
 
                 if (selected[ds] && selected[ds].includes(b.bale_id)) td.classList.add('highlight');
 

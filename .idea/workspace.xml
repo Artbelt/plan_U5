@@ -5,28 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="сделана теплловая карта высот">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/BOX_CREATOR.htm" beforeDir="false" afterPath="$PROJECT_DIR$/BOX_CREATOR.htm" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/BOX_CREATOR_2.htm" beforeDir="false" afterPath="$PROJECT_DIR$/BOX_CREATOR_2.htm" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/NP_build_plan_week.php" beforeDir="false" afterPath="$PROJECT_DIR$/NP_build_plan_week.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Planned_order_for_salon.php" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Planned_order_for_salon_2times.php" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/[DEL]order_planning_U2.php" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/buffer_stock.php" beforeDir="false" afterPath="$PROJECT_DIR$/buffer_stock.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/check_tarif.php" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/enter_old.php" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/fix_date.php" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/fix_tariffs.php" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/index.php" beforeDir="false" afterPath="$PROJECT_DIR$/index.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.php" beforeDir="false" afterPath="$PROJECT_DIR$/main.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/new_order.php" beforeDir="false" afterPath="$PROJECT_DIR$/new_order.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/planning_manager.php" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/product_output_view.php" beforeDir="false" afterPath="$PROJECT_DIR$/product_output_view.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test2.php" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_bin.php" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/test_roll_cutting.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trash/order_planning_U2.php" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trash/product_output_processing.php" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Задачи.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/product_output.php" beforeDir="false" afterPath="$PROJECT_DIR$/product_output.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/worker_modules/tasks_corrugation.php" beforeDir="false" afterPath="$PROJECT_DIR$/worker_modules/tasks_corrugation.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/worker_modules/tasks_cut.php" beforeDir="false" afterPath="$PROJECT_DIR$/worker_modules/tasks_cut.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -154,6 +137,7 @@
       <workItem from="1758285746630" duration="12573000" />
       <workItem from="1758616129107" duration="145000" />
       <workItem from="1758699342664" duration="584000" />
+      <workItem from="1759916651437" duration="10000" />
     </task>
     <task id="LOCAL-00001" summary="Добавлено окно просмотра параметров изделия">
       <created>1752823327851</created>

@@ -41,6 +41,23 @@ function trim_num($x, $dec=1){
     return rtrim(rtrim($s, '0'), '.');
 }
 
+/* Получаем информацию о выполненных операциях (fact_count > 0) */
+$factData = [];
+$stFact = $pdo->prepare("
+    SELECT plan_date, filter_label, bale_id, strip_no, count, fact_count 
+    FROM corrugation_plan 
+    WHERE order_number = ? AND fact_count > 0
+");
+$stFact->execute([$order]);
+while ($row = $stFact->fetch()) {
+    $key = $row['bale_id'] . ':' . $row['strip_no'];
+    $factData[$key] = [
+        'plan_count' => (int)$row['count'],
+        'fact_count' => (int)$row['fact_count'],
+        'plan_date' => $row['plan_date']
+    ];
+}
+
 $dates = [];
 $pool  = [];
 foreach($rows as $r){
@@ -62,14 +79,17 @@ foreach($rows as $r){
     // tooltip (скрытые поля): [z..][w..][L..]
     $tooltip = sprintf('[z%d] [w%s]%s', $Z, trim_num($W, 1), $L !== null ? (' [L'.(int)$L.']') : '');
 
+    $key = $r['bale_id'].':'.$r['strip_no'];
     $pool[$d][] = [
-        'key'      => $r['bale_id'].':'.$r['strip_no'],
+        'key'      => $key,
         'bale_id'  => (int)$r['bale_id'],
         'strip_no' => (int)$r['strip_no'],
         'filter'   => (string)$r['filter'], // чистое имя (для БД)
         'label'    => $label_visible,
         'tip'      => $tooltip,
         'packs'    => $cnt,
+        'fact_count' => isset($factData[$key]) ? $factData[$key]['fact_count'] : 0,
+        'plan_count' => isset($factData[$key]) ? $factData[$key]['plan_count'] : 0,
     ];
 }
 $dates = array_values(array_keys($dates));
@@ -81,36 +101,47 @@ sort($dates);
 <style>
     :root{ --line:#e5e7eb; --bg:#f7f9fc; --card:#fff; --muted:#6b7280; --accent:#2563eb; }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);font:13px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111}
-    h2{margin:18px 10px 8px}
-    .wrap{width:100vw;margin:0;padding:0 10px}
-    .panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;margin:10px 0}
-    .head{display:flex;align-items:center;justify-content:space-between;margin:2px 0 10px;gap:8px;flex-wrap:wrap}
-    .btn{background:var(--accent);color:#fff;border:1px solid var(--accent);border-radius:8px;padding:6px 10px;cursor:pointer}
+    body{margin:0;background:var(--bg);font:11px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111}
+    h2{margin:8px 6px 4px;font-size:16px}
+    .wrap{width:100vw;margin:0;padding:0 6px}
+    .panel{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px;margin:6px 0}
+    .head{display:flex;align-items:center;justify-content:space-between;margin:1px 0 6px;gap:6px;flex-wrap:wrap}
+    .btn{background:var(--accent);color:#fff;border:1px solid var(--accent);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:10px}
     .btn:disabled{opacity:.5;cursor:not-allowed}
-    .muted{color:var(--muted)}
-    .sub{font-size:12px;color:var(--muted)}
+    .muted{color:var(--muted);font-size:10px}
+    .sub{font-size:10px;color:var(--muted)}
 
-    .gridTop{display:grid;grid-template-columns:repeat(<?=count($dates)?:1?>,minmax(220px,1fr));gap:10px}
-    .gridBot{display:grid;gap:10px}
-    .col{border-left:1px solid var(--line);padding-left:8px;min-height:200px}
-    .col h4{margin:0 0 8px;font-weight:600}
+    .gridTop{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px}
+    .gridBot{display:grid;gap:6px}
+    .col{border-left:1px solid var(--line);padding-left:6px;min-height:120px;flex-shrink:0}
+    .gridTop .col{width:180px}
+    .col h4{margin:0 0 4px;font-weight:600;font-size:12px}
 
-    .pill{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid #dbe3f0;background:#eef6ff;border-radius:8px;padding:6px 8px;margin:4px 0;cursor:pointer}
+    .pill{display:flex;align-items:center;justify-content:space-between;gap:4px;border:1px solid #dbe3f0;background:#eef6ff;border-radius:6px;padding:3px 6px;margin:2px 0;cursor:pointer;font-size:10px;position:relative;flex-wrap:wrap}
+    .pill-date{color:#666;font-size:9px;margin-left:auto}
+    .day-separator{background:#e5e7eb;color:#6b7280;padding:2px 6px;margin:4px 0;border-radius:4px;font-size:9px;font-weight:600;text-align:center}
     .pill:hover{background:#e6f1ff}
     .pill-disabled{opacity:.45;filter:grayscale(.15);pointer-events:none}
 
-    .dropzone{min-height:42px;border:1px dashed var(--line);border-radius:6px;padding:6px}
-    .rowItem{display:flex;align-items:center;justify-content:space-between;background:#dff7c7;border:1px solid #bddda2;border-radius:8px;padding:6px 8px;margin:4px 0}
-    .rowItem .rm{border:none;background:#fff;border:1px solid #ccc;border-radius:6px;padding:2px 8px;cursor:pointer}
-    .dayTotal{margin-top:6px;font-size:12px}
-    .rowItem b.qty{margin-left:8px}
+    /* Выполненные полосы */
+    .pill-done{background:#d1f4e0 !important;border-color:#10b981}
+    .pill-done::after{content:"✓";position:absolute;right:4px;top:50%;transform:translateY(-50%);color:#10b981;font-weight:bold;font-size:12px}
+    
+    /* Частично выполненные полосы */
+    .pill-partial{background:#fef3c7 !important;border-color:#f59e0b}
+    .pill-partial::after{content:"◐";position:absolute;right:4px;top:50%;transform:translateY(-50%);color:#f59e0b;font-weight:bold;font-size:12px}
+
+    .dropzone{min-height:28px;border:1px dashed var(--line);border-radius:4px;padding:4px}
+    .rowItem{display:flex;align-items:center;justify-content:space-between;background:#dff7c7;border:1px solid #bddda2;border-radius:6px;padding:3px 6px;margin:2px 0;font-size:10px}
+    .rowItem .rm{border:none;background:#fff;border:1px solid #ccc;border-radius:4px;padding:1px 6px;cursor:pointer;font-size:9px}
+    .dayTotal{margin-top:4px;font-size:10px}
+    .rowItem b.qty{margin-left:6px}
     /* керування всередині картки низу */
-    .rowItem .controls{display:flex;align-items:center;gap:6px}
+    .rowItem .controls{display:flex;align-items:center;gap:3px}
     .rowItem .mv{
-        min-width: 24px;        /* трохи вужчі за попередні */
-        padding: 0 6px;
-        font-size: 16px;        /* щоб символ був чіткий */
+        min-width: 18px;
+        padding: 0 4px;
+        font-size: 12px;
         line-height: 1;
         text-align: center;
     }
@@ -118,9 +149,9 @@ sort($dates);
     .rowItem .mv:hover{background:#f1f5f9}
     .rowItem .mv:disabled{opacity:.4;cursor:not-allowed}
 
-    .tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .tools label{font-size:12px;color:#333}
-    .tools input[type=date], .tools input[type=number]{padding:4px 8px;border:1px solid #dcdfe5;border-radius:8px}
+    .tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .tools label{font-size:10px;color:#333}
+    .tools input[type=date], .tools input[type=number]{padding:2px 6px;border:1px solid #dcdfe5;border-radius:6px;font-size:10px}
     /* запрет выделения текста по всей странице */
         html, body, .wrap, .panel, .grid, .col, .pill, .rowItem, button {
             -webkit-user-select: none;
@@ -138,77 +169,186 @@ sort($dates);
         }
 
     .modalWrap{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.35);z-index:1000}
-    .modal{background:#fff;border-radius:12px;border:1px solid var(--line);min-width:320px;max-width:520px;max-height:70vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.2)}
-    .modalHeader{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line)}
-    .modalTitle{font-weight:600}
-    .modalClose{border:1px solid #ccc;background:#f8f8f8;border-radius:8px;padding:4px 8px;cursor:pointer}
-    .modalBody{padding:10px;overflow:auto}
-    .daysGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-    .dayBtn{display:flex;flex-direction:column;gap:4px;padding:10px;border:1px solid #d9e2f1;border-radius:10px;background:#f4f8ff;cursor:pointer;text-align:left}
+    .modal{background:#fff;border-radius:8px;border:1px solid var(--line);min-width:280px;max-width:400px;max-height:60vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 20px rgba(0,0,0,.2)}
+    .modalHeader{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-bottom:1px solid var(--line)}
+    .modalTitle{font-weight:600;font-size:12px}
+    .modalClose{border:1px solid #ccc;background:#f8f8f8;border-radius:6px;padding:2px 6px;cursor:pointer;font-size:10px}
+    .modalBody{padding:6px;overflow:auto}
+    .daysGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+    .dayBtn{display:flex;flex-direction:column;gap:2px;padding:6px;border:1px solid #d9e2f1;border-radius:6px;background:#f4f8ff;cursor:pointer;text-align:left;font-size:10px}
     .dayBtn:hover{background:#ecf4ff}
-    .dayHead{font-weight:600}
-    .daySub{font-size:12px;color:#6b7280}
+    .dayHead{font-weight:600;font-size:10px}
+    .daySub{font-size:9px;color:#6b7280}
     .dayBtn:disabled{
         opacity:.5;
         cursor:not-allowed;
     }
     .topCol h4{display:flex;align-items:center;justify-content:space-between}
-    .topShift{
-        border:1px solid #cbd5e1;
-        background:#fff;
-        border-radius:6px;
-        padding:2px 8px;
-        cursor:pointer;
-        font-size:14px; line-height:1;
-    }
-    .topShift:hover{background:#f1f5f9}
-    .topCol h4{display:flex;align-items:center;justify-content:space-between}
-    .topCascade{
-        border:1px solid #cbd5e1;
-        background:#fff;
-        border-radius:6px;
-        padding:2px 8px;
-        cursor:pointer;
-        font-size:14px; line-height:1;
-    }
-    .topCascade:hover{background:#f1f5f9}
 
 
-    @media (max-width:560px){ .daysGrid{grid-template-columns:1fr;} .modal{min-width:280px;max-width:90vw;} }
+    @media (max-width:560px){ .daysGrid{grid-template-columns:1fr;} .modal{min-width:240px;max-width:90vw;} }
+    
+    /* Плашка активного дня */
+    .active-day-info {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: #f0f9ff;
+        border: 1px solid #0ea5e9;
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-size: 10px;
+        color: #0369a1;
+        text-align: center;
+        min-width: 140px;
+        z-index: 100;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .active-day-date {
+        font-weight: bold;
+        margin-bottom: 2px;
+    }
+    .active-day-count {
+        color: #0c4a6e;
+    }
 </style>
 
 <div class="wrap">
-    <h2>Планирование гофрирования (полосы) — заявка <?=htmlspecialchars($order)?></h2>
+    <h2>Гофроплан — <?=htmlspecialchars($order)?></h2>
+    
+    <!-- Фиксированная плашка активного дня -->
+    <div id="activeDayInfo" class="active-day-info">
+        <div class="active-day-date">Активный день: <span id="activeDayDate">-</span></div>
+        <div class="active-day-count">Гофропакетов: <span id="activeDayCount">0</span> шт</div>
+    </div>
 
     <div class="panel" id="topPanel">
         <div class="head">
-            <div><b>Доступные полосы из раскроя</b> <span class="sub">клик по плашке — выбрать дату внизу (Shift+клик — в последний выбранный день)</span></div>
+            <div><b>Полосы из раскроя</b> <span class="sub">клик → дата внизу (Shift+клик → последний день)</span></div>
             <div class="muted">
                 <?php $cnt=0; foreach($pool as $list) $cnt+=count($list); echo $cnt; ?> полос
             </div>
         </div>
-        <div class="gridTop">
-            <?php foreach($dates as $d): ?>
-                <div class="col topCol" data-day="<?=$d?>">
+        <div class="gridTop" id="gridTop">
+            <?php 
+            // Группируем позиции по дням в столбцах (максимум 30 позиций на столбец)
+            $maxItemsPerColumn = 30;
+            $columns = [];
+            $currentColumn = [];
+            $currentColumnItems = 0;
+            $currentDay = null;
+            
+            foreach($dates as $d): 
+                if(empty($pool[$d])) continue;
+                
+                foreach($pool[$d] as $p): 
+                    // Если текущий столбец заполнен, создаем новый
+                    if($currentColumnItems >= $maxItemsPerColumn) {
+                        $columns[] = $currentColumn;
+                        $currentColumn = [];
+                        $currentColumnItems = 0;
+                        $currentDay = null;
+                    }
+                    
+                    // Если день изменился, добавляем разделитель
+                    if($currentDay !== $d) {
+                        if($currentDay !== null && $currentColumnItems > 0) {
+                            // Добавляем разделитель только если в столбце уже есть позиции
+                            $currentColumn[] = [
+                                'type' => 'separator',
+                                'date' => $d
+                            ];
+                            $currentColumnItems++;
+                        }
+                        $currentDay = $d;
+                    }
+                    
+                    // Добавляем позицию в текущий столбец
+                    $currentColumn[] = [
+                        'type' => 'pill',
+                        'date' => $d,
+                        'data' => $p
+                    ];
+                    $currentColumnItems++;
+                endforeach;
+            endforeach;
+            
+            // Добавляем последний столбец, если в нем есть данные
+            if(!empty($currentColumn)) {
+                $columns[] = $currentColumn;
+            }
+            
+            // Если нет данных, создаем один пустой столбец
+            if(empty($columns)) {
+                $columns[] = [];
+            }
+            
+            // Выводим столбцы
+            foreach($columns as $columnIndex => $column): 
+                // Находим первую дату в столбце
+                $firstDate = null;
+                if(!empty($column)) {
+                    foreach($column as $item) {
+                        if($item['type'] === 'pill' || $item['type'] === 'separator') {
+                            $firstDate = $item['date'];
+                            break;
+                        }
+                    }
+                }
+                ?>
+                <div class="col topCol" data-column="<?=$columnIndex?>">
                     <h4>
-                        <span><?=$d?></span>
-                        <button class="topCascade" data-day="<?=$d?>" title="Зсунути всі дні від цього на +N">&rsaquo;</button>
+                        <span><?= $firstDate ?: 'Пустой' ?></span>
                     </h4>
 
-                    <?php if(empty($pool[$d])): ?>
+                    <?php if(empty($column)): ?>
                         <div class="muted">нет</div>
-                    <?php else: foreach($pool[$d] as $p): ?>
-                        <div class="pill"
-                             title="<?= htmlspecialchars('Бухта #'.$p['bale_id'].' · Полоса №'.$p['strip_no'].' · '.($p['tip'] ?? '')) ?>"
-                             data-key="<?= htmlspecialchars($p['key']) ?>"
-                             data-cut-date="<?= $d ?>"
-                             data-bale-id="<?= $p['bale_id'] ?>"
-                             data-strip-no="<?= $p['strip_no'] ?>"
-                             data-filter-name="<?= htmlspecialchars($p['filter']) ?>"
-                             data-packs="<?= (int)$p['packs'] ?>">
-                            <span><?= htmlspecialchars($p['label'] ?? '') ?></span>
-                        </div>
-                    <?php endforeach; endif; ?>
+                    <?php else: 
+                        $daysInColumn = [];
+                        foreach($column as $item): 
+                            if($item['type'] === 'separator'): 
+                                if(!in_array($item['date'], $daysInColumn)) {
+                                    $daysInColumn[] = $item['date'];
+                                }
+                                echo '<div class="day-separator">' . $item['date'] . '</div>';
+                            else:
+                                $d = $item['date'];
+                                $p = $item['data'];
+                                
+                                // Собираем дни в столбце для заголовка
+                                if(!in_array($d, $daysInColumn)) {
+                                    $daysInColumn[] = $d;
+                                }
+                                
+                                // Определяем статус выполнения
+                                $factCount = $p['fact_count'] ?? 0;
+                                $planCount = $p['plan_count'] ?? 0;
+                                $pillClass = 'pill';
+                                $tooltipExtra = '';
+                                
+                                if ($factCount > 0) {
+                                    if ($factCount >= $planCount && $planCount > 0) {
+                                        $pillClass .= ' pill-done';
+                                        $tooltipExtra = ' · ✓ Выполнено: ' . $factCount . ' шт';
+                                    } else {
+                                        $pillClass .= ' pill-partial';
+                                        $tooltipExtra = ' · ◐ Выполнено: ' . $factCount . ' из ' . $planCount . ' шт';
+                                    }
+                                }
+                                
+                                echo '<div class="' . $pillClass . '"';
+                                echo ' title="' . htmlspecialchars($d . ' · Бухта #'.$p['bale_id'].' · Полоса №'.$p['strip_no'].' · '.($p['tip'] ?? '') . $tooltipExtra) . '"';
+                                echo ' data-key="' . htmlspecialchars($p['key']) . '"';
+                                echo ' data-cut-date="' . $d . '"';
+                                echo ' data-bale-id="' . $p['bale_id'] . '"';
+                                echo ' data-strip-no="' . $p['strip_no'] . '"';
+                                echo ' data-filter-name="' . htmlspecialchars($p['filter']) . '"';
+                                echo ' data-packs="' . (int)$p['packs'] . '">';
+                                echo '<span>' . htmlspecialchars($p['label'] ?? '') . '</span>';
+                                echo '</div>';
+                            endif;
+                        endforeach;
+                    endif; ?>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -233,9 +373,8 @@ sort($dates);
 
         <div class="gridBot" id="planGrid"></div>
 
-        <div class="sub" style="margin-top:8px">
-            Одна и та же полоса может быть добавлена только один раз.
-            Удалите её внизу, чтобы вернуть плашку вверху в активное состояние.
+        <div class="sub" style="margin-top:6px">
+            Полоса добавляется один раз. Удалите внизу → вернется вверху.
         </div>
     </div>
 </div>
@@ -243,7 +382,7 @@ sort($dates);
 <div class="modalWrap" id="datePicker">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="dpTitle">
         <div class="modalHeader">
-            <div class="modalTitle" id="dpTitle">Выберите дату для добавления</div>
+            <div class="modalTitle" id="dpTitle">Выберите дату</div>
             <button class="modalClose" id="dpClose" title="Закрыть">×</button>
         </div>
         <div class="modalBody">
@@ -266,25 +405,33 @@ sort($dates);
     const parseISO = s => { const [y,m,da] = s.split('-').map(Number); return new Date(y, m-1, da); };
     const topGrid = document.querySelector('#topPanel .gridTop');
     const nextISO = ds => { const d = parseISO(ds); d.setDate(d.getDate()+1); return iso(d); };
+    const previousISO = ds => { const d = parseISO(ds); d.setDate(d.getDate()-1); return iso(d); };
 
     function topEnsureDayCol(ds){
-        let col = topGrid.querySelector(`.topCol[data-day="${ds}"]`);
+        // Ищем столбец, который содержит этот день
+        let col = null;
+        const allCols = topGrid.querySelectorAll('.topCol');
+        
+        for(let c of allCols) {
+            const pills = c.querySelectorAll('.pill[data-cut-date="' + ds + '"]');
+            if(pills.length > 0) {
+                col = c;
+                break;
+            }
+        }
+        
         if (col) return col;
 
+        // Если столбец не найден, создаем новый
+        const colCount = topGrid.querySelectorAll('.topCol').length;
         col = document.createElement('div');
         col.className = 'col topCol';
-        col.dataset.day = ds;
+        col.dataset.column = colCount;
         col.innerHTML = `
-    <h4><span>${ds}</span>
-      <button class="topShift" data-day="${ds}" title="Зсунути доступність на +1 день">&rsaquo;</button>
-    </h4>
+    <h4><span>Новый столбец</span></h4>
     <div class="muted">нет</div>
   `;
         topGrid.appendChild(col);
-        // оновити кількість колонок
-        topGrid.style.gridTemplateColumns = `repeat(${topGrid.querySelectorAll('.topCol').length}, minmax(220px,1fr))`;
-        // прив’язати клік
-        col.querySelector('.topShift').onclick = () => shiftTopDay(ds, 1);
         return col;
     }
 
@@ -296,34 +443,7 @@ sort($dates);
         } else if (hasPill && ph){ ph.remove(); }
     }
 
-    function shiftTopDay(ds, delta=1){
-        if (delta<=0) return;
-        const from = topGrid.querySelector(`.topCol[data-day="${ds}"]`);
-        if (!from) return;
 
-        const pills = [...from.querySelectorAll('.pill')];
-        if (!pills.length) return;
-
-        // цільовий день (посунемо на delta)
-        let target = ds;
-        for (let i=0;i<delta;i++){ target = nextISO(target); topEnsureDayCol(target); }
-        const to = topGrid.querySelector(`.topCol[data-day="${target}"]`);
-
-        // переносимо всі плашки, оновлюємо cutDate
-        pills.forEach(p=>{
-            p.dataset.cutDate = target;
-            cutDateByKey.set(p.dataset.key, target);
-            to.appendChild(p);
-        });
-
-        topSetEmptyState(from);
-        topSetEmptyState(to);
-    }
-
-    // підвісити обробники на початкові кнопки верхньої сітки
-    document.querySelectorAll('.topShift').forEach(btn=>{
-        btn.onclick = () => shiftTopDay(btn.dataset.day, 1);
-    });
 
 
     const cutDateByKey = new Map(); // key => 'YYYY-MM-DD'
@@ -332,7 +452,97 @@ sort($dates);
 
     const initialDays = <?= json_encode($dates, JSON_UNESCAPED_UNICODE) ?>;
 
+    // Функция для обновления плашки активного дня
+    function updateActiveDayInfo() {
+        const activeDayDateEl = document.getElementById('activeDayDate');
+        const activeDayCountEl = document.getElementById('activeDayCount');
+        
+        if (lastPickedDay) {
+            activeDayDateEl.textContent = lastPickedDay;
+            const totalPacks = dayPacks(lastPickedDay);
+            activeDayCountEl.textContent = totalPacks;
+        } else {
+            activeDayDateEl.textContent = '-';
+            activeDayCountEl.textContent = '0';
+        }
+    }
+
     function ensureDay(ds){ if(!plan.has(ds)) plan.set(ds, new Set()); }
+    
+    // Функция для добавления дня в визуальную таблицу плана
+    function addDayToPlanGrid(dayStr) {
+        // Проверяем, есть ли уже такой день
+        if (planGrid.querySelector(`.col[data-day="${dayStr}"]`)) {
+            return; // День уже существует
+        }
+        
+        // Создаем новую колонку дня
+        const col = document.createElement('div');
+        col.className = 'col';
+        col.dataset.day = dayStr;
+        col.innerHTML = `
+            <h4>${dayStr}</h4>
+            <div class="dropzone"></div>
+            <div class="dayTotal muted">Итого: <b class="n">0</b> шт</div>
+        `;
+        
+        // Добавляем в конец таблицы
+        planGrid.appendChild(col);
+        
+        // Обновляем ширину грида
+        const totalCols = planGrid.querySelectorAll('.col').length;
+        planGrid.style.gridTemplateColumns = `repeat(${Math.max(1, totalCols)}, minmax(220px, 1fr))`;
+        
+        // Убеждаемся, что день есть в плане данных
+        ensureDay(dayStr);
+        
+        // Показываем уведомление
+        showNotification(`День ${dayStr} добавлен в план`);
+        console.log(`День ${dayStr} добавлен в план`);
+    }
+    // Функция для показа уведомления
+    function showNotification(message) {
+        // Создаем элемент уведомления
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        `;
+        notification.textContent = message;
+        
+        // Добавляем в DOM
+        document.body.appendChild(notification);
+        
+        // Анимация появления
+        setTimeout(() => {
+            notification.style.opacity = '1';
+            notification.style.transform = 'translateX(0)';
+        }, 10);
+        
+        // Автоматически убираем через 3 секунды
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 3000);
+    }
+
     function refreshSaveState(){
         let has=false; plan.forEach(set=>{ if(set.size) has=true; });
         saveBtn.disabled = !has;
@@ -344,6 +554,39 @@ sort($dates);
     }
     function getAllDays(){
         return [...planGrid.querySelectorAll('.col[data-day]')].map(c=>c.dataset.day);
+    }
+
+    // Функция для получения всех дней между первым и последним днем заявки
+    function getAllDaysInRange(){
+        if (initialDays.length === 0) return [];
+        
+        // Получаем все дни из заявки
+        const firstDay = initialDays[0];
+        const lastDay = initialDays[initialDays.length - 1];
+        
+        // Получаем все дни, которые уже добавлены в план
+        const existingDays = getAllDays();
+        
+        // Создаем массив всех дней между первым и последним днем заявки
+        const allDays = [];
+        const startDate = parseISO(firstDay);
+        const endDate = parseISO(lastDay);
+        
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            allDays.push(iso(d));
+        }
+        
+        // Добавляем все дни, которые были добавлены вручную и выходят за рамки заявки
+        existingDays.forEach(day => {
+            if (!allDays.includes(day)) {
+                allDays.push(day);
+            }
+        });
+        
+        // Сортируем по дате
+        allDays.sort();
+        
+        return allDays;
     }
     function dayCount(ds){ return plan.has(ds) ? plan.get(ds).size : 0; }
 
@@ -402,6 +645,7 @@ sort($dates);
         recalcDayTotal(newDay);
         updateMoveButtons(row);
         lastPickedDay = newDay;
+        updateActiveDayInfo();
     }
 
 
@@ -451,6 +695,7 @@ sort($dates);
         plan.clear(); assigned.clear();
         document.querySelectorAll('.pill').forEach(p=>p.classList.remove('pill-disabled'));
         lastPickedDay = null;
+        updateActiveDayInfo();
 
         planGrid.innerHTML = '';
         const frag = document.createDocumentFragment();
@@ -483,6 +728,11 @@ sort($dates);
         });
         const out = col.querySelector('.dayTotal .n');
         if (out) out.textContent = String(sum);
+        
+        // Обновляем плашку активного дня, если это текущий активный день
+        if (ds === lastPickedDay) {
+            updateActiveDayInfo();
+        }
     }
 
     function addToPlan(targetDay, pillEl){
@@ -503,8 +753,13 @@ sort($dates);
         const set = plan.get(targetDay);
         if (set.has(key)) return;
 
-        const dz  = planGrid.querySelector(`.col[data-day="${targetDay}"] .dropzone`);
-        if(!dz){ alert('Такого дня нет в нижней таблице. Добавьте день внизу.'); return; }
+        let dz = planGrid.querySelector(`.col[data-day="${targetDay}"] .dropzone`);
+        if(!dz){ 
+            // Автоматически добавляем день в план
+            addDayToPlanGrid(targetDay);
+            dz = planGrid.querySelector(`.col[data-day="${targetDay}"] .dropzone`);
+            if (!dz) return; // На всякий случай проверяем еще раз
+        }
 
         const row = createRow({
             key,
@@ -522,6 +777,7 @@ sort($dates);
         refreshSaveState();
         lastPickedDay = targetDay;
         recalcDayTotal(targetDay);
+        updateActiveDayInfo();
     }
 
     // Модалка выбора даты
@@ -533,8 +789,8 @@ sort($dates);
     function openDatePicker(pillEl){
         pendingPill = pillEl;
         dpDays.innerHTML = '';
-        const days = getAllDays();
-        if (!days.length){ alert('Нет дат в нижней таблице. Сначала добавьте дни.'); return; }
+        const days = getAllDaysInRange();
+        if (!days.length){ alert('Нет дат для заявки.'); return; }
 
         const cutDate = pillEl.dataset.cutDate; // 'YYYY-MM-DD'
 
@@ -740,6 +996,7 @@ sort($dates);
         const today = new Date(); const ds = iso(today);
         document.getElementById('rngStart').value = ds;
         renderPlanGrid(initialDays.length ? initialDays : [ds]);
+        updateActiveDayInfo();
     })();
 
     function cascadeShiftFrom(ds){

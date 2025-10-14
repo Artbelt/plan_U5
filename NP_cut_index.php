@@ -35,6 +35,94 @@ if (isset($_GET['action']) && $_GET['action'] === 'change_status') {
     }
 }
 
+/* ================= AJAX: FULL REPLANNING ================= */
+if (isset($_GET['action']) && $_GET['action'] === 'full_replanning') {
+    header('Content-Type: application/json; charset=utf-8');
+    try{
+        $raw = file_get_contents('php://input');
+        $in  = json_decode($raw, true);
+        $order = $in['order'] ?? ($_POST['order'] ?? '');
+        if ($order === '') { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'no order']); exit; }
+
+        $pdo = new PDO($dsn,$user,$pass,[
+            PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC
+        ]);
+        $pdo->beginTransaction();
+
+        $currentDate = date('Y-m-d');
+        $results = ['fact_to_plan' => [], 'cleared_future' => [], 'new_planning' => []];
+
+        // 1. Переносим выполненные операции в план (факт → план)
+        $factOperations = [
+            'cut_plans' => "SELECT DISTINCT filter, SUM(fact_length) as total_fact FROM cut_plans WHERE order_number = ? AND fact_length > 0 GROUP BY filter",
+            'corrugation_plan' => "SELECT DISTINCT filter_label as filter, SUM(fact_count) as total_fact FROM corrugation_plan WHERE order_number = ? AND fact_count > 0 GROUP BY filter_label",
+            'build_plan' => "SELECT DISTINCT filter, SUM(fact_count) as total_fact FROM build_plan WHERE order_number = ? AND fact_count > 0 GROUP BY filter"
+        ];
+
+        foreach ($factOperations as $table => $sql) {
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$order]);
+            $facts = $stmt->fetchAll();
+            $results['fact_to_plan'][$table] = $facts;
+        }
+
+        // 2. Очищаем будущие планы (начиная с текущей даты) - ИСКЛЮЧАЕМ cut_plans
+        // Для roll_plans не трогаем записи с done=1 (выполненные)
+        $clearFuture = [
+            "DELETE FROM roll_plans WHERE order_number = ? AND work_date >= ? AND (done IS NULL OR done = 0)", 
+            "DELETE FROM corrugation_plan WHERE order_number = ? AND plan_date >= ?",
+            "DELETE FROM build_plan WHERE order_number = ? AND plan_date >= ?"
+        ];
+
+        foreach ($clearFuture as $sql) {
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$order, $currentDate]);
+            $results['cleared_future'][] = $stmt->rowCount();
+        }
+
+        // 2.5. Устанавливаем статусы "replanning" для заявки и операций
+        $stmt = $pdo->prepare("UPDATE orders SET status = 'replanning', plan_ready = 0, corr_ready = 0, build_ready = 0 WHERE order_number = ?");
+        $stmt->execute([$order]);
+        $results['status_updated'] = $stmt->rowCount();
+
+        // 3. Рассчитываем остатки работ для информации (без автоматического планирования)
+        $remainingWork = $pdo->prepare("
+            SELECT filter, count as total_planned, 
+                   COALESCE((SELECT SUM(fact_length) FROM cut_plans WHERE order_number = o.order_number AND filter = o.filter), 0) as cut_fact,
+                   COALESCE((SELECT SUM(fact_count) FROM corrugation_plan WHERE order_number = o.order_number AND filter_label = o.filter), 0) as corr_fact,
+                   COALESCE((SELECT SUM(fact_count) FROM build_plan WHERE order_number = o.order_number AND filter = o.filter), 0) as build_fact
+            FROM orders o 
+            WHERE o.order_number = ? AND (o.hide IS NULL OR o.hide != 1)
+        ");
+        $remainingWork->execute([$order]);
+        $remaining = $remainingWork->fetchAll();
+
+        // Сохраняем информацию об остатках для отчета
+        foreach ($remaining as $row) {
+            $cutRemaining = max(0, $row['total_planned'] - $row['cut_fact']);
+            $corrRemaining = max(0, $row['total_planned'] - $row['corr_fact']); 
+            $buildRemaining = max(0, $row['total_planned'] - $row['build_fact']);
+            
+            if ($cutRemaining > 0) {
+                $results['remaining_work']['cut'][] = ['filter' => $row['filter'], 'count' => $cutRemaining];
+            }
+            if ($corrRemaining > 0) {
+                $results['remaining_work']['corr'][] = ['filter' => $row['filter'], 'count' => $corrRemaining];
+            }
+            if ($buildRemaining > 0) {
+                $results['remaining_work']['build'][] = ['filter' => $row['filter'], 'count' => $buildRemaining];
+            }
+        }
+
+        $pdo->commit();
+        echo json_encode(['ok'=>true,'results'=>$results]); exit;
+    }catch(Throwable $e){
+        if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
+        http_response_code(500); echo json_encode(['ok'=>false,'error'=>$e->getMessage()]); exit;
+    }
+}
+
 /* ================= AJAX: CLEAR ================= */
 if (isset($_GET['action']) && $_GET['action'] === 'clear') {
     header('Content-Type: application/json; charset=utf-8');
@@ -401,9 +489,9 @@ try{
                     <th>Заявка</th>
                     <th>📐 Раскрой</th>
                     <th>✅ Утверждение</th>
-                    <th>📋 План рулона</th>
-                    <th>🌊 Гофрирование</th>
-                    <th>🔧 Сборка</th>
+                    <th>📋 Планирование порезки</th>
+                    <th>🌊 Планирование гофрирования</th>
+                    <th>🔧 Планирование сборки</th>
                 </tr>
             </thead>
             <tbody>
@@ -425,6 +513,9 @@ try{
                                 </button>
                                 <button class="btn-secondary" onclick="toggleReplanning('<?= htmlspecialchars($ord, ENT_QUOTES) ?>', '<?= $o['status'] === 'replanning' ? 'normal' : 'replanning' ?>')">
                                     <?= $o['status'] === 'replanning' ? '✅ снять статус перепланирования' : '⚠️ Перепланирование' ?>
+                                </button>
+                                <button class="btn" onclick="fullReplanning('<?= htmlspecialchars($ord, ENT_QUOTES) ?>')">
+                                    🔄 Полное перепланирование
                                 </button>
                             </div>
                         </td>
@@ -471,6 +562,7 @@ try{
                                 <div class="stage-status done">✅ Готово</div>
                                 <div class="stage-actions">
                                     <a class="btn-secondary" target="_blank" href="NP_view_roll_plan.php?order=<?= urlencode($ord) ?>">Просмотр</a>
+                                    <a class="btn" href="NP_roll_plan.php?order=<?= urlencode($ord) ?>">Изменить</a>
                                 </div>
                             <?php else: ?>
                                 <div class="stage-status disabled">⏳ Ожидает</div>
@@ -485,10 +577,11 @@ try{
                         <td class="stage-cell">
                             <?php if (empty($o['plan_ready'])): ?>
                                 <div class="stage-status disabled">⏳ Нет плана</div>
-                            <?php elseif (isset($corr_done[$ord])): ?>
+                            <?php elseif (!empty($o['corr_ready'])): ?>
                                 <div class="stage-status done">✅ Готово</div>
                                 <div class="stage-actions">
                                     <a class="btn-secondary" target="_blank" href="NP_view_corrugation_plan.php?order=<?= urlencode($ord) ?>">Просмотр</a>
+                                    <a class="btn" href="NP_corrugation_plan.php?order=<?= urlencode($ord) ?>">Изменить</a>
                                 </div>
                             <?php else: ?>
                                 <div class="stage-status disabled">⏳ Ожидает</div>
@@ -501,13 +594,14 @@ try{
 
                         <!-- План сборки -->
                         <td class="stage-cell">
-                            <?php if (!isset($corr_done[$ord])): ?>
+                            <?php if (empty($o['corr_ready'])): ?>
                                 <div class="stage-status disabled">⏳ Нет гофроплана</div>
                             <?php elseif (!empty($o['build_ready'])): ?>
                                 <div class="stage-status done">✅ Готово</div>
                                 <div class="stage-actions">
                                     <a class="btn-secondary" target="_blank" href="view_production_plan.php?order=<?= urlencode($ord) ?>">План</a>
                                     <a class="btn-print" target="_blank" href="NP_build_tasks.php?order=<?= urlencode($ord) ?>">Задание</a>
+                                    <a class="btn" href="NP_build_plan.php?order=<?= urlencode($ord) ?>">Изменить</a>
                                 </div>
                             <?php else: ?>
                                 <div class="stage-status disabled">⏳ Ожидает</div>
@@ -575,6 +669,84 @@ try{
             location.reload();
         }catch(e){
             alert('Не удалось очистить: '+e.message);
+        }
+    }
+
+    // Полное перепланирование "с чистого листа"
+    async function fullReplanning(order){
+        const message = `Выполнить полное перепланирование заявки ${order}?\n\n` +
+                       `Что будет сделано:\n` +
+                       `1. ✅ Выполненные операции останутся в плане\n` +
+                       `2. ✅ Выполненные бухты (done=1) не будут удалены\n` +
+                       `3. 🗑️ Будущие планы будут очищены (кроме cut_plans)\n` +
+                       `4. ⚠️ Статус заявки изменится на "Перепланирование"\n` +
+                       `5. 🔄 Статусы операций сбросятся (порезка, гофрирование, сборка)\n` +
+                       `6. 📋 Оставшиеся работы нужно будет запланировать вручную\n\n` +
+                       `Это займет несколько секунд...`;
+        
+        if (!confirm(message)) return;
+        
+        try{
+            const res = await fetch('NP_cut_index.php?action=full_replanning', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json', 'Accept':'application/json'},
+                body: JSON.stringify({order})
+            });
+            
+            let data;
+            try{ data = await res.json(); }
+            catch(e){
+                const t = await res.text();
+                throw new Error('Backend вернул не JSON:\n'+t.slice(0,500));
+            }
+            
+            if (!data.ok) throw new Error(data.error || 'unknown');
+            
+            // Показываем детальный отчет
+            const results = data.results;
+            let report = `✅ Перепланирование завершено!\n\n`;
+            
+            // Факт → план
+            if (results.fact_to_plan) {
+                report += `📊 Перенесено в план (выполненные операции):\n`;
+                Object.keys(results.fact_to_plan).forEach(table => {
+                    if (results.fact_to_plan[table].length > 0) {
+                        report += `  ${table}: ${results.fact_to_plan[table].length} фильтров\n`;
+                    }
+                });
+                report += `\n`;
+            }
+            
+            // Очищенные будущие планы
+            if (results.cleared_future) {
+                const totalCleared = results.cleared_future.reduce((a, b) => a + b, 0);
+                report += `🗑️ Очищено будущих планов: ${totalCleared} записей\n`;
+            }
+            
+            // Статус заявки и операций
+            if (results.status_updated > 0) {
+                report += `⚠️ Статус заявки изменен на "Перепланирование"\n`;
+                report += `🔄 Статусы операций сброшены (порезка, гофрирование, сборка)\n\n`;
+            }
+            
+            // Остатки работ для ручного планирования
+            if (results.remaining_work) {
+                report += `📋 Осталось запланировать вручную:\n`;
+                Object.keys(results.remaining_work).forEach(process => {
+                    const items = results.remaining_work[process] || [];
+                    if (items.length > 0) {
+                        const totalCount = items.reduce((sum, item) => sum + item.count, 0);
+                        report += `  ${process}: ${items.length} фильтров (${totalCount} шт.)\n`;
+                    }
+                });
+                report += `\n💡 Теперь можно вручную запланировать оставшиеся работы.`;
+            }
+            
+            alert(report);
+            location.reload();
+            
+        }catch(e){
+            alert('Ошибка перепланирования: '+e.message);
         }
     }
 </script>

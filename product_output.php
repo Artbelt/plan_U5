@@ -1,4 +1,36 @@
 <?php
+// Проверяем авторизацию через новую систему
+require_once('../auth/includes/config.php');
+require_once('../auth/includes/auth-functions.php');
+
+// Инициализация системы авторизации
+initAuthSystem();
+
+// Запуск сессии
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+$auth = new AuthManager();
+$session = $auth->checkSession();
+
+if (!$session) {
+    header('Location: ../auth/login.php');
+    exit;
+}
+
+// Проверяем, есть ли у пользователя доступ к цеху U5
+$db = Database::getInstance();
+$userDepartments = $db->select("
+    SELECT ud.department_code, ud.is_active
+    FROM auth_user_departments ud
+    WHERE ud.user_id = ? AND ud.department_code = 'U5' AND ud.is_active = 1
+", [$session['user_id']]);
+
+if (empty($userDepartments)) {
+    die('У вас нет доступа к цеху U5');
+}
+
 // ========= DB =========
 function pdo_u5(): PDO {
     return new PDO(
@@ -158,6 +190,7 @@ $today = date('Y-m-d');
                 <label class="flex items-center gap-1"><input type="radio" name="brigade" value="1" checked> 1</label>
                 <label class="flex items-center gap-1"><input type="radio" name="brigade" value="2"> 2</label>
                 <label class="flex items-center gap-1"><input type="radio" name="brigade" value="3"> 3</label>
+                <label class="flex items-center gap-1"><input type="radio" name="brigade" value="4"> 4</label>                
             </div>
         </div>
         <div class="text-right">

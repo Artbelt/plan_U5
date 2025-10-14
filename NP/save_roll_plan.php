@@ -63,14 +63,25 @@ try {
 
     $pdo->beginTransaction();
 
+    // Сохраняем информацию о done для существующих бухт
+    $existingDone = [];
+    $stmt = $pdo->prepare("SELECT bale_id, done FROM roll_plans WHERE order_number=?");
+    $stmt->execute([$order]);
+    while ($row = $stmt->fetch()) {
+        if (!empty($row['done'])) {
+            $existingDone[(int)$row['bale_id']] = (int)$row['done'];
+        }
+    }
+
     // Удаляем прежние назначения этой заявки
     $pdo->prepare("DELETE FROM roll_plans WHERE order_number=?")->execute([$order]);
 
-    // Вставляем новые
-    $ins = $pdo->prepare("INSERT INTO roll_plans (order_number, bale_id, work_date) VALUES (?,?,?)");
+    // Вставляем новые с сохранением done
+    $ins = $pdo->prepare("INSERT INTO roll_plans (order_number, bale_id, work_date, done) VALUES (?,?,?,?)");
     $rows = 0;
     foreach ($assign as $bid => $date) {
-        $ins->execute([$order, $bid, $date]);
+        $doneValue = isset($existingDone[$bid]) ? $existingDone[$bid] : 0;
+        $ins->execute([$order, $bid, $date, $doneValue]);
         $rows++;
     }
 

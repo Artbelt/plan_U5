@@ -16,12 +16,6 @@ try {
         $stmt->execute([$fact, $id]);
     }
 
-    if (isset($_POST['status'])) {
-        $status = ($_POST['status'] == '1') ? 1 : 0;
-        $stmt = $pdo->prepare("UPDATE corrugation_plan SET status = ? WHERE id = ?");
-        $stmt->execute([$status, $id]);
-    }
-
     echo json_encode(['success' => true]);
 } catch (Throwable $e) {
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
