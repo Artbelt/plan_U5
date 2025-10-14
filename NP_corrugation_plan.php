@@ -124,30 +124,20 @@ sort($dates);
     .pill-disabled{opacity:.45;filter:grayscale(.15);pointer-events:none}
 
     /* Выполненные полосы */
-    .pill-done{background:#d1f4e0 !important;border-color:#10b981}
     .pill-done::after{content:"✓";position:absolute;right:4px;top:50%;transform:translateY(-50%);color:#10b981;font-weight:bold;font-size:12px}
     
     /* Частично выполненные полосы */
-    .pill-partial{background:#fef3c7 !important;border-color:#f59e0b}
     .pill-partial::after{content:"◐";position:absolute;right:4px;top:50%;transform:translateY(-50%);color:#f59e0b;font-weight:bold;font-size:12px}
 
-    .dropzone{min-height:28px;border:1px dashed var(--line);border-radius:4px;padding:4px}
-    .rowItem{display:flex;align-items:center;justify-content:space-between;background:#dff7c7;border:1px solid #bddda2;border-radius:6px;padding:3px 6px;margin:2px 0;font-size:10px}
-    .rowItem .rm{border:none;background:#fff;border:1px solid #ccc;border-radius:4px;padding:1px 6px;cursor:pointer;font-size:9px}
+    .dropzone{min-height:28px;border:1px dashed var(--line);border-radius:4px;padding:4px;transition:background 0.2s ease}
+    .dropzone.drag-over{background:#e0f2fe;border-color:#0ea5e9}
+    .rowItem{display:flex;align-items:center;justify-content:space-between;background:#dff7c7;border:1px solid #bddda2;border-radius:6px;padding:3px 4px;margin:2px 0;font-size:10px;cursor:grab;transition:opacity 0.2s ease;max-width:200px}
+    .rowItem.dragging{opacity:0.5;cursor:grabbing}
+    .row-content{flex:1;overflow:hidden;white-space:nowrap}
+    .rowItem .rm{border:none;background:#fff;border:1px solid #ccc;border-radius:3px;padding:1px 3px;cursor:pointer;font-size:8px;min-width:16px;width:16px;height:16px;display:flex;align-items:center;justify-content:center}
     .dayTotal{margin-top:4px;font-size:10px}
-    .rowItem b.qty{margin-left:6px}
     /* керування всередині картки низу */
     .rowItem .controls{display:flex;align-items:center;gap:3px}
-    .rowItem .mv{
-        min-width: 18px;
-        padding: 0 4px;
-        font-size: 12px;
-        line-height: 1;
-        text-align: center;
-    }
-
-    .rowItem .mv:hover{background:#f1f5f9}
-    .rowItem .mv:disabled{opacity:.4;cursor:not-allowed}
 
     .tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
     .tools label{font-size:10px;color:#333}
@@ -193,16 +183,33 @@ sort($dates);
         position: fixed;
         top: 10px;
         right: 10px;
-        background: #f0f9ff;
-        border: 1px solid #0ea5e9;
-        border-radius: 6px;
-        padding: 6px 10px;
+        background: #fef3c7;
+        border: 2px solid #f59e0b;
+        border-radius: 8px;
+        padding: 8px 12px;
         font-size: 10px;
-        color: #0369a1;
-        text-align: center;
-        min-width: 140px;
+        color: #92400e;
+        min-width: 320px;
+        max-width: 400px;
         z-index: 100;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+        cursor: move;
+        user-select: none;
+        transition: box-shadow 0.2s ease;
+    }
+    .active-day-info:hover {
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+    }
+    .active-day-info.dragging {
+        cursor: grabbing;
+        box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
+        transform: scale(1.02);
+    }
+    .active-day-header {
+        text-align: center;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid #fcd34d;
     }
     .active-day-date {
         font-weight: bold;
@@ -211,15 +218,127 @@ sort($dates);
     .active-day-count {
         color: #0c4a6e;
     }
+    .active-day-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .control-row {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+    .control-label {
+        font-size: 9px;
+        color: #78350f;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+    }
+    .control-input {
+        font-size: 9px;
+        padding: 2px 4px;
+        border: 1px solid #f59e0b;
+        border-radius: 3px;
+        background: white;
+        color: #92400e;
+        width: 80px;
+    }
+    .height-buttons {
+        display: flex;
+        gap: 2px;
+        flex-wrap: wrap;
+    }
+    .height-btn {
+        font-size: 8px;
+        padding: 1px 4px;
+        border: 1px solid #d97706;
+        border-radius: 3px;
+        background: white;
+        color: #92400e;
+        cursor: pointer;
+        min-width: 20px;
+        transition: all 0.2s ease;
+    }
+    .height-btn:hover {
+        background: #fef3c7;
+    }
+    .height-btn.active {
+        background: #f59e0b;
+        color: white;
+        border-color: #d97706;
+    }
+    .btn-small {
+        font-size: 8px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        min-width: auto;
+    }
+    .pill.highlighted {
+        background: #dbeafe !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+    }
+    .rowItem.highlighted {
+        background: #dbeafe !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+    }
 </style>
 
 <div class="wrap">
     <h2>Гофроплан — <?=htmlspecialchars($order)?></h2>
     
-    <!-- Фиксированная плашка активного дня -->
+    <!-- Фиксированная плашка активного дня с функциональными кнопками -->
     <div id="activeDayInfo" class="active-day-info">
-        <div class="active-day-date">Активный день: <span id="activeDayDate">-</span></div>
-        <div class="active-day-count">Гофропакетов: <span id="activeDayCount">0</span> шт</div>
+        <div class="active-day-header">
+            <div class="active-day-date">Активный день: <span id="activeDayDate">-</span></div>
+            <div class="active-day-count">Гофропакетов: <span id="activeDayCount">0</span> шт</div>
+        </div>
+        
+        <div class="active-day-controls">
+            <div class="control-row">
+                <button class="btn btn-small" id="btnLoad">Загрузить план</button>
+                <button class="btn btn-small" id="btnSave" disabled>Сохранить план</button>
+                <button class="btn btn-small" onclick="window.location.href='NP_cut_index.php'">Вернуться</button>
+            </div>
+            
+            <div class="control-row">
+                <label class="control-label">Начало: <input type="date" id="rngStart" class="control-input"></label>
+                <label class="control-label">Дней: <input type="number" id="rngDays" value="7" min="1" class="control-input"></label>
+                <button class="btn btn-small" id="btnBuildDays">Построить дни</button>
+            </div>
+            
+            <div class="control-row">
+                <button class="btn btn-small" id="btnAddDay" title="Добавить следующий день внизу">+</button>
+            </div>
+            
+            <div class="control-row">
+                <span class="control-label">Фильтр высот:</span>
+                <div class="height-buttons" id="heightButtons">
+                    <?php
+                    // Собираем уникальные высоты из данных
+                    $heights = [];
+                    foreach($pool as $list) {
+                        foreach($list as $p) {
+                            // Извлекаем высоту из label (формат: "фильтр [hXX] [N шт]")
+                            if(preg_match('/\[h(\d+)\]/', $p['label'], $m)) {
+                                $heights[] = (int)$m[1];
+                            }
+                        }
+                    }
+                    $heights = array_unique($heights);
+                    sort($heights);
+                    
+                    foreach($heights as $h):
+                    ?>
+                        <button class="height-btn" data-height="h<?=$h?>">h<?=$h?></button>
+                    <?php endforeach; ?>
+                </div>
+                <button class="btn btn-small" id="btnClearFilter" title="Очистить фильтр">✕</button>
+            </div>
+        </div>
     </div>
 
     <div class="panel" id="topPanel">
@@ -359,16 +478,6 @@ sort($dates);
     <div class="panel" id="planPanel">
         <div class="head">
             <b>План гофрирования</b>
-            <div class="tools">
-                <button class="btn" id="btnLoad">Загрузить план</button>
-                <label>Начало: <input type="date" id="rngStart"></label>
-                <label>Дней: <input type="number" id="rngDays" value="7" min="1"></label>
-                <button class="btn" id="btnBuildDays">Построить дни</button>
-                <label> День+: </label>
-                <button class="btn" id="btnAddDay" title="Добавить этот день внизу">+</button>
-            </div>
-            <button class="btn" id="btnSave" disabled>Сохранить план</button>
-            <button type="button" class="btn btn" onclick="window.location.href='NP_cut_index.php'">Вернуться</button>
         </div>
 
         <div class="gridBot" id="planGrid"></div>
@@ -491,10 +600,23 @@ sort($dates);
         
         // Обновляем ширину грида
         const totalCols = planGrid.querySelectorAll('.col').length;
-        planGrid.style.gridTemplateColumns = `repeat(${Math.max(1, totalCols)}, minmax(220px, 1fr))`;
+        planGrid.style.gridTemplateColumns = `repeat(${Math.max(1, totalCols)}, minmax(153px, 1fr))`;
         
         // Убеждаемся, что день есть в плане данных
         ensureDay(dayStr);
+        
+        // Инициализируем drag-and-drop только для новой dropzone
+        const newDropzone = col.querySelector('.dropzone');
+        if (newDropzone) {
+            // Небольшая задержка для гарантии, что элемент полностью добавлен в DOM
+            setTimeout(() => {
+                initSingleDropzone(newDropzone);
+                console.log('Initialized dropzone for day:', dayStr);
+            }, 10);
+        }
+        
+        // Также убеждаемся, что делегирование событий работает
+        ensureEventDelegation();
         
         // Показываем уведомление
         showNotification(`День ${dayStr} добавлен в план`);
@@ -646,6 +768,7 @@ sort($dates);
         updateMoveButtons(row);
         lastPickedDay = newDay;
         updateActiveDayInfo();
+        applyHeightFilter(); // Применяем фильтр после перемещения
     }
 
 
@@ -660,15 +783,17 @@ sort($dates);
         row.dataset.filter   = filter;
         row.dataset.cutDate  = cutDate || cutDateByKey.get(key) || '';  // ← зберегли
 
+        // Сокращаем только название фильтра до 9 символов
+        const filterName = filter || 'Без имени';
+        const shortFilterName = filterName.length > 9 ? filterName.substring(0, 9) + '...' : filterName;
+        const shortLabel = `${shortFilterName} [h${labelTxt.match(/\[h(\d+)\]/)?.[1] || '?'}] [${packs} шт]`;
+        
         row.innerHTML = `
-    <div>
-      <b>${labelTxt}</b>
-      <b class="qty">· ${packs} шт</b>
+    <div class="row-content">
+      <span title="${labelTxt}">${shortLabel}</span>
     </div>
     <div class="controls">
-      <button class="mv mv-left"  title="Перенести на попередній день" aria-label="Вліво">&lsaquo;</button>
-      <button class="mv mv-right" title="Перенести на наступний день"   aria-label="Вправо">&rsaquo;</button>
-      <button class="rm"          title="Убрать" aria-label="Видалити">×</button>
+      <button class="rm" title="Убрать" aria-label="Видалити">×</button>
     </div>
   `;
 
@@ -680,16 +805,35 @@ sort($dates);
             setPillDisabledByKey(key,false);
             refreshSaveState();
             recalcDayTotal(row.dataset.day);
+            applyHeightFilter(); // Применяем фильтр после удаления
         };
 
-        row.querySelector('.mv-left').onclick  = ()=>moveRow(row,-1);
-        row.querySelector('.mv-right').onclick = ()=>moveRow(row, 1);
+        // Делаем строку перетаскиваемой
+        initRowDragging(row, key);
 
-        updateMoveButtons(row);
         return row;
     }
 
-
+    function initRowDragging(row, key) {
+        // Проверяем, есть ли уже обработчики
+        if (row.hasAttribute('data-drag-initialized')) {
+            return;
+        }
+        
+        row.setAttribute('data-drag-initialized', 'true');
+        row.draggable = true;
+        
+        row.addEventListener('dragstart', (e) => {
+            console.log('Drag start:', key);
+            row.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', key);
+        });
+        
+        row.addEventListener('dragend', (e) => {
+            row.classList.remove('dragging');
+        });
+    }
 
     function renderPlanGrid(days){
         plan.clear(); assigned.clear();
@@ -697,6 +841,10 @@ sort($dates);
         lastPickedDay = null;
         updateActiveDayInfo();
 
+        // Очищаем атрибуты инициализации
+        document.querySelectorAll('.dropzone').forEach(dz => dz.removeAttribute('data-dropzone-initialized'));
+        document.querySelectorAll('.rowItem').forEach(row => row.removeAttribute('data-drag-initialized'));
+        
         planGrid.innerHTML = '';
         const frag = document.createDocumentFragment();
         days.forEach(ds=>{
@@ -712,9 +860,178 @@ sort($dates);
             frag.appendChild(col);
         });
         planGrid.appendChild(frag);
-        planGrid.style.gridTemplateColumns = `repeat(${Math.max(1, days.length)}, minmax(220px, 1fr))`;
+        planGrid.style.gridTemplateColumns = `repeat(${Math.max(1, days.length)}, minmax(153px, 1fr))`;
+        initDropzones(); // Инициализируем drag-and-drop
+        ensureEventDelegation(); // Инициализируем делегирование событий
         refreshSaveState();
     }
+    
+    function initSingleDropzone(dropzone) {
+        // Проверяем, есть ли уже обработчики
+        if (dropzone.hasAttribute('data-dropzone-initialized')) {
+            console.log('Dropzone already initialized, skipping');
+            return;
+        }
+        
+        console.log('Initializing dropzone:', dropzone);
+        dropzone.setAttribute('data-dropzone-initialized', 'true');
+        
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            dropzone.classList.add('drag-over');
+            console.log('Dragover on:', dropzone.closest('.col').dataset.day);
+        });
+        
+        dropzone.addEventListener('dragleave', (e) => {
+            dropzone.classList.remove('drag-over');
+            console.log('Dragleave from:', dropzone.closest('.col').dataset.day);
+        });
+        
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('drag-over');
+            
+            const key = e.dataTransfer.getData('text/plain');
+            console.log('Drop event:', key, 'on day:', dropzone.closest('.col').dataset.day);
+            const draggedRow = document.querySelector(`.rowItem[data-key="${key}"]`);
+            
+            if (!draggedRow) {
+                console.log('Dragged row not found for key:', key);
+                return;
+            }
+            
+            const targetCol = dropzone.closest('.col');
+            const newDay = targetCol.dataset.day;
+            const oldDay = draggedRow.dataset.day;
+            const cutDate = draggedRow.dataset.cutDate || '';
+            
+            // Проверка даты раскроя
+            if (cutDate && newDay < cutDate) {
+                alert(`Нельзя переносить раньше раскроя: ${cutDate}`);
+                return;
+            }
+            
+            // Проверяем, не переносим ли в тот же день
+            if (newDay === oldDay) {
+                console.log('Same day, no need to move');
+                return;
+            }
+            
+            // Проверка дубликата (только если переносим в другой день)
+            const newSet = plan.get(newDay);
+            if (newSet && newSet.has(key)) {
+                alert('У цьому дні вже є ця полоса.');
+                return;
+            }
+            
+            // Перемещаем строку
+            const oldSet = plan.get(oldDay);
+            if (oldSet) oldSet.delete(key);
+            newSet.add(key);
+            
+            dropzone.appendChild(draggedRow);
+            draggedRow.dataset.day = newDay;
+            
+            recalcDayTotal(oldDay);
+            recalcDayTotal(newDay);
+            lastPickedDay = newDay;
+            updateActiveDayInfo();
+            applyHeightFilter();
+        });
+    }
+
+    function ensureEventDelegation() {
+        // Проверяем, есть ли уже делегирование событий
+        if (planGrid.hasAttribute('data-delegation-initialized')) {
+            return;
+        }
+        
+        planGrid.setAttribute('data-delegation-initialized', 'true');
+        
+        // Делегирование событий на уровне planGrid
+        planGrid.addEventListener('dragover', (e) => {
+            const dropzone = e.target.closest('.dropzone');
+            if (dropzone) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                dropzone.classList.add('drag-over');
+                console.log('Delegated dragover on:', dropzone.closest('.col').dataset.day);
+            }
+        });
+        
+        planGrid.addEventListener('dragleave', (e) => {
+            const dropzone = e.target.closest('.dropzone');
+            if (dropzone && !dropzone.contains(e.relatedTarget)) {
+                dropzone.classList.remove('drag-over');
+                console.log('Delegated dragleave from:', dropzone.closest('.col').dataset.day);
+            }
+        });
+        
+        planGrid.addEventListener('drop', (e) => {
+            const dropzone = e.target.closest('.dropzone');
+            if (dropzone) {
+                e.preventDefault();
+                dropzone.classList.remove('drag-over');
+                
+                const key = e.dataTransfer.getData('text/plain');
+                console.log('Delegated drop event:', key, 'on day:', dropzone.closest('.col').dataset.day);
+                
+                const draggedRow = document.querySelector(`.rowItem[data-key="${key}"]`);
+                if (!draggedRow) {
+                    console.log('Dragged row not found for key:', key);
+                    return;
+                }
+                
+                const targetCol = dropzone.closest('.col');
+                const newDay = targetCol.dataset.day;
+                const oldDay = draggedRow.dataset.day;
+                const cutDate = draggedRow.dataset.cutDate || '';
+                
+                // Проверка даты раскроя
+                if (cutDate && newDay < cutDate) {
+                    alert(`Нельзя переносить раньше раскроя: ${cutDate}`);
+                    return;
+                }
+                
+                // Проверяем, не переносим ли в тот же день
+                if (newDay === oldDay) {
+                    console.log('Same day, no need to move');
+                    return;
+                }
+                
+                // Проверка дубликата (только если переносим в другой день)
+                const newSet = plan.get(newDay);
+                if (newSet && newSet.has(key)) {
+                    alert('У цьому дні вже є ця полоса.');
+                    return;
+                }
+                
+                // Перемещаем строку
+                const oldSet = plan.get(oldDay);
+                if (oldSet) oldSet.delete(key);
+                newSet.add(key);
+                
+                dropzone.appendChild(draggedRow);
+                draggedRow.dataset.day = newDay;
+                
+                recalcDayTotal(oldDay);
+                recalcDayTotal(newDay);
+                lastPickedDay = newDay;
+                updateActiveDayInfo();
+                applyHeightFilter();
+            }
+        });
+        
+        console.log('Event delegation initialized on planGrid');
+    }
+
+    function initDropzones() {
+        document.querySelectorAll('.dropzone').forEach(dropzone => {
+            initSingleDropzone(dropzone);
+        });
+    }
+    
     function getPlanCol(ds){
         return planGrid.querySelector(`.col[data-day="${ds}"]`);
     }
@@ -778,6 +1095,7 @@ sort($dates);
         lastPickedDay = targetDay;
         recalcDayTotal(targetDay);
         updateActiveDayInfo();
+        applyHeightFilter(); // Применяем фильтр к новой строке
     }
 
     // Модалка выбора даты
@@ -843,8 +1161,9 @@ sort($dates);
     const btnBuildDays = document.getElementById('btnBuildDays');
     const rngStart     = document.getElementById('rngStart');
     const rngDays      = document.getElementById('rngDays');
-    const addOneDayInp = document.getElementById('addOneDay');
     const btnAddDay    = document.getElementById('btnAddDay');
+    const heightButtons = document.querySelectorAll('.height-btn');
+    const btnClearFilter = document.getElementById('btnClearFilter');
 
     (function initDates(){
         const today = new Date(); const ds = today.toISOString().slice(0,10);
@@ -868,8 +1187,10 @@ sort($dates);
         const daysNow = getAllDays();
         let newDs;
         if (daysNow.length) {
+            // якщо є дні — беремо останній і додаємо +1
             const last = daysNow[daysNow.length - 1];
-            const nd = parseISO(last); nd.setDate(nd.getDate() + 1);
+            const nd = parseISO(last); 
+            nd.setDate(nd.getDate() + 1);
             newDs = iso(nd);
         } else {
             // якщо таблиця порожня — стартуємо з rngStart або сьогодні
@@ -891,8 +1212,76 @@ sort($dates);
 
         // 4) Оновлюємо ширину гріда
         const total = daysNow.length + 1;
-        planGrid.style.gridTemplateColumns = `repeat(${Math.max(1, total)}, minmax(220px, 1fr))`;
+        planGrid.style.gridTemplateColumns = `repeat(${Math.max(1, total)}, minmax(153px, 1fr))`;
     });
+
+    // Функциональность фильтра высот
+    let selectedHeights = new Set();
+
+    function applyHeightFilter() {
+        // Убираем подсветку со всех позиций (верхняя и нижняя таблицы)
+        document.querySelectorAll('.pill.highlighted, .rowItem.highlighted').forEach(el => {
+            el.classList.remove('highlighted');
+        });
+
+        if (selectedHeights.size === 0) {
+            return; // Если ничего не выбрано, просто убираем подсветку
+        }
+
+        // Подсвечиваем позиции в верхней таблице
+        document.querySelectorAll('.pill').forEach(pill => {
+            const pillText = pill.textContent.toLowerCase();
+            const hasSelectedHeight = Array.from(selectedHeights).some(height => 
+                pillText.includes(height.toLowerCase())
+            );
+            
+            if (hasSelectedHeight) {
+                pill.classList.add('highlighted');
+            }
+        });
+
+        // Подсвечиваем строки в нижней таблице
+        document.querySelectorAll('.rowItem').forEach(row => {
+            const rowText = row.textContent.toLowerCase();
+            const hasSelectedHeight = Array.from(selectedHeights).some(height => 
+                rowText.includes(height.toLowerCase())
+            );
+            
+            if (hasSelectedHeight) {
+                row.classList.add('highlighted');
+            }
+        });
+    }
+
+    function toggleHeightFilter(height) {
+        if (selectedHeights.has(height)) {
+            selectedHeights.delete(height);
+        } else {
+            selectedHeights.add(height);
+        }
+        
+        // Обновляем состояние кнопки
+        const button = document.querySelector(`[data-height="${height}"]`);
+        button.classList.toggle('active', selectedHeights.has(height));
+        
+        applyHeightFilter();
+    }
+
+    function clearHeightFilter() {
+        selectedHeights.clear();
+        heightButtons.forEach(btn => btn.classList.remove('active'));
+        applyHeightFilter();
+    }
+
+    // Обработчики событий для кнопок высот
+    heightButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const height = btn.dataset.height;
+            toggleHeightFilter(height);
+        });
+    });
+    
+    btnClearFilter.addEventListener('click', clearHeightFilter);
 
 
     // Сохранение
@@ -980,9 +1369,10 @@ sort($dates);
             });
 
 
-            // 4) Підрахувати підсумки по кожному дню та розблокувати “Сохранить”
+            // 4) Підрахувати підсумки по кожному дню та розблокувати "Сохранить"
             getAllDays().forEach(ds=>recalcDayTotal(ds));
             refreshSaveState();
+            applyHeightFilter(); // Применяем фильтр к загруженным данным
             alert('План загружен.');
         }catch(e){
             alert('Не удалось загрузить: '+e.message);
@@ -990,6 +1380,77 @@ sort($dates);
     });
 
 
+
+    // Функциональность перетаскивания плашки
+    (function initDragging() {
+        const panel = document.getElementById('activeDayInfo');
+        let isDragging = false;
+        let currentX;
+        let currentY;
+        let initialX;
+        let initialY;
+        let xOffset = 0;
+        let yOffset = 0;
+
+        // Загружаем сохраненную позицию из localStorage
+        const savedPosition = localStorage.getItem('activeDayPanelPosition');
+        if (savedPosition) {
+            const pos = JSON.parse(savedPosition);
+            panel.style.top = pos.top + 'px';
+            panel.style.right = 'auto';
+            panel.style.left = pos.left + 'px';
+            xOffset = pos.left - 10;
+            yOffset = pos.top - 10;
+        }
+
+        panel.addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', dragEnd);
+
+        function dragStart(e) {
+            // Проверяем, что клик был по заголовку, а не по кнопкам
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.closest('.active-day-controls')) {
+                return;
+            }
+
+            initialX = e.clientX - xOffset;
+            initialY = e.clientY - yOffset;
+
+            if (e.target === panel || e.target.closest('.active-day-header')) {
+                isDragging = true;
+                panel.classList.add('dragging');
+            }
+        }
+
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+
+                xOffset = currentX;
+                yOffset = currentY;
+
+                panel.style.top = currentY + 'px';
+                panel.style.left = currentX + 'px';
+                panel.style.right = 'auto';
+            }
+        }
+
+        function dragEnd(e) {
+            initialX = currentX;
+            initialY = currentY;
+            isDragging = false;
+            panel.classList.remove('dragging');
+
+            // Сохраняем позицию в localStorage
+            const rect = panel.getBoundingClientRect();
+            localStorage.setItem('activeDayPanelPosition', JSON.stringify({
+                left: rect.left,
+                top: rect.top
+            }));
+        }
+    })();
 
     // Инициализация
     (function init(){
