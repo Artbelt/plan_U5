@@ -242,12 +242,13 @@ try{
         PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC
     ]);
 
-    // источник: corrugation_plan + норма смены + высота бумаги
+    // источник: corrugation_plan + норма смены + высота бумаги + факт выполнения
     $src = $pdo->prepare("
         SELECT
           cp.plan_date     AS source_date,
           cp.filter_label  AS filter,
           SUM(cp.count)    AS planned,
+          SUM(cp.fact_count) AS fact_count,
           NULLIF(COALESCE(sfs.build_complexity, 0), 0) AS rate_per_shift,
           pps.p_p_height   AS paper_height
         FROM corrugation_plan cp
@@ -277,6 +278,7 @@ try{
         $d = $r['source_date'];
         $flt = $r['filter'];
         $planned = (int)$r['planned'];
+        $factCount = (int)$r['fact_count'];
         $used = (int)($assignedMap[$d.'|'.$flt] ?? 0);
         $avail = max(0, $planned - $used);
         $srcDates[$d] = true;
@@ -288,6 +290,8 @@ try{
             'available'   => $avail,
             'rate'        => $r['rate_per_shift'] ? (int)$r['rate_per_shift'] : 0,
             'height'      => isset($r['paper_height']) && $r['paper_height']!==null ? (float)$r['paper_height'] : null,
+            'fact_count'  => $factCount,
+            'is_corrugated' => $factCount > 0,
         ];
     }
     $srcDates = array_keys($srcDates); sort($srcDates);
@@ -416,6 +420,7 @@ try{
     .pillName{font-weight:600}
     .pillSub{font-size:12px;color:#374151}
     .pill.disabled{opacity:.45;filter:grayscale(.15);pointer-events:none}
+    .pill.corrugated{border-color:#22c55e;background:#f0fdf4;box-shadow:0 1px 3px rgba(34,197,94,0.2)}
 
     /* низ — две бригады */
     .brigWrap{display:grid;grid-template-columns:1fr;gap:6px}
@@ -522,19 +527,23 @@ try{
                             $htStr = $p['height'] !== null ? fmt_mm($p['height']) : null;
                             $ht = $htStr !== null ? ('  <span class="muted">['.$htStr.']</span>') : '';
                             ?>
-                            <div class="pill<?= ($p['available']<=0 ? ' disabled' : '') ?>"
+                            <div class="pill<?= ($p['available']<=0 ? ' disabled' : '') ?><?= ($p['is_corrugated'] ? ' corrugated' : '') ?>"
                                  data-key="<?=h($p['key'])?>"
                                  data-source-date="<?=h($p['source_date'])?>"
                                  data-filter="<?=h($p['filter'])?>"
                                  data-avail="<?=$p['available']?>"
                                  data-rate="<?=$p['rate']?>"
                                  data-height="<?= $htStr !== null ? h($htStr) : '' ?>"
-                                 title="Клик — добавить в день сборки">
+                                 data-fact-count="<?=$p['fact_count']?>"
+                                 title="Клик — добавить в день сборки<?= $p['is_corrugated'] ? ' ✓ Сгофрировано' : '' ?>">
                                 <div class="pillTop">
                                     <div>
-                                        <div class="pillName"><?=h($p['filter'])?><?= $ht ?></div>
+                                        <div class="pillName">
+                                            <?= $p['is_corrugated'] ? '✅ ' : '' ?><?=h($p['filter'])?><?= $ht ?>
+                                        </div>
                                         <div class="pillSub">
                                             <b class="av"><?=$p['available']?></b> шт · ~<b class="time">0.0</b>ч
+                                            <?= $p['is_corrugated'] ? '<br><span class="muted">✓ Сгофрировано: ' . $p['fact_count'] . ' шт</span>' : '' ?>
                                         </div>
                                     </div>
                                     <input class="qty" type="number" min="1" step="1"

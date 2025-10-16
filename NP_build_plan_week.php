@@ -369,7 +369,7 @@ try{
         let splitMode = false;   // режим разделения позиций
         const COMPACT_H = 1.0;  // ≤1.0 ч — компакт: дату скрыть
         const TINY_H    = 0.7;  // ≤0.7 ч — очень компактно: оставить только заголовок
-        const TEAM_CAP = { '1': SHIFT_H, '2': 8 };  // вместимость дорожки: бр-1 = 11.5ч, бр-2 = 8ч
+        const TEAM_CAP = { '1': SHIFT_H, '2': SHIFT_H };  // вместимость дорожки: бр-1 = 11.5ч, бр-2 = 11.5ч
         const cap = (team) => +(TEAM_CAP[team] ?? SHIFT_H);
 
 

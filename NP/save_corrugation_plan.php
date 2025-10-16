@@ -141,6 +141,10 @@ try{
         $ins->execute([$order, $ds, $flt, $cnt, $bid, $sn, $factCount]);
     }
 
+    // Обновляем статус готовности плана гофрирования
+    $stmt = $pdo->prepare("UPDATE orders SET corr_ready = 1 WHERE order_number = ?");
+    $stmt->execute([$order]);
+
     $pdo->commit();
     echo json_encode(['ok'=>true]);
 }catch(Throwable $e){
