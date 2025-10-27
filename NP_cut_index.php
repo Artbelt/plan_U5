@@ -270,7 +270,7 @@ try{
                                 </div>
                     <?php else: ?>
                         <div class="stack">
-                            <a class="btn" target="_blank" href="NP_cut_plan.php?order=<?= urlencode($ord) ?>">Сделать</a>
+                            <a class="btn" target="_blank" href="NP_cut_plan.php?order_number=<?= urlencode($ord) ?>">Сделать</a>
                         </div>
                         <span class="sub">нет данных для просмотра</span>
                     <?php endif; ?>
