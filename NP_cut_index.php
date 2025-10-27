@@ -267,6 +267,7 @@ try{
                         <div class="done">✅ Готово</div>
                         <div class="stack">
                             <a class="btn-print" target="_blank" href="NP/print_cut_report.php?order=<?= urlencode($ord) ?>">Печать</a>
+                            <a class="btn-secondary" href="#" onclick="editCutPlan('<?= htmlspecialchars($ord, ENT_QUOTES) ?>'); return false;">Изменить</a>
                                 </div>
                     <?php else: ?>
                         <div class="stack">
@@ -356,6 +357,21 @@ try{
             location.reload();
         }catch(e){
             alert('Не удалось очистить: '+e.message);
+        }
+    }
+    
+    // Редактирование раскроя с предупреждением
+    function editCutPlan(order){
+        if (confirm(
+            '⚠️ ВНИМАНИЕ!\n\n' +
+            'При редактировании раскроя нарушится синхронизация с остальными частями плана:\n\n' +
+            '• План раскроя рулона\n' +
+            '• План гофрирования\n' +
+            '• План сборки\n\n' +
+            'Вероятно, их придется переделывать заново.\n\n' +
+            'Продолжить редактирование?'
+        )) {
+            window.open('NP_cut_plan.php?order_number=' + encodeURIComponent(order), '_blank');
         }
     }
 </script>
