@@ -80,6 +80,22 @@ if (!$hasAccessToU5) {
     // Устанавливаем роль по умолчанию для отображения
     $userRole = 'guest';
 }
+
+// Функция проверки доступа к заявкам на лазер
+function canAccessLaserRequests($userDepartments, $currentDepartment) {
+    // Проверяем доступ для текущего цеха
+    foreach ($userDepartments as $dept) {
+        if ($dept['department_code'] === $currentDepartment) {
+            $role = $dept['role_name'];
+            // Доступ имеют: сборщики, мастера, директора (но не менеджеры)
+            return in_array($role, ['assembler', 'supervisor', 'director']);
+        }
+    }
+    return false;
+}
+
+// Для main.php всегда проверяем доступ к цеху U5
+$canAccessLaser = canAccessLaserRequests($userDepartments, 'U5');
 ?>
 <!doctype html>
 <html lang="ru">
@@ -512,6 +528,9 @@ echo "<!-- Аккуратная панель авторизации -->
                     <form action="product_output_view.php" method="post" class="stack" target="_blank"><input type="submit" value="Обзор выпуска продукции"></form>
                     <button onclick="openDataEditor()">Редактор данных</button>
                     <a href="NP_supply_requirements.php" target="_blank" rel="noopener" class="stack"><button>Потребность комплектующих</button></a>
+                    <?php if ($canAccessLaser): ?>
+                    <a href="laser_request.php" target="_blank" rel="noopener"><button type="button">Заявка на лазер</button></a>
+                    <?php endif; ?>
                 </div>
 
                 <div class="section-title" style="margin-top:14px">Дополнения</div>
@@ -543,6 +562,7 @@ echo "<!-- Аккуратная панель авторизации -->
                     <form action="http://localhost/timekeeping/U5/index.php" method="post" target="_blank" class="stack">
                         <input type="submit" value="Табель У5" disabled>
                     </form>
+                    <a href="salary_report_monthly.php" target="_blank" rel="noopener" class="stack"><button>Отчет по ЗП за месяц</button></a>
                 </div>
 
                 <div class="section-title" style="margin-top:14px">Управление данными</div>
@@ -642,7 +662,6 @@ echo "<!-- Аккуратная панель авторизации -->
                     </section>
 
                     <form action='new_order.php' method='post' target='_blank' class="stack"><input type='submit' value='Создать заявку вручную'></form>
-                    <form action='planning_manager.php' method='post' target='_blank' class="stack"><input type='submit' value='Менеджер планирования (старый)'></form>
                     <form action='NP_cut_index.php' method='post' target='_blank' class="stack"><input type='submit' value='Менеджер планирования (новый)'></form>
                     <form action='combine_orders.php' method='post' class="stack"><input type='submit' value='Объединение заявок'></form>
 

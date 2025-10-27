@@ -149,48 +149,124 @@ $page_title = $order_number ? $order_number : "Заявка";
         }
 
         .modal-content {
-            background-color: var(--panel);
+            background-color: white;
             margin: auto;
-            padding: 0;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
             border-radius: 8px;
-            box-shadow: var(--shadow);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             max-width: 600px;
             max-height: 80vh;
-            overflow: hidden;
+            overflow-y: auto;
             position: relative;
         }
 
-        .modal-header {
-            padding: 12px 16px;
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-title {
-            margin: 0;
-            font-size: 1.2rem;
-            font-weight: 700;
-        }
-
         .close {
-            color: white;
-            font-size: 24px;
+            color: #9ca3af;
+            font-size: 28px;
             font-weight: bold;
             cursor: pointer;
             line-height: 1;
         }
 
-        .close:hover {
-            opacity: 0.7;
+        .close:hover,
+        .close:focus {
+            color: #374151;
         }
 
         .modal-body {
             padding: 12px 16px;
             max-height: 60vh;
             overflow-y: auto;
+        }
+        
+        /* Стили для модального окна параметров фильтра */
+        .modal-body .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .modal-body .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        @media (max-width: 900px) {
+            .modal-body .row { 
+                grid-template-columns: 1fr; 
+            }
+        }
+
+        .modal-body .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 6px;
+        }
+
+        .modal-body .table th, 
+        .modal-body .table td {
+            border-bottom: 1px solid var(--border);
+            padding: 6px 4px;
+            text-align: left;
+            vertical-align: top;
+            font-size: 12px;
+        }
+
+        .modal-body .table th { 
+            width: 35%; 
+            color: var(--muted); 
+            font-weight: 600; 
+        }
+
+        .modal-body .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            border: 1px solid var(--border);
+            background: #fafafa;
+        }
+
+        .modal-body .yn-yes { 
+            color: #2e7d32; 
+            font-weight: 600; 
+        }
+
+        .modal-body .yn-no { 
+            color: #c62828; 
+            font-weight: 600; 
+        }
+
+        .modal-body .section-title { 
+            font-size: 13px; 
+            font-weight: 700; 
+            margin: 0 0 6px; 
+        }
+
+        .modal-body .small { 
+            font-size: 11px; 
+            color: var(--muted); 
+        }
+
+        .modal-body .value-mono { 
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; 
+        }
+
+        .modal-body .pair { 
+            display: flex; 
+            gap: 8px; 
+            align-items: center; 
+            flex-wrap: wrap; 
+        }
+        
+        /* Анимация спиннера */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .zero-position-item {
@@ -381,6 +457,34 @@ $page_title = $order_number ? $order_number : "Заявка";
         return [$dateList, $total];
     }
 
+    /**
+     * Получает конструктивные параметры фильтра из salon_filter_structure и paper_package_salon
+     */
+    function get_filter_structure($filter_name) {
+        global $mysql_host, $mysql_user, $mysql_user_pass, $mysql_database;
+        
+        try {
+            $pdo = new PDO("mysql:host=$mysql_host;dbname=$mysql_database", $mysql_user, $mysql_user_pass);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            
+            $stmt = $pdo->prepare("
+                SELECT 
+                    sfs.*,
+                    pps.p_p_height as height,
+                    pps.p_p_width as width,
+                    pps.p_p_pleats_count as ribs_count,
+                    pps.p_p_material as material
+                FROM salon_filter_structure sfs
+                LEFT JOIN paper_package_salon pps ON CONCAT('гофропакет ', sfs.filter) = pps.p_p_name
+                WHERE sfs.filter = ?
+            ");
+            $stmt->execute([$filter_name]);
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
     // Номер заявки уже получен в начале файла
 
     // Подключим отдельный PDO для выборок из corrugation_plan (факт гофропакетов)
@@ -401,7 +505,7 @@ $page_title = $order_number ? $order_number : "Заявка";
     echo "<div class='table-wrap'>";
     echo "<table id='order_table'>";
     echo "<tr>
-        <th>№п/п</th>
+        <th>I</th>
         <th>Фильтр</th>
         <th>Количество, шт</th>
         <th>Маркировка</th>
@@ -433,8 +537,18 @@ $page_title = $order_number ? $order_number : "Заявка";
         list($corr_date_list, $corr_total) = get_corr_fact_for_filter($pdo_corr, $order_number, $row['filter']);
         $corr_fact_summ += (int)$corr_total;
 
+        // Получаем информацию о структуре фильтра
+        $filter_structure = get_filter_structure($row['filter']);
+        $has_structure = $filter_structure !== false;
+        
         echo "<tr>
-        <td>$count</td>
+        <td style='text-align: center;'>
+            <button onclick='showFilterInfo(\"".htmlspecialchars($row['filter'])."\")' 
+                    style='background: white; color: #3b82f6; border: 1px solid #3b82f6; border-radius: 50%; padding: 4px; cursor: pointer; font-weight: bold; font-size: 11px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto;'
+                    title='Информация о фильтре'>
+                i
+            </button>
+        </td>
         <td>".htmlspecialchars($row['filter'])."</td>
         <td>".(int)$row['count']."</td>
         <td>".htmlspecialchars($row['marking'])."</td>
@@ -461,8 +575,8 @@ $page_title = $order_number ? $order_number : "Заявка";
     $summ_difference = $filter_count_in_order - $filter_count_produced;
 
     echo "<tr>
-        <td>Итого:</td>
         <td></td>
+        <td>Итого:</td>
         <td>".(int)$filter_count_in_order."</td>
         <td colspan='7'></td>
         <td>".(int)$filter_count_produced."</td>
@@ -541,6 +655,18 @@ $page_title = $order_number ? $order_number : "Заявка";
             <div id="gofraCheckContent">
                 <p>Загрузка данных...</p>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для информации о фильтре -->
+<div id="filterInfoModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 700px; max-height: 70vh; overflow-y: auto; padding: 20px;">
+        <span class="close" onclick="closeFilterInfoModal()" style="position: absolute; top: 10px; right: 20px; color: #9ca3af; font-size: 28px; cursor: pointer;">&times;</span>
+        <div id="filterInfoContent">
+            <p style="color: #9ca3af; text-align: center; padding: 20px;">
+                Загрузка данных...
+            </p>
         </div>
     </div>
 </div>
@@ -913,16 +1039,63 @@ $page_title = $order_number ? $order_number : "Заявка";
         }
     }
 
+    // Функция для показа информации о фильтре
+    function showFilterInfo(filterName) {
+        const modal = document.getElementById('filterInfoModal');
+        const content = document.getElementById('filterInfoContent');
+        
+        // Показываем модальное окно
+        modal.style.display = 'flex';
+        
+        // Загружаем данные о фильтре
+        loadFilterInfo(filterName);
+    }
+
+    // Функция для закрытия модального окна информации о фильтре
+    function closeFilterInfoModal() {
+        document.getElementById('filterInfoModal').style.display = 'none';
+    }
+
+    // Функция для загрузки информации о фильтре
+    function loadFilterInfo(filterName) {
+        const content = document.getElementById('filterInfoContent');
+        content.innerHTML = '<div style="text-align: center; padding: 20px;"><div style="display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top: 2px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite;"></div><br>Загрузка параметров...</div>';
+        
+        // Создаем AJAX запрос для получения данных о фильтре
+        fetch('get_filter_structure.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'filter_name=' + encodeURIComponent(filterName)
+        })
+        .then(response => response.text())
+        .then(html => {
+            // Извлекаем только содержимое body из ответа
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const bodyContent = doc.body.innerHTML;
+            content.innerHTML = bodyContent;
+        })
+        .catch(error => {
+            content.innerHTML = '<p style="color: red; text-align: center; padding: 20px;">Ошибка загрузки данных: ' + error.message + '</p>';
+        });
+    }
+
     // Закрытие модального окна при клике вне его
     window.onclick = function(event) {
         const zeroModal = document.getElementById('zeroProductionModal');
         const gofraModal = document.getElementById('gofraCheckModal');
+        const filterModal = document.getElementById('filterInfoModal');
         
         if (event.target === zeroModal) {
             closeZeroProductionModal();
         }
         if (event.target === gofraModal) {
             closeGofraCheckModal();
+        }
+        if (event.target === filterModal) {
+            closeFilterInfoModal();
         }
     }
 </script>

@@ -6,10 +6,10 @@
   <component name="ChangeListManager">
     <list default="true" id="cfcddb63-6e01-47a9-b759-481257467bc9" name="Changes" comment="сделана теплловая карта высот">
       <change beforePath="$PROJECT_DIR$/index.php" beforeDir="false" afterPath="$PROJECT_DIR$/index.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/load_file.php" beforeDir="false" afterPath="$PROJECT_DIR$/load_file.php" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.php" beforeDir="false" afterPath="$PROJECT_DIR$/main.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/product_output.php" beforeDir="false" afterPath="$PROJECT_DIR$/product_output.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/worker_modules/tasks_corrugation.php" beforeDir="false" afterPath="$PROJECT_DIR$/worker_modules/tasks_corrugation.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/worker_modules/tasks_cut.php" beforeDir="false" afterPath="$PROJECT_DIR$/worker_modules/tasks_cut.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/save_order_into_DB.php" beforeDir="false" afterPath="$PROJECT_DIR$/save_order_into_DB.php" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/show_order.php" beforeDir="false" afterPath="$PROJECT_DIR$/show_order.php" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -138,6 +138,7 @@
       <workItem from="1758616129107" duration="145000" />
       <workItem from="1758699342664" duration="584000" />
       <workItem from="1759916651437" duration="10000" />
+      <workItem from="1761039898280" duration="8000" />
     </task>
     <task id="LOCAL-00001" summary="Добавлено окно просмотра параметров изделия">
       <created>1752823327851</created>

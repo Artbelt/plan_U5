@@ -42,7 +42,7 @@ if ($_POST['order_str']) {
         }
     }
     echo 'успешно завершено <p>';
-    echo "<a href='enter.php'>на главную</a>";
+    echo "<a href='main.php'>на главную</a>";
 
 }
 ?>
