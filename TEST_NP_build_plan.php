@@ -425,7 +425,15 @@ try{
     .sub{font-size:12px;color:var(--muted)}
 
     .grid{display:grid;grid-template-columns:repeat(<?=count($srcDates)?:1?>,minmax(120px,1fr));gap:10px}
-    .gridDays{display:grid;grid-template-columns:repeat(<?=count($buildDays)?:1?>,minmax(300px,1fr));gap:10px}
+    .gridDays{
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 10px;
+    }
+    .gridDays .col {
+        min-width: 280px;
+        flex-shrink: 0;
+    }
 
     .col{border-left:1px solid var(--line);padding-left:8px;min-height:200px}
     .col h4{margin:0 0 8px;font-weight:600}
@@ -457,7 +465,7 @@ try{
 
     /* скроллы */
     .scrollX{ overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; padding-bottom:4px; }
-    .scrollX > .grid, .scrollX > .gridDays{ width:max-content; display:grid; }
+    .scrollX > .grid{ width:max-content; display:grid; }
     .scrollX::-webkit-scrollbar{height:10px}
     .scrollX::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:6px}
     .vscroll::-webkit-scrollbar{width:10px}
@@ -1300,17 +1308,30 @@ try{
                 newDay = nextDate.toISOString().slice(0,10);
             }
             
+            // Проверяем, не существует ли уже такой день
+            if (allDays.includes(newDay)) {
+                console.log('День уже существует, ищем следующий свободный');
+                // Ищем первый несуществующий день
+                let testDate = new Date(allDays[allDays.length - 1] + 'T00:00:00');
+                do {
+                    testDate.setDate(testDate.getDate() + 1);
+                    newDay = testDate.toISOString().slice(0,10);
+                } while (allDays.includes(newDay));
+            }
+            
             console.log('Добавляем день:', newDay);
             ensureDay(newDay);
             
             // Принудительно прокручиваем к новому дню
-            const newCol = document.querySelector(`.col[data-day="${cssEscape(newDay)}"]`);
-            if (newCol) {
-                console.log('Колонка создана:', newCol);
-                newCol.scrollIntoView({ behavior: 'smooth', inline: 'end', block: 'nearest' });
-            } else {
-                console.error('Колонка не создана!');
-            }
+            setTimeout(() => {
+                const newCol = document.querySelector(`.col[data-day="${cssEscape(newDay)}"]`);
+                if (newCol) {
+                    console.log('Колонка создана:', newCol);
+                    newCol.scrollIntoView({ behavior: 'smooth', inline: 'end', block: 'nearest' });
+                } else {
+                    console.error('Колонка не создана!');
+                }
+            }, 100);
             
             fetchBusyForDays([newDay]);
         };
