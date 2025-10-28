@@ -71,7 +71,7 @@ try {
             COUNT(*) as strips_count,
             COUNT(DISTINCT o.filter) as unique_filters,
             SUM(o.count) as total_filters,
-            SUM(CASE WHEN sfs.build_complexity > 100 THEN o.count ELSE 0 END) as complex_filters
+            SUM(CASE WHEN sfs.build_complexity < 600 THEN o.count ELSE 0 END) as complex_filters
         FROM cut_plans cp
         LEFT JOIN orders o ON cp.order_number = o.order_number AND cp.filter = o.filter
         LEFT JOIN salon_filter_structure sfs ON o.filter = sfs.filter
@@ -82,11 +82,11 @@ try {
     $stmt->execute([$order]);
     $heights_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Анализ сложности (считаем простые <= 100, сложные > 100)
+    // Анализ сложности (считаем простые >= 600, сложные < 600)
     $stmt = $pdo->prepare("
         SELECT 
-            COUNT(CASE WHEN sfs.build_complexity <= 100 THEN 1 END) as simple_count,
-            COUNT(CASE WHEN sfs.build_complexity > 100 THEN 1 END) as complex_count,
+            COUNT(CASE WHEN sfs.build_complexity >= 600 THEN 1 END) as simple_count,
+            COUNT(CASE WHEN sfs.build_complexity < 600 THEN 1 END) as complex_count,
             AVG(sfs.build_complexity) as avg_complexity,
             MIN(sfs.build_complexity) as min_complexity,
             MAX(sfs.build_complexity) as max_complexity

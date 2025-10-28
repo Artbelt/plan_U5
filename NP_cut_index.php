@@ -314,33 +314,48 @@ try{
         }
         .info-grid{
             display:grid;
-            grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));
-            gap:16px;
+            grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+            gap:12px;
             margin-bottom:20px;
         }
         .info-card{
-            background:#f9fafb;
-            border:1px solid #e5e7eb;
-            border-radius:12px;
+            background:#ffffff;
+            border:1px solid #d1d5db;
+            border-radius:8px;
             padding:16px;
         }
         .info-card h4{
-            margin:0 0 12px;
-            font-size:14px;
+            margin:0 0 8px;
+            font-size:12px;
             color:#6b7280;
             font-weight:600;
             text-transform:uppercase;
             letter-spacing:0.5px;
         }
         .info-value{
-            font-size:24px;
+            font-size:28px;
             font-weight:700;
             color:#111827;
         }
         .info-label{
-            font-size:12px;
+            font-size:11px;
             color:#9ca3af;
-            margin-top:4px;
+            margin-top:2px;
+        }
+        .section-block{
+            margin-top:16px;
+            padding:16px;
+            background:#ffffff;
+            border:1px solid #d1d5db;
+            border-radius:8px;
+        }
+        .section-title{
+            margin:0 0 12px;
+            font-size:13px;
+            color:#374151;
+            font-weight:600;
+            text-transform:uppercase;
+            letter-spacing:0.5px;
         }
     </style>
 </head>
@@ -579,8 +594,8 @@ try{
             
             // Распределение по высотам с детальной информацией
             if (data.heights && data.heights.length > 0) {
-                html += '<div style="margin-top:20px;padding:16px;background:#f0f9ff;border-radius:8px;border:1px solid #bfdbfe;">';
-                html += '<h4 style="margin:0 0 12px;font-size:14px;color:#1e40af;font-weight:600;">📏 Детальная статистика по высотам</h4>';
+                html += '<div class="section-block">';
+                html += '<div class="section-title">Детальная статистика по высотам</div>';
                 html += '<div style="display:flex;flex-direction:column;gap:8px;">';
                 
                 data.heights.forEach(h => {
@@ -589,24 +604,24 @@ try{
                     const complexPercent = totalCount > 0 ? Math.round((complexCount / totalCount) * 100) : 0;
                     
                     html += `
-                        <div style="background:#fff;padding:12px 16px;border-radius:6px;border:1px solid #dbeafe;display:flex;align-items:center;gap:16px;">
-                            <div style="min-width:60px;text-align:center;">
-                                <div style="font-size:18px;font-weight:700;color:#1e40af;">${h.height}</div>
-                                <div style="font-size:10px;color:#6b7280;text-transform:uppercase;">высота</div>
+                        <div style="background:#fafafa;padding:12px 16px;border-radius:6px;border:1px solid #e5e7eb;display:flex;align-items:center;gap:16px;">
+                            <div style="min-width:50px;text-align:center;border-right:1px solid #e5e7eb;padding-right:12px;">
+                                <div style="font-size:18px;font-weight:700;color:#111827;">${h.height}</div>
+                                <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;">высота</div>
                             </div>
-                            <div style="flex:1;display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+                            <div style="flex:1;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
                                 <div>
-                                    <span style="font-size:20px;font-weight:600;color:#111827;">${totalCount}</span>
-                                    <span style="font-size:13px;color:#6b7280;margin-left:4px;">фильтров в заявке</span>
+                                    <span style="font-size:18px;font-weight:600;color:#111827;">${totalCount}</span>
+                                    <span style="font-size:12px;color:#6b7280;margin-left:4px;">фильтров</span>
                                 </div>
                                 ${complexCount > 0 ? `
-                                    <div style="padding:4px 12px;background:#fee;border-radius:6px;border:1px solid #fecaca;">
-                                        <span style="font-size:14px;font-weight:600;color:#dc2626;">сложных: ${complexCount}</span>
-                                        <span style="font-size:12px;color:#991b1b;margin-left:4px;">(${complexPercent}%)</span>
+                                    <div style="padding:4px 10px;background:#ffffff;border-radius:4px;border:1px solid #d1d5db;">
+                                        <span style="font-size:12px;font-weight:600;color:#374151;">сложных: ${complexCount}</span>
+                                        <span style="font-size:11px;color:#6b7280;margin-left:4px;">(${complexPercent}%)</span>
                                     </div>
                                 ` : ''}
-                                <div style="font-size:12px;color:#9ca3af;">
-                                    ${h.strips_count} полос • ${h.unique_filters} уникальных
+                                <div style="font-size:11px;color:#9ca3af;">
+                                    ${h.strips_count} полос • ${h.unique_filters} типов
                                 </div>
                             </div>
                         </div>
@@ -622,25 +637,27 @@ try{
                 const simplePercent = total > 0 ? Math.round((data.complexity.simple_count / total) * 100) : 0;
                 const complexPercent = total > 0 ? Math.round((data.complexity.complex_count / total) * 100) : 0;
                 
-                html += '<div style="margin-top:20px;padding:16px;background:#fef3c7;border-radius:8px;border:1px solid #fde047;">';
-                html += '<h4 style="margin:0 0 12px;font-size:14px;color:#92400e;font-weight:600;">⚡ Анализ сложности</h4>';
+                html += '<div class="section-block">';
+                html += '<div class="section-title">Анализ сложности сборки</div>';
                 html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">';
                 html += `
-                    <div style="background:#fff;padding:12px;border-radius:6px;border:1px solid #fde68a;">
-                        <div style="font-size:11px;color:#92400e;text-transform:uppercase;margin-bottom:4px;">Простые (≤100)</div>
-                        <div style="font-size:20px;font-weight:700;color:#16a34a;">${data.complexity.simple_count} <span style="font-size:14px;color:#6b7280;">(${simplePercent}%)</span></div>
+                    <div style="background:#fafafa;padding:14px;border-radius:6px;border:1px solid #e5e7eb;">
+                        <div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:6px;letter-spacing:0.5px;">Простые (≥600)</div>
+                        <div style="font-size:24px;font-weight:700;color:#111827;">${data.complexity.simple_count}</div>
+                        <div style="font-size:12px;color:#9ca3af;margin-top:2px;">${simplePercent}% от общего числа</div>
                     </div>
-                    <div style="background:#fff;padding:12px;border-radius:6px;border:1px solid #fde68a;">
-                        <div style="font-size:11px;color:#92400e;text-transform:uppercase;margin-bottom:4px;">Сложные (>100)</div>
-                        <div style="font-size:20px;font-weight:700;color:#dc2626;">${data.complexity.complex_count} <span style="font-size:14px;color:#6b7280;">(${complexPercent}%)</span></div>
+                    <div style="background:#fafafa;padding:14px;border-radius:6px;border:1px solid #e5e7eb;">
+                        <div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:6px;letter-spacing:0.5px;">Сложные (<600)</div>
+                        <div style="font-size:24px;font-weight:700;color:#111827;">${data.complexity.complex_count}</div>
+                        <div style="font-size:12px;color:#9ca3af;margin-top:2px;">${complexPercent}% от общего числа</div>
                     </div>
                 `;
                 html += '</div>';
                 
                 if (data.complexity.avg_complexity) {
-                    html += '<div style="font-size:13px;color:#4b5563;margin-top:8px;">';
-                    html += `<strong>Средняя сложность:</strong> ${parseFloat(data.complexity.avg_complexity).toFixed(1)} `;
-                    html += `<span style="color:#6b7280;">(мин: ${data.complexity.min_complexity || 0}, макс: ${data.complexity.max_complexity || 0})</span>`;
+                    html += '<div style="font-size:12px;color:#6b7280;padding:10px;background:#fafafa;border-radius:4px;border:1px solid #e5e7eb;">';
+                    html += `<strong style="color:#374151;">Средняя сложность:</strong> ${parseFloat(data.complexity.avg_complexity).toFixed(1)} `;
+                    html += `<span style="color:#9ca3af;">(диапазон: ${data.complexity.min_complexity || 0} — ${data.complexity.max_complexity || 0})</span>`;
                     html += '</div>';
                 }
                 html += '</div>';
@@ -648,11 +665,11 @@ try{
             
             // Период планирования
             if (data.dates && data.dates.start_date) {
-                html += '<div style="margin-top:20px;padding:16px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">';
-                html += '<h4 style="margin:0 0 8px;font-size:14px;color:#6b7280;font-weight:600;">📅 Период планирования</h4>';
+                html += '<div class="section-block">';
+                html += '<div class="section-title">Период планирования</div>';
                 const startDate = new Date(data.dates.start_date).toLocaleDateString('ru-RU');
                 const endDate = new Date(data.dates.end_date).toLocaleDateString('ru-RU');
-                html += `<div style="font-size:13px;color:#4b5563;">${startDate} — ${endDate}</div>`;
+                html += `<div style="font-size:14px;color:#374151;font-weight:500;">${startDate} — ${endDate}</div>`;
                 html += '</div>';
             }
             
