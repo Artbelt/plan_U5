@@ -1580,6 +1580,12 @@ try{
                         body: JSON.stringify({filters: uniq})
                     });
                     const dataMeta = await resMeta.json();
+                    
+                    // Отладка: показываем какие фильтры не найдены
+                    if (dataMeta.debug_missing && Object.keys(dataMeta.debug_missing).length > 0) {
+                        console.warn('⚠️ Фильтры не найдены в salon_filter_structure:', dataMeta.debug_missing);
+                    }
+                    
                     (dataMeta.items||[]).forEach(it=>{
                         const rawCx = (
                             it.build_complexity ?? it.complexity ?? it.buildComplexity ?? it.cx ?? it.rate ?? null
@@ -1587,6 +1593,7 @@ try{
                         
                         const processedHeight = (it.height == null || it.height === '' || it.height === 0) ? null : +it.height;
                         
+                        console.log(`Фильтр: ${it.filter}, build_complexity: ${it.build_complexity}, rate: ${it.rate}, rawCx: ${rawCx}`);
                         
                         metaMap.set(it.filter, {
                             rate: +it.rate||0,
@@ -1594,7 +1601,10 @@ try{
                             complexity: rawCx==null?null:+rawCx
                         });
                     });
-                }catch(_){ metaMap = new Map(); }
+                }catch(e){ 
+                    console.error('Ошибка загрузки метаданных:', e);
+                    metaMap = new Map(); 
+                }
 
                 need.forEach(x=>{
                     const m = metaMap.get(x.filter) || {rate:0, height:null, complexity:null};

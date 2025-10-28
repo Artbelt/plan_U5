@@ -174,6 +174,7 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy','m
                 SELECT
                     sfs.filter,
                     CAST(NULLIF(COALESCE(sfs.build_complexity,0),0) AS DECIMAL(10,3)) AS rate,
+                    sfs.build_complexity,
                     COALESCE(
                         CAST(pps.p_p_height AS DECIMAL(10,3)),
                         CAST(cp.height AS DECIMAL(10,3))
@@ -194,7 +195,23 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy','m
             ");
             $st->execute($filters);
             $items = $st->fetchAll(PDO::FETCH_ASSOC);
-            echo json_encode(['ok'=>true, 'items'=>$items], JSON_UNESCAPED_UNICODE);
+            
+            // Отладка: для фильтров, которых нет в результатах, ищем похожие
+            $found_filters = array_column($items, 'filter');
+            $missing = array_diff($filters, $found_filters);
+            $debug_info = [];
+            
+            if (!empty($missing)) {
+                foreach ($missing as $miss) {
+                    // Ищем похожие фильтры
+                    $st2 = $pdo->prepare("SELECT filter FROM salon_filter_structure WHERE filter LIKE ? LIMIT 3");
+                    $st2->execute(['%' . $miss . '%']);
+                    $similar = $st2->fetchAll(PDO::FETCH_COLUMN);
+                    $debug_info[$miss] = $similar;
+                }
+            }
+            
+            echo json_encode(['ok'=>true, 'items'=>$items, 'debug_missing'=>$debug_info], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
