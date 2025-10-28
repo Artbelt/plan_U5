@@ -27,7 +27,7 @@ if (!$hasPlanReadyCol) {
 /* Бухты из cut_plans с complexity */
 $stmt = $pdo->prepare("SELECT cp.bale_id, cp.filter, cp.height, cp.width, sfs.build_complexity
                        FROM cut_plans cp
-                       LEFT JOIN salon_filter_structure sfs ON cp.filter = sfs.filter
+                       LEFT JOIN salon_filter_structure sfs ON TRIM(cp.filter) = TRIM(sfs.filter)
                        WHERE cp.order_number = ?
                        ORDER BY cp.bale_id, cp.strip_no");
 $stmt->execute([$order]);

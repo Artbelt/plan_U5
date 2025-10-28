@@ -83,8 +83,8 @@ try {
             WHERE order_number = ?
             GROUP BY height
         ) h
-        LEFT JOIN orders o ON FIND_IN_SET(o.filter, h.filter_list) > 0 AND o.order_number = ?
-        LEFT JOIN salon_filter_structure sfs ON o.filter = sfs.filter
+        LEFT JOIN orders o ON FIND_IN_SET(TRIM(o.filter), h.filter_list) > 0 AND o.order_number = ?
+        LEFT JOIN salon_filter_structure sfs ON TRIM(o.filter) = TRIM(sfs.filter)
         GROUP BY h.height, h.strips_count, h.unique_filters
         ORDER BY h.height
     ");
@@ -100,7 +100,7 @@ try {
             MIN(sfs.build_complexity) as min_complexity,
             MAX(sfs.build_complexity) as max_complexity
         FROM orders o
-        LEFT JOIN salon_filter_structure sfs ON o.filter = sfs.filter
+        LEFT JOIN salon_filter_structure sfs ON TRIM(o.filter) = TRIM(sfs.filter)
         WHERE o.order_number = ? AND sfs.build_complexity IS NOT NULL
     ");
     $stmt->execute([$order]);

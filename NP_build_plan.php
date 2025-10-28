@@ -133,7 +133,7 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy','m
                        NULLIF(COALESCE(sfs.build_complexity,0),0) AS rate_per_shift,
                        pps.p_p_height AS paper_height
                 FROM build_plan bp
-                LEFT JOIN salon_filter_structure sfs ON sfs.filter = bp.filter
+                LEFT JOIN salon_filter_structure sfs ON TRIM(sfs.filter) = TRIM(bp.filter)
                 LEFT JOIN paper_package_salon pps ON pps.p_p_name = sfs.paper_package
                 WHERE bp.order_number <> ?
                   AND bp.plan_date IN ($ph)
@@ -172,7 +172,7 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy','m
             $ph = implode(',', array_fill(0, count($filters), '?'));
             $st = $pdo->prepare("
                 SELECT
-                    sfs.filter,
+                    TRIM(sfs.filter) as filter,
                     CAST(NULLIF(COALESCE(sfs.build_complexity,0),0) AS DECIMAL(10,3)) AS rate,
                     sfs.build_complexity,
                     COALESCE(
@@ -185,13 +185,13 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy','m
                 FROM salon_filter_structure sfs
                 LEFT JOIN paper_package_salon pps ON pps.p_p_name = sfs.paper_package
                 LEFT JOIN (
-                    SELECT filter, height 
+                    SELECT TRIM(filter) as filter, height 
                     FROM cut_plans 
                     WHERE height IS NOT NULL 
-                    GROUP BY filter 
+                    GROUP BY TRIM(filter)
                     HAVING COUNT(*) > 0
-                ) cp ON cp.filter = sfs.filter
-                WHERE sfs.filter IN ($ph)
+                ) cp ON TRIM(cp.filter) = TRIM(sfs.filter)
+                WHERE TRIM(sfs.filter) IN ($ph)
             ");
             $st->execute($filters);
             $items = $st->fetchAll(PDO::FETCH_ASSOC);
@@ -204,8 +204,8 @@ if (isset($_GET['action']) && in_array($_GET['action'], ['save','load','busy','m
             if (!empty($missing)) {
                 foreach ($missing as $miss) {
                     // Ищем похожие фильтры
-                    $st2 = $pdo->prepare("SELECT filter FROM salon_filter_structure WHERE filter LIKE ? LIMIT 3");
-                    $st2->execute(['%' . $miss . '%']);
+                    $st2 = $pdo->prepare("SELECT TRIM(filter) as filter FROM salon_filter_structure WHERE TRIM(filter) LIKE ? LIMIT 3");
+                    $st2->execute(['%' . trim($miss) . '%']);
                     $similar = $st2->fetchAll(PDO::FETCH_COLUMN);
                     $debug_info[$miss] = $similar;
                 }
@@ -269,7 +269,7 @@ try{
           NULLIF(COALESCE(sfs.build_complexity, 0), 0) AS rate_per_shift,
           pps.p_p_height   AS paper_height
         FROM corrugation_plan cp
-        LEFT JOIN salon_filter_structure sfs ON sfs.filter = cp.filter_label
+        LEFT JOIN salon_filter_structure sfs ON TRIM(sfs.filter) = TRIM(cp.filter_label)
         LEFT JOIN paper_package_salon pps ON pps.p_p_name = sfs.paper_package
         WHERE cp.order_number = ?
         GROUP BY cp.plan_date, cp.filter_label, pps.p_p_height
@@ -358,7 +358,7 @@ try{
                    NULLIF(COALESCE(sfs.build_complexity,0),0) AS rate_per_shift,
                    pps.p_p_height AS paper_height
             FROM build_plan bp
-            LEFT JOIN salon_filter_structure sfs ON sfs.filter = bp.filter
+            LEFT JOIN salon_filter_structure sfs ON TRIM(sfs.filter) = TRIM(bp.filter)
             LEFT JOIN paper_package_salon pps ON pps.p_p_name = sfs.paper_package
             WHERE bp.order_number <> ?
               AND bp.plan_date IN ($ph)
