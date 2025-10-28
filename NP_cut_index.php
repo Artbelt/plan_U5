@@ -285,6 +285,7 @@ try{
                         <div class="done">✅ Готово</div>
                         <div class="stack">
                                     <a class="btn-secondary" target="_blank" href="NP_view_roll_plan.php?order=<?= urlencode($ord) ?>">Просмотр</a>
+                                    <a class="btn-secondary" href="#" onclick="editRollPlan('<?= htmlspecialchars($ord, ENT_QUOTES) ?>'); return false;">Изменить</a>
                                 </div>
                     <?php else: ?>
                         <div class="stack">
@@ -372,6 +373,20 @@ try{
             'Продолжить редактирование?'
         )) {
             window.open('NP_cut_plan.php?order_number=' + encodeURIComponent(order), '_blank');
+        }
+    }
+    
+    // Редактирование плана раскроя рулона с предупреждением
+    function editRollPlan(order){
+        if (confirm(
+            '⚠️ ВНИМАНИЕ!\n\n' +
+            'При редактировании плана раскроя рулона нарушится синхронизация с последующими этапами:\n\n' +
+            '• План гофрирования\n' +
+            '• План сборки\n\n' +
+            'Вероятно, их придется переделывать заново.\n\n' +
+            'Продолжить редактирование?'
+        )) {
+            window.open('NP_roll_plan.php?order=' + encodeURIComponent(order), '_blank');
         }
     }
 </script>
