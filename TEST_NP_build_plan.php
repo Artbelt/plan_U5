@@ -532,7 +532,7 @@ try{
     .floating-panel-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        padding: 10px 16px;
+        padding: 6px 12px;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -542,22 +542,22 @@ try{
     
     .floating-panel-title {
         font-weight: 600;
-        font-size: 14px;
+        font-size: 12px;
     }
     
     .floating-panel-controls {
         display: flex;
-        gap: 6px;
+        gap: 4px;
     }
     
     .floating-panel-btn {
         background: rgba(255,255,255,0.2);
         border: none;
         color: white;
-        padding: 4px 10px;
-        border-radius: 4px;
+        padding: 3px 8px;
+        border-radius: 3px;
         cursor: pointer;
-        font-size: 12px;
+        font-size: 11px;
         line-height: 1;
         transition: background .15s;
     }
@@ -569,7 +569,90 @@ try{
     .floating-panel-content {
         overflow: auto;
         flex: 1;
-        padding: 10px;
+        padding: 6px;
+    }
+    
+    /* Компактные стили для элементов внутри плавающей панели */
+    .floating-panel .gridDays {
+        gap: 6px !important;
+    }
+    
+    .floating-panel .col {
+        min-width: 180px !important;
+    }
+    
+    .floating-panel .col h4 {
+        font-size: 11px !important;
+        padding: 4px 6px !important;
+        margin-bottom: 4px !important;
+    }
+    
+    .floating-panel .brigWrap {
+        gap: 4px !important;
+    }
+    
+    .floating-panel .brig {
+        padding: 4px !important;
+    }
+    
+    .floating-panel .brig h5 {
+        font-size: 10px !important;
+        padding: 3px 5px !important;
+        margin-bottom: 3px !important;
+    }
+    
+    .floating-panel .dropzone {
+        min-height: 40px !important;
+        padding: 3px !important;
+    }
+    
+    .floating-panel .rowItem {
+        padding: 3px 6px !important;
+        margin-bottom: 2px !important;
+        font-size: 11px !important;
+    }
+    
+    .floating-panel .rowTop {
+        margin-bottom: 2px !important;
+    }
+    
+    .floating-panel .rowName {
+        font-size: 11px !important;
+    }
+    
+    .floating-panel .rowSub {
+        font-size: 9px !important;
+    }
+    
+    .floating-panel .rowCtrls button {
+        width: 18px !important;
+        height: 18px !important;
+        font-size: 10px !important;
+        padding: 0 !important;
+    }
+    
+    .floating-panel .dayFoot {
+        font-size: 9px !important;
+        padding: 3px 5px !important;
+    }
+    
+    .floating-panel .sub {
+        font-size: 9px !important;
+        padding: 4px 6px !important;
+    }
+    
+    .floating-panel .rangeBar {
+        padding: 6px !important;
+        gap: 6px !important;
+    }
+    
+    .floating-panel .rangeBar label {
+        font-size: 10px !important;
+    }
+    
+    .floating-panel .rangeBar input {
+        padding: 3px 6px !important;
+        font-size: 10px !important;
     }
 </style>
 
