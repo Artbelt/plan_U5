@@ -362,7 +362,7 @@ try{
                     <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
                         <strong><?= htmlspecialchars($ord) ?></strong>
                         <button class="btn-analysis" onclick="showAnalysis('<?= htmlspecialchars($ord, ENT_QUOTES) ?>')" title="Анализ заявки">📊</button>
-                    </div>
+                            </div>
                     <div class="stack">
                         <button class="btn-danger" onclick="clearOrder('<?= htmlspecialchars($ord, ENT_QUOTES) ?>')">Очистить всё</button>
                             </div>
@@ -377,12 +377,12 @@ try{
                             <a class="btn-print" target="_blank" href="NP/print_cut_report.php?order=<?= urlencode($ord) ?>">Печать</a>
                             <a class="btn-secondary" href="#" onclick="editCutPlan('<?= htmlspecialchars($ord, ENT_QUOTES) ?>'); return false;">Изменить</a>
                                 </div>
-                    <?php else: ?>
+                            <?php else: ?>
                         <div class="stack">
-                            <a class="btn" target="_blank" href="NP_cut_plan.php?order_number=<?= urlencode($ord) ?>">Сделать</a>
-                        </div>
+                                    <a class="btn" target="_blank" href="NP_cut_plan.php?order_number=<?= urlencode($ord) ?>">Сделать</a>
+                                </div>
                         <span class="sub">нет данных для просмотра</span>
-                    <?php endif; ?>
+                            <?php endif; ?>
                         </td>
 
                         <!-- План раскроя рулона -->
@@ -395,32 +395,32 @@ try{
                                     <a class="btn-secondary" target="_blank" href="NP_view_roll_plan.php?order=<?= urlencode($ord) ?>">Просмотр</a>
                                     <a class="btn-secondary" href="#" onclick="editRollPlan('<?= htmlspecialchars($ord, ENT_QUOTES) ?>'); return false;">Изменить</a>
                                 </div>
-                    <?php else: ?>
+                            <?php else: ?>
                         <div class="stack">
-                            <a class="btn" href="NP_roll_plan.php?order=<?= urlencode($ord) ?>">Планировать</a>
-                        </div>
+                                    <a class="btn" href="NP_roll_plan.php?order=<?= urlencode($ord) ?>">Планировать</a>
+                                </div>
                         <span class="sub">после планирования будет доступен просмотр</span>
-                    <?php endif; ?>
+                            <?php endif; ?>
                         </td>
 
-                <!-- План гофрирования -->
+                        <!-- План гофрирования -->
                 <td>
                     <?php if (!$o['plan_ready']): ?>
                         <span class="disabled">Не готов план раскроя</span>
                     <?php elseif ($o['corr_ready']): ?>
                         <div class="done">✅ Готово</div>
                         <div class="stack">
-                            <a class="btn-secondary" target="_blank" href="NP_view_corrugation_plan.php?order=<?= urlencode($ord) ?>">Просмотр</a>
-                        </div>
-                    <?php else: ?>
+                                    <a class="btn-secondary" target="_blank" href="NP_view_corrugation_plan.php?order=<?= urlencode($ord) ?>">Просмотр</a>
+                                </div>
+                            <?php else: ?>
                         <div class="stack">
-                            <a class="btn" href="NP_corrugation_plan.php?order=<?= urlencode($ord) ?>">Планировать</a>
-                        </div>
+                                    <a class="btn" href="NP_corrugation_plan.php?order=<?= urlencode($ord) ?>">Планировать</a>
+                                </div>
                         <span class="sub">после планирования будет доступен просмотр</span>
-                    <?php endif; ?>
-                </td>
+                            <?php endif; ?>
+                        </td>
 
-                <!-- План сборки -->
+                        <!-- План сборки -->
                 <td>
                     <?php if (!$o['corr_ready']): ?>
                         <span class="disabled">Нет гофроплана</span>
@@ -428,17 +428,17 @@ try{
                         <div class="done">✅ Готово</div>
                         <div class="stack">
                             <a class="btn-secondary" target="_blank" href="view_production_plan.php?order=<?= urlencode($ord) ?>">Просмотр</a>
-                        </div>
-                    <?php else: ?>
+                                </div>
+                            <?php else: ?>
                         <div class="stack">
-                            <a class="btn" href="NP_build_plan.php?order=<?= urlencode($ord) ?>">Планировать</a>
-                        </div>
+                                    <a class="btn" href="NP_build_plan.php?order=<?= urlencode($ord) ?>">Планировать</a>
+                                </div>
                         <span class="sub">после планирования будет доступен просмотр</span>
-                    <?php endif; ?>
-                </td>
-            </tr>
-        <?php endforeach; ?>
-    </table>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+        </table>
 </div>
 
 <!-- Модальное окно анализа -->
@@ -577,19 +577,42 @@ try{
             
             html += '</div>';
             
-            // Распределение по высотам
+            // Распределение по высотам с детальной информацией
             if (data.heights && data.heights.length > 0) {
                 html += '<div style="margin-top:20px;padding:16px;background:#f0f9ff;border-radius:8px;border:1px solid #bfdbfe;">';
-                html += '<h4 style="margin:0 0 12px;font-size:14px;color:#1e40af;font-weight:600;">📏 Распределение по высотам</h4>';
-                html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;">';
+                html += '<h4 style="margin:0 0 12px;font-size:14px;color:#1e40af;font-weight:600;">📏 Детальная статистика по высотам</h4>';
+                html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+                
                 data.heights.forEach(h => {
+                    const complexCount = parseInt(h.complex_filters) || 0;
+                    const totalCount = parseInt(h.total_filters) || 0;
+                    const complexPercent = totalCount > 0 ? Math.round((complexCount / totalCount) * 100) : 0;
+                    
                     html += `
-                        <div style="background:#fff;padding:8px 12px;border-radius:6px;text-align:center;border:1px solid #dbeafe;">
-                            <div style="font-size:16px;font-weight:600;color:#1e40af;">${h.height}</div>
-                            <div style="font-size:11px;color:#6b7280;margin-top:2px;">${h.strips_count} полос</div>
+                        <div style="background:#fff;padding:12px 16px;border-radius:6px;border:1px solid #dbeafe;display:flex;align-items:center;gap:16px;">
+                            <div style="min-width:60px;text-align:center;">
+                                <div style="font-size:18px;font-weight:700;color:#1e40af;">${h.height}</div>
+                                <div style="font-size:10px;color:#6b7280;text-transform:uppercase;">высота</div>
+                            </div>
+                            <div style="flex:1;display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+                                <div>
+                                    <span style="font-size:20px;font-weight:600;color:#111827;">${totalCount}</span>
+                                    <span style="font-size:13px;color:#6b7280;margin-left:4px;">фильтров в заявке</span>
+                                </div>
+                                ${complexCount > 0 ? `
+                                    <div style="padding:4px 12px;background:#fee;border-radius:6px;border:1px solid #fecaca;">
+                                        <span style="font-size:14px;font-weight:600;color:#dc2626;">сложных: ${complexCount}</span>
+                                        <span style="font-size:12px;color:#991b1b;margin-left:4px;">(${complexPercent}%)</span>
+                                    </div>
+                                ` : ''}
+                                <div style="font-size:12px;color:#9ca3af;">
+                                    ${h.strips_count} полос • ${h.unique_filters} уникальных
+                                </div>
+                            </div>
                         </div>
                     `;
                 });
+                
                 html += '</div></div>';
             }
             
