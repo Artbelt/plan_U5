@@ -640,20 +640,6 @@ try{
         font-size: 9px !important;
         padding: 4px 6px !important;
     }
-    
-    .floating-panel .rangeBar {
-        padding: 6px !important;
-        gap: 6px !important;
-    }
-    
-    .floating-panel .rangeBar label {
-        font-size: 10px !important;
-    }
-    
-    .floating-panel .rangeBar input {
-        padding: 3px 6px !important;
-        font-size: 10px !important;
-    }
 </style>
 
 <div class="wrap">
@@ -765,12 +751,6 @@ try{
                     </div>
                 <?php endforeach; ?>
             </div>
-        </div>
-        <div class="rangeBar" id="rangeBar" style="display:none">
-            <label>Старт: <input type="date" id="rangeStart"></label>
-            <label>Дней: <input type="number" id="rangeDays" min="1" value="5"></label>
-            <button class="btn secondary" id="btnDoRange">Добавить</button>
-            <button class="btn" id="btnHideRange">Готово</button>
         </div>
 
         <div class="sub" style="margin-top:8px;padding:0 10px 10px;">
@@ -1299,33 +1279,29 @@ try{
     // подтянуть «другие часы/высоты»
     fetchBusyForDays(getAllDays());
 
-    // добавление диапазона дней
+    // добавление следующего дня
     const btnAddRange = document.getElementById('btnAddRange');
-    const rangeBar    = document.getElementById('rangeBar');
-    const btnDoRange  = document.getElementById('btnDoRange');
-    const btnHideRange= document.getElementById('btnHideRange');
-    btnAddRange.onclick = ()=>{ rangeBar.style.display='flex'; initRangeStart(); };
-    btnHideRange.onclick = ()=>{ rangeBar.style.display='none'; };
-
-    function initRangeStart(){
-        const inp = document.getElementById('rangeStart');
-        const today = new Date();
-        inp.value = today.toISOString().slice(0,10);
+    if (btnAddRange) {
+        btnAddRange.onclick = ()=> {
+            // Находим последний день в сетке
+            const allDays = getAllDays();
+            if (allDays.length === 0) {
+                // Если нет дней, добавляем сегодня
+                const today = new Date();
+                const ds = today.toISOString().slice(0,10);
+                ensureDay(ds);
+                fetchBusyForDays([ds]);
+            } else {
+                // Добавляем следующий день после последнего
+                const lastDay = allDays[allDays.length - 1];
+                const nextDate = new Date(lastDay + 'T00:00:00');
+                nextDate.setDate(nextDate.getDate() + 1);
+                const ds = nextDate.toISOString().slice(0,10);
+                ensureDay(ds);
+                fetchBusyForDays([ds]);
+            }
+        };
     }
-    btnDoRange.onclick = ()=>{
-        const start = document.getElementById('rangeStart').value;
-        const n = Math.max(1, parseInt(document.getElementById('rangeDays').value||'1',10));
-        if (!start) return;
-        const base = new Date(start+'T00:00:00');
-        const added = [];
-        for(let i=0;i<n;i++){
-            const d = new Date(base); d.setDate(base.getDate()+i);
-            const ds = d.toISOString().slice(0,10);
-            ensureDay(ds);
-            added.push(ds);
-        }
-        fetchBusyForDays(added);
-    };
 
     // SAVE
     document.getElementById('btnSave').addEventListener('click', async ()=>{
