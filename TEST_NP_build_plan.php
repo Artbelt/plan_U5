@@ -1285,21 +1285,34 @@ try{
         btnAddRange.onclick = ()=> {
             // Находим последний день в сетке
             const allDays = getAllDays();
+            console.log('Текущие дни:', allDays);
+            
+            let newDay;
             if (allDays.length === 0) {
                 // Если нет дней, добавляем сегодня
                 const today = new Date();
-                const ds = today.toISOString().slice(0,10);
-                ensureDay(ds);
-                fetchBusyForDays([ds]);
+                newDay = today.toISOString().slice(0,10);
             } else {
                 // Добавляем следующий день после последнего
                 const lastDay = allDays[allDays.length - 1];
                 const nextDate = new Date(lastDay + 'T00:00:00');
                 nextDate.setDate(nextDate.getDate() + 1);
-                const ds = nextDate.toISOString().slice(0,10);
-                ensureDay(ds);
-                fetchBusyForDays([ds]);
+                newDay = nextDate.toISOString().slice(0,10);
             }
+            
+            console.log('Добавляем день:', newDay);
+            ensureDay(newDay);
+            
+            // Принудительно прокручиваем к новому дню
+            const newCol = document.querySelector(`.col[data-day="${cssEscape(newDay)}"]`);
+            if (newCol) {
+                console.log('Колонка создана:', newCol);
+                newCol.scrollIntoView({ behavior: 'smooth', inline: 'end', block: 'nearest' });
+            } else {
+                console.error('Колонка не создана!');
+            }
+            
+            fetchBusyForDays([newDay]);
         };
     }
 
