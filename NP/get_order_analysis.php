@@ -59,32 +59,36 @@ try {
     $build_progress = $stmt->fetch(PDO::FETCH_ASSOC);
     $build_percent = $build_progress['plan'] > 0 ? round(($build_progress['fact'] / $build_progress['plan']) * 100) : 0;
     
-    // Детали
-    $details = '';
-    
     // Информация о датах планирования
     $stmt = $pdo->prepare("SELECT MIN(work_date) as start_date, MAX(work_date) as end_date FROM roll_plans WHERE order_number = ?");
     $stmt->execute([$order]);
     $dates = $stmt->fetch(PDO::FETCH_ASSOC);
     
-    if ($dates && $dates['start_date']) {
-        $details .= '<strong>Период планирования:</strong> ' . date('d.m.Y', strtotime($dates['start_date'])) . ' - ' . date('d.m.Y', strtotime($dates['end_date'])) . '<br>';
-    }
-    
-    // Информация о средней сложности
+    // Распределение по высотам из cut_plans
     $stmt = $pdo->prepare("
-        SELECT AVG(sfs.build_complexity) as avg_complexity
+        SELECT height, COUNT(*) as strips_count
+        FROM cut_plans
+        WHERE order_number = ?
+        GROUP BY height
+        ORDER BY height
+    ");
+    $stmt->execute([$order]);
+    $heights_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Анализ сложности (считаем простые <= 100, сложные > 100)
+    $stmt = $pdo->prepare("
+        SELECT 
+            COUNT(CASE WHEN sfs.build_complexity <= 100 THEN 1 END) as simple_count,
+            COUNT(CASE WHEN sfs.build_complexity > 100 THEN 1 END) as complex_count,
+            AVG(sfs.build_complexity) as avg_complexity,
+            MIN(sfs.build_complexity) as min_complexity,
+            MAX(sfs.build_complexity) as max_complexity
         FROM orders o
         LEFT JOIN salon_filter_structure sfs ON o.filter = sfs.filter
         WHERE o.order_number = ? AND sfs.build_complexity IS NOT NULL
     ");
     $stmt->execute([$order]);
-    $complexity = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-    if ($complexity && $complexity['avg_complexity']) {
-        $avg = round($complexity['avg_complexity'], 1);
-        $details .= '<strong>Средняя сложность сборки:</strong> ' . $avg . '<br>';
-    }
+    $complexity_analysis = $stmt->fetch(PDO::FETCH_ASSOC);
     
     echo json_encode([
         'ok' => true,
@@ -96,7 +100,9 @@ try {
             'corr' => $corr_percent,
             'build' => $build_percent
         ],
-        'details' => $details
+        'dates' => $dates,
+        'heights' => $heights_data,
+        'complexity' => $complexity_analysis
     ]);
     
 } catch (Exception $e) {

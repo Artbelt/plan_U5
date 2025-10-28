@@ -577,11 +577,59 @@ try{
             
             html += '</div>';
             
-            // Дополнительная информация
-            if (data.details) {
-                html += '<div style="margin-top:20px;padding:16px;background:#f9fafb;border-radius:8px;">';
-                html += '<h4 style="margin:0 0 12px;font-size:14px;color:#6b7280;">Детали</h4>';
-                html += '<div style="font-size:13px;color:#4b5563;line-height:1.6;">' + data.details + '</div>';
+            // Распределение по высотам
+            if (data.heights && data.heights.length > 0) {
+                html += '<div style="margin-top:20px;padding:16px;background:#f0f9ff;border-radius:8px;border:1px solid #bfdbfe;">';
+                html += '<h4 style="margin:0 0 12px;font-size:14px;color:#1e40af;font-weight:600;">📏 Распределение по высотам</h4>';
+                html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;">';
+                data.heights.forEach(h => {
+                    html += `
+                        <div style="background:#fff;padding:8px 12px;border-radius:6px;text-align:center;border:1px solid #dbeafe;">
+                            <div style="font-size:16px;font-weight:600;color:#1e40af;">${h.height}</div>
+                            <div style="font-size:11px;color:#6b7280;margin-top:2px;">${h.strips_count} полос</div>
+                        </div>
+                    `;
+                });
+                html += '</div></div>';
+            }
+            
+            // Анализ сложности
+            if (data.complexity && (data.complexity.simple_count > 0 || data.complexity.complex_count > 0)) {
+                const total = parseInt(data.complexity.simple_count) + parseInt(data.complexity.complex_count);
+                const simplePercent = total > 0 ? Math.round((data.complexity.simple_count / total) * 100) : 0;
+                const complexPercent = total > 0 ? Math.round((data.complexity.complex_count / total) * 100) : 0;
+                
+                html += '<div style="margin-top:20px;padding:16px;background:#fef3c7;border-radius:8px;border:1px solid #fde047;">';
+                html += '<h4 style="margin:0 0 12px;font-size:14px;color:#92400e;font-weight:600;">⚡ Анализ сложности</h4>';
+                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">';
+                html += `
+                    <div style="background:#fff;padding:12px;border-radius:6px;border:1px solid #fde68a;">
+                        <div style="font-size:11px;color:#92400e;text-transform:uppercase;margin-bottom:4px;">Простые (≤100)</div>
+                        <div style="font-size:20px;font-weight:700;color:#16a34a;">${data.complexity.simple_count} <span style="font-size:14px;color:#6b7280;">(${simplePercent}%)</span></div>
+                    </div>
+                    <div style="background:#fff;padding:12px;border-radius:6px;border:1px solid #fde68a;">
+                        <div style="font-size:11px;color:#92400e;text-transform:uppercase;margin-bottom:4px;">Сложные (>100)</div>
+                        <div style="font-size:20px;font-weight:700;color:#dc2626;">${data.complexity.complex_count} <span style="font-size:14px;color:#6b7280;">(${complexPercent}%)</span></div>
+                    </div>
+                `;
+                html += '</div>';
+                
+                if (data.complexity.avg_complexity) {
+                    html += '<div style="font-size:13px;color:#4b5563;margin-top:8px;">';
+                    html += `<strong>Средняя сложность:</strong> ${parseFloat(data.complexity.avg_complexity).toFixed(1)} `;
+                    html += `<span style="color:#6b7280;">(мин: ${data.complexity.min_complexity || 0}, макс: ${data.complexity.max_complexity || 0})</span>`;
+                    html += '</div>';
+                }
+                html += '</div>';
+            }
+            
+            // Период планирования
+            if (data.dates && data.dates.start_date) {
+                html += '<div style="margin-top:20px;padding:16px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">';
+                html += '<h4 style="margin:0 0 8px;font-size:14px;color:#6b7280;font-weight:600;">📅 Период планирования</h4>';
+                const startDate = new Date(data.dates.start_date).toLocaleDateString('ru-RU');
+                const endDate = new Date(data.dates.end_date).toLocaleDateString('ru-RU');
+                html += `<div style="font-size:13px;color:#4b5563;">${startDate} — ${endDate}</div>`;
                 html += '</div>';
             }
             
