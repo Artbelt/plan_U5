@@ -237,6 +237,111 @@ try{
             body{background:#fff;margin:0}
             .wrap{max-width:none}
         }
+        
+        /* Кнопка анализа */
+        .btn-analysis{
+            padding:4px 8px;
+            border-radius:6px;
+            background:#f0fdf4;
+            color:#16a34a;
+            border:1px solid #bbf7d0;
+            cursor:pointer;
+            font-size:14px;
+            transition:all .15s;
+        }
+        .btn-analysis:hover{
+            background:#dcfce7;
+            transform:scale(1.05);
+        }
+        
+        /* Модальное окно */
+        .modal{
+            display:none;
+            position:fixed;
+            inset:0;
+            background:rgba(0,0,0,0.6);
+            z-index:1000;
+            align-items:center;
+            justify-content:center;
+            padding:20px;
+        }
+        .modal-content{
+            background:#fff;
+            border-radius:16px;
+            box-shadow:0 20px 60px rgba(0,0,0,0.3);
+            max-width:900px;
+            width:100%;
+            max-height:90vh;
+            overflow-y:auto;
+            animation:slideIn .3s ease-out;
+        }
+        @keyframes slideIn{
+            from{transform:translateY(-30px);opacity:0}
+            to{transform:translateY(0);opacity:1}
+        }
+        .modal-header{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            padding:20px 24px;
+            border-bottom:2px solid #e5e7eb;
+        }
+        .modal-header h3{
+            margin:0;
+            font-size:20px;
+            color:#111827;
+        }
+        .modal-close{
+            background:none;
+            border:none;
+            font-size:28px;
+            cursor:pointer;
+            color:#9ca3af;
+            width:36px;
+            height:36px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            border-radius:50%;
+            transition:all .15s;
+        }
+        .modal-close:hover{
+            background:#fef3f2;
+            color:#f87171;
+        }
+        .modal-body{
+            padding:24px;
+        }
+        .info-grid{
+            display:grid;
+            grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));
+            gap:16px;
+            margin-bottom:20px;
+        }
+        .info-card{
+            background:#f9fafb;
+            border:1px solid #e5e7eb;
+            border-radius:12px;
+            padding:16px;
+        }
+        .info-card h4{
+            margin:0 0 12px;
+            font-size:14px;
+            color:#6b7280;
+            font-weight:600;
+            text-transform:uppercase;
+            letter-spacing:0.5px;
+        }
+        .info-value{
+            font-size:24px;
+            font-weight:700;
+            color:#111827;
+        }
+        .info-label{
+            font-size:12px;
+            color:#9ca3af;
+            margin-top:4px;
+        }
     </style>
 </head>
 <body>
@@ -254,8 +359,11 @@ try{
                 <?php foreach ($orders as $o): $ord = $o['order_number']; ?>
                     <tr>
                 <td>
-                    <?= htmlspecialchars($ord) ?>
-                    <div class="stack" style="margin-top:6px">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                        <strong><?= htmlspecialchars($ord) ?></strong>
+                        <button class="btn-analysis" onclick="showAnalysis('<?= htmlspecialchars($ord, ENT_QUOTES) ?>')" title="Анализ заявки">📊</button>
+                    </div>
+                    <div class="stack">
                         <button class="btn-danger" onclick="clearOrder('<?= htmlspecialchars($ord, ENT_QUOTES) ?>')">Очистить всё</button>
                             </div>
                     <span class="sub">Удалит раскрой, раскладку по дням, гофро- и сборочный планы, а также сбросит статусы.</span>
@@ -333,6 +441,21 @@ try{
     </table>
 </div>
 
+<!-- Модальное окно анализа -->
+<div id="analysisModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">Анализ заявки</h3>
+            <button class="modal-close" onclick="closeAnalysis()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <div style="text-align:center;padding:40px;color:#9ca3af;">
+                <p>Загрузка данных...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     // Очистка плана целиком
     async function clearOrder(order){
@@ -389,6 +512,95 @@ try{
             window.open('NP_roll_plan.php?order=' + encodeURIComponent(order), '_blank');
         }
     }
+    
+    // Анализ заявки
+    async function showAnalysis(order){
+        const modal = document.getElementById('analysisModal');
+        const title = document.getElementById('modalTitle');
+        const body = document.getElementById('modalBody');
+        
+        title.textContent = 'Анализ заявки ' + order;
+        body.innerHTML = '<div style="text-align:center;padding:40px;color:#9ca3af;"><p>Загрузка данных...</p></div>';
+        modal.style.display = 'flex';
+        
+        try {
+            const response = await fetch('NP/get_order_analysis.php?order=' + encodeURIComponent(order));
+            const data = await response.json();
+            
+            if (!data.ok) {
+                body.innerHTML = '<div style="text-align:center;padding:40px;color:#dc2626;"><p>Ошибка загрузки данных</p></div>';
+                return;
+            }
+            
+            // Формируем HTML с информацией
+            let html = '<div class="info-grid">';
+            
+            // Общая информация
+            html += `
+                <div class="info-card">
+                    <h4>Всего фильтров</h4>
+                    <div class="info-value">${data.total_filters || 0}</div>
+                    <div class="info-label">в заявке</div>
+                </div>
+                <div class="info-card">
+                    <h4>Уникальных позиций</h4>
+                    <div class="info-value">${data.unique_filters || 0}</div>
+                    <div class="info-label">типов фильтров</div>
+                </div>
+                <div class="info-card">
+                    <h4>Бухты</h4>
+                    <div class="info-value">${data.bales_count || 0}</div>
+                    <div class="info-label">в раскрое</div>
+                </div>
+            `;
+            
+            // Прогресс по этапам
+            if (data.progress) {
+                html += `
+                    <div class="info-card">
+                        <h4>Раскрой</h4>
+                        <div class="info-value">${data.progress.cut || 0}%</div>
+                        <div class="info-label">выполнено</div>
+                    </div>
+                    <div class="info-card">
+                        <h4>Гофрирование</h4>
+                        <div class="info-value">${data.progress.corr || 0}%</div>
+                        <div class="info-label">выполнено</div>
+                    </div>
+                    <div class="info-card">
+                        <h4>Сборка</h4>
+                        <div class="info-value">${data.progress.build || 0}%</div>
+                        <div class="info-label">выполнено</div>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            
+            // Дополнительная информация
+            if (data.details) {
+                html += '<div style="margin-top:20px;padding:16px;background:#f9fafb;border-radius:8px;">';
+                html += '<h4 style="margin:0 0 12px;font-size:14px;color:#6b7280;">Детали</h4>';
+                html += '<div style="font-size:13px;color:#4b5563;line-height:1.6;">' + data.details + '</div>';
+                html += '</div>';
+            }
+            
+            body.innerHTML = html;
+            
+        } catch (error) {
+            console.error('Ошибка загрузки анализа:', error);
+            body.innerHTML = '<div style="text-align:center;padding:40px;color:#dc2626;"><p>Ошибка: ' + error.message + '</p></div>';
+        }
+    }
+    
+    function closeAnalysis(){
+        document.getElementById('analysisModal').style.display = 'none';
+    }
+    
+    // Закрытие по клику вне модального окна
+    document.getElementById('analysisModal').addEventListener('click', function(e){
+        if (e.target === this) closeAnalysis();
+    });
 </script>
 </body>
 </html>
