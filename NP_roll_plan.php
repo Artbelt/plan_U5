@@ -154,18 +154,18 @@ while ($r = $st4->fetch(PDO::FETCH_ASSOC)) {
         .complexity-badge{
             position:absolute;
             top:8px;
-            right:8px;
-            width:36px;
-            height:36px;
+            right:48px;
+            width:28px;
+            height:28px;
             border-radius:50%;
-            background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color:#fff;
+            background:transparent;
+            border:2px solid #9ca3af;
+            color:#6b7280;
             display:flex;
             align-items:center;
             justify-content:center;
-            font-size:13px;
+            font-size:11px;
             font-weight:600;
-            box-shadow:0 2px 6px rgba(102,126,234,0.3);
             cursor:help;
             z-index:2;
         }
