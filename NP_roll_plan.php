@@ -24,11 +24,12 @@ if (!$hasPlanReadyCol) {
     $pdo->exec("ALTER TABLE orders ADD plan_ready TINYINT(1) NOT NULL DEFAULT 0");
 }
 
-/* Бухты из cut_plans */
-$stmt = $pdo->prepare("SELECT bale_id, filter, height, width
-                       FROM cut_plans
-                       WHERE order_number = ?
-                       ORDER BY bale_id, strip_no");
+/* Бухты из cut_plans с complexity */
+$stmt = $pdo->prepare("SELECT cp.bale_id, cp.filter, cp.height, cp.width, sfs.build_complexity
+                       FROM cut_plans cp
+                       LEFT JOIN salon_filter_structure sfs ON cp.filter = sfs.filter_name
+                       WHERE cp.order_number = ?
+                       ORDER BY cp.bale_id, cp.strip_no");
 $stmt->execute([$order]);
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -40,6 +41,7 @@ foreach ($rows as $r) {
         'filter' => $r['filter'],
         'height' => (float)$r['height'],
         'width'  => (float)$r['width'],
+        'complexity' => $r['build_complexity'] !== null ? (float)$r['build_complexity'] : null,
     ];
 }
 
@@ -147,6 +149,26 @@ while ($r = $st4->fetch(PDO::FETCH_ASSOC)) {
         /* Бухты, которые должны быть порезаны, но еще не порезаны */
         td.left-label.bale-overdue{background:#fef3c7 !important;box-shadow:inset 4px 0 0 #f59e0b}
         td.left-label.bale-overdue::after{content:"⚠";position:absolute;right:8px;top:50%;transform:translateY(-50%);color:#f59e0b;font-weight:bold;font-size:16px;z-index:1}
+        
+        /* Кружочок зі складністю */
+        .complexity-badge{
+            position:absolute;
+            top:8px;
+            right:8px;
+            width:36px;
+            height:36px;
+            border-radius:50%;
+            background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color:#fff;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:13px;
+            font-weight:600;
+            box-shadow:0 2px 6px rgba(102,126,234,0.3);
+            cursor:help;
+            z-index:2;
+        }
 
         /* тільки окремі висоти */
         .hval{padding:1px 4px;border-radius:4px;margin-right:2px;border:1px solid transparent}
@@ -385,12 +407,24 @@ while ($r = $st4->fetch(PDO::FETCH_ASSOC)) {
             const row = document.createElement('tr');
 
             const uniqHeights = Array.from(new Set(b.strips.map(s=>Number(s.height))).values());
+            
+            // Вычисляем среднюю сложность
+            const complexities = b.strips
+                .map(s => s.complexity)
+                .filter(c => c !== null && c !== undefined && !isNaN(c));
+            const avgComplexity = complexities.length > 0
+                ? (complexities.reduce((sum, c) => sum + c, 0) / complexities.length).toFixed(1)
+                : null;
+            
             const tooltip = b.strips
-                .map(s => `${s.filter} [${s.height}] ${s.width}мм`)
-                .join('\n');
+                .map(s => `${s.filter} [${s.height}] ${s.width}мм${s.complexity ? ' (сложность: '+s.complexity+')' : ''}`)
+                .join('\n')
+                + (avgComplexity ? '\n\nСредняя сложность: ' + avgComplexity : '');
+            
             const left = document.createElement('td');
             left.className = 'left-label';
             left.dataset.baleId = b.bale_id;
+            left.style.position = 'relative';
             
             // Проверяем статус бухты
             const isDone = doneBales.includes(b.bale_id);
@@ -408,7 +442,8 @@ while ($r = $st4->fetch(PDO::FETCH_ASSOC)) {
             
             left.innerHTML = '<strong>Бухта '+b.bale_id+'</strong><div class="bale-label">'
                 + uniqHeights.map(h=>`<span class="hval" data-h="${h}">[${h}]</span>`).join(' ')
-                + '</div>';
+                + '</div>'
+                + (avgComplexity ? `<div class="complexity-badge" title="Средняя сложность сборки: ${avgComplexity}">${avgComplexity}</div>` : '');
             row.appendChild(left);
 
             for(let d=0; d<days; d++){
