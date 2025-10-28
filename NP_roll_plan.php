@@ -155,19 +155,20 @@ while ($r = $st4->fetch(PDO::FETCH_ASSOC)) {
             position:absolute;
             top:8px;
             right:48px;
-            width:28px;
-            height:28px;
+            width:32px;
+            height:32px;
             border-radius:50%;
             background:transparent;
-            border:2px solid #9ca3af;
+            border:1.5px solid #d1d5db;
             color:#6b7280;
             display:flex;
             align-items:center;
             justify-content:center;
-            font-size:11px;
+            font-size:10px;
             font-weight:600;
             cursor:help;
             z-index:2;
+            line-height:1;
         }
 
         /* тільки окремі висоти */
@@ -412,14 +413,24 @@ while ($r = $st4->fetch(PDO::FETCH_ASSOC)) {
             const complexities = b.strips
                 .map(s => s.complexity)
                 .filter(c => c !== null && c !== undefined && !isNaN(c));
-            const avgComplexity = complexities.length > 0
-                ? (complexities.reduce((sum, c) => sum + c, 0) / complexities.length).toFixed(1)
-                : null;
+            let avgComplexity = null;
+            let displayComplexity = null;
+            if (complexities.length > 0) {
+                avgComplexity = complexities.reduce((sum, c) => sum + c, 0) / complexities.length;
+                // Форматируем для отображения
+                if (avgComplexity >= 1000) {
+                    displayComplexity = (avgComplexity / 1000).toFixed(1) + 'K';
+                } else if (avgComplexity % 1 === 0) {
+                    displayComplexity = avgComplexity.toString();
+                } else {
+                    displayComplexity = avgComplexity.toFixed(1);
+                }
+            }
             
             const tooltip = b.strips
                 .map(s => `${s.filter} [${s.height}] ${s.width}мм${s.complexity ? ' (сложность: '+s.complexity+')' : ''}`)
                 .join('\n')
-                + (avgComplexity ? '\n\nСредняя сложность: ' + avgComplexity : '');
+                + (avgComplexity ? '\n\nСредняя сложность: ' + avgComplexity.toFixed(1) : '');
             
             const left = document.createElement('td');
             left.className = 'left-label';
@@ -443,7 +454,7 @@ while ($r = $st4->fetch(PDO::FETCH_ASSOC)) {
             left.innerHTML = '<strong>Бухта '+b.bale_id+'</strong><div class="bale-label">'
                 + uniqHeights.map(h=>`<span class="hval" data-h="${h}">[${h}]</span>`).join(' ')
                 + '</div>'
-                + (avgComplexity ? `<div class="complexity-badge" title="Средняя сложность сборки: ${avgComplexity}">${avgComplexity}</div>` : '');
+                + (displayComplexity ? `<div class="complexity-badge" title="Средняя сложность сборки: ${avgComplexity.toFixed(1)}">${displayComplexity}</div>` : '');
             row.appendChild(left);
 
             for(let d=0; d<days; d++){
