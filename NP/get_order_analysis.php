@@ -65,21 +65,30 @@ try {
     $dates = $stmt->fetch(PDO::FETCH_ASSOC);
     
     // Распределение по высотам из cut_plans с учетом количества фильтров и сложности
+    // Используем подзапрос чтобы избежать дублирования при JOIN
     $stmt = $pdo->prepare("
         SELECT 
-            cp.height,
-            COUNT(*) as strips_count,
-            COUNT(DISTINCT o.filter) as unique_filters,
-            SUM(o.count) as total_filters,
-            SUM(CASE WHEN sfs.build_complexity < 600 THEN o.count ELSE 0 END) as complex_filters
-        FROM cut_plans cp
-        LEFT JOIN orders o ON cp.order_number = o.order_number AND cp.filter = o.filter
+            h.height,
+            h.strips_count,
+            h.unique_filters,
+            COALESCE(SUM(o.count), 0) as total_filters,
+            COALESCE(SUM(CASE WHEN sfs.build_complexity < 600 THEN o.count ELSE 0 END), 0) as complex_filters
+        FROM (
+            SELECT 
+                height,
+                COUNT(*) as strips_count,
+                COUNT(DISTINCT filter) as unique_filters,
+                GROUP_CONCAT(DISTINCT filter) as filter_list
+            FROM cut_plans
+            WHERE order_number = ?
+            GROUP BY height
+        ) h
+        LEFT JOIN orders o ON FIND_IN_SET(o.filter, h.filter_list) > 0 AND o.order_number = ?
         LEFT JOIN salon_filter_structure sfs ON o.filter = sfs.filter
-        WHERE cp.order_number = ?
-        GROUP BY cp.height
-        ORDER BY cp.height
+        GROUP BY h.height, h.strips_count, h.unique_filters
+        ORDER BY h.height
     ");
-    $stmt->execute([$order]);
+    $stmt->execute([$order, $order]);
     $heights_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // Анализ сложности (считаем простые >= 600, сложные < 600)

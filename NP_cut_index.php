@@ -310,52 +310,74 @@ try{
             color:#f87171;
         }
         .modal-body{
-            padding:24px;
+            padding:20px;
+            background:#fafafa;
         }
         .info-grid{
             display:grid;
-            grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
-            gap:12px;
-            margin-bottom:20px;
+            grid-template-columns:repeat(3, 1fr);
+            gap:10px;
+            margin-bottom:16px;
         }
         .info-card{
             background:#ffffff;
-            border:1px solid #d1d5db;
-            border-radius:8px;
-            padding:16px;
+            border:1px solid #e5e7eb;
+            border-radius:6px;
+            padding:12px;
+            transition:box-shadow .15s;
+        }
+        .info-card:hover{
+            box-shadow:0 2px 8px rgba(0,0,0,0.08);
         }
         .info-card h4{
-            margin:0 0 8px;
-            font-size:12px;
-            color:#6b7280;
+            margin:0 0 6px;
+            font-size:10px;
+            color:#9ca3af;
             font-weight:600;
             text-transform:uppercase;
             letter-spacing:0.5px;
         }
         .info-value{
-            font-size:28px;
+            font-size:24px;
             font-weight:700;
             color:#111827;
+            line-height:1;
         }
         .info-label{
-            font-size:11px;
+            font-size:10px;
             color:#9ca3af;
-            margin-top:2px;
+            margin-top:4px;
         }
         .section-block{
-            margin-top:16px;
-            padding:16px;
+            margin-top:12px;
+            padding:14px;
             background:#ffffff;
-            border:1px solid #d1d5db;
-            border-radius:8px;
+            border:1px solid #e5e7eb;
+            border-radius:6px;
         }
         .section-title{
-            margin:0 0 12px;
-            font-size:13px;
-            color:#374151;
+            margin:0 0 10px;
+            font-size:11px;
+            color:#6b7280;
             font-weight:600;
             text-transform:uppercase;
             letter-spacing:0.5px;
+        }
+        .heights-grid{
+            display:grid;
+            grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
+            gap:8px;
+        }
+        .height-tile{
+            background:#fafafa;
+            border:1px solid #e5e7eb;
+            border-radius:6px;
+            padding:10px;
+            transition:all .15s;
+        }
+        .height-tile:hover{
+            background:#ffffff;
+            box-shadow:0 2px 6px rgba(0,0,0,0.06);
         }
     </style>
 </head>
@@ -592,11 +614,11 @@ try{
             
             html += '</div>';
             
-            // Распределение по высотам с детальной информацией
+            // Распределение по высотам плиткой
             if (data.heights && data.heights.length > 0) {
                 html += '<div class="section-block">';
-                html += '<div class="section-title">Детальная статистика по высотам</div>';
-                html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+                html += '<div class="section-title">Распределение по высотам</div>';
+                html += '<div class="heights-grid">';
                 
                 data.heights.forEach(h => {
                     const complexCount = parseInt(h.complex_filters) || 0;
@@ -604,25 +626,23 @@ try{
                     const complexPercent = totalCount > 0 ? Math.round((complexCount / totalCount) * 100) : 0;
                     
                     html += `
-                        <div style="background:#fafafa;padding:12px 16px;border-radius:6px;border:1px solid #e5e7eb;display:flex;align-items:center;gap:16px;">
-                            <div style="min-width:50px;text-align:center;border-right:1px solid #e5e7eb;padding-right:12px;">
-                                <div style="font-size:18px;font-weight:700;color:#111827;">${h.height}</div>
-                                <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;">высота</div>
+                        <div class="height-tile">
+                            <div style="text-align:center;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #e5e7eb;">
+                                <div style="font-size:20px;font-weight:700;color:#111827;line-height:1;">${h.height}</div>
+                                <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">высота</div>
                             </div>
-                            <div style="flex:1;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-                                <div>
-                                    <span style="font-size:18px;font-weight:600;color:#111827;">${totalCount}</span>
-                                    <span style="font-size:12px;color:#6b7280;margin-left:4px;">фильтров</span>
+                            <div style="text-align:center;margin-bottom:6px;">
+                                <div style="font-size:18px;font-weight:700;color:#111827;">${totalCount}</div>
+                                <div style="font-size:10px;color:#6b7280;">фильтров</div>
+                            </div>
+                            ${complexCount > 0 ? `
+                                <div style="text-align:center;padding:4px;background:#ffffff;border-radius:4px;border:1px solid #e5e7eb;margin-bottom:6px;">
+                                    <div style="font-size:11px;font-weight:600;color:#374151;">сложных: ${complexCount}</div>
+                                    <div style="font-size:9px;color:#9ca3af;">${complexPercent}%</div>
                                 </div>
-                                ${complexCount > 0 ? `
-                                    <div style="padding:4px 10px;background:#ffffff;border-radius:4px;border:1px solid #d1d5db;">
-                                        <span style="font-size:12px;font-weight:600;color:#374151;">сложных: ${complexCount}</span>
-                                        <span style="font-size:11px;color:#6b7280;margin-left:4px;">(${complexPercent}%)</span>
-                                    </div>
-                                ` : ''}
-                                <div style="font-size:11px;color:#9ca3af;">
-                                    ${h.strips_count} полос • ${h.unique_filters} типов
-                                </div>
+                            ` : ''}
+                            <div style="font-size:9px;color:#9ca3af;text-align:center;">
+                                ${h.strips_count} полос • ${h.unique_filters} типов
                             </div>
                         </div>
                     `;
@@ -631,33 +651,36 @@ try{
                 html += '</div></div>';
             }
             
+            // Анализ сложности и период - в одной строке
+            html += '<div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;">';
+            
             // Анализ сложности
             if (data.complexity && (data.complexity.simple_count > 0 || data.complexity.complex_count > 0)) {
                 const total = parseInt(data.complexity.simple_count) + parseInt(data.complexity.complex_count);
                 const simplePercent = total > 0 ? Math.round((data.complexity.simple_count / total) * 100) : 0;
                 const complexPercent = total > 0 ? Math.round((data.complexity.complex_count / total) * 100) : 0;
                 
-                html += '<div class="section-block">';
+                html += '<div class="section-block" style="margin-top:0;">';
                 html += '<div class="section-title">Анализ сложности сборки</div>';
-                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">';
+                html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">';
                 html += `
-                    <div style="background:#fafafa;padding:14px;border-radius:6px;border:1px solid #e5e7eb;">
-                        <div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:6px;letter-spacing:0.5px;">Простые (≥600)</div>
-                        <div style="font-size:24px;font-weight:700;color:#111827;">${data.complexity.simple_count}</div>
-                        <div style="font-size:12px;color:#9ca3af;margin-top:2px;">${simplePercent}% от общего числа</div>
+                    <div style="background:#fafafa;padding:10px;border-radius:4px;border:1px solid #e5e7eb;text-align:center;">
+                        <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;margin-bottom:4px;letter-spacing:0.5px;">Простые (≥600)</div>
+                        <div style="font-size:20px;font-weight:700;color:#111827;line-height:1;">${data.complexity.simple_count}</div>
+                        <div style="font-size:10px;color:#9ca3af;margin-top:2px;">${simplePercent}%</div>
                     </div>
-                    <div style="background:#fafafa;padding:14px;border-radius:6px;border:1px solid #e5e7eb;">
-                        <div style="font-size:10px;color:#6b7280;text-transform:uppercase;margin-bottom:6px;letter-spacing:0.5px;">Сложные (<600)</div>
-                        <div style="font-size:24px;font-weight:700;color:#111827;">${data.complexity.complex_count}</div>
-                        <div style="font-size:12px;color:#9ca3af;margin-top:2px;">${complexPercent}% от общего числа</div>
+                    <div style="background:#fafafa;padding:10px;border-radius:4px;border:1px solid #e5e7eb;text-align:center;">
+                        <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;margin-bottom:4px;letter-spacing:0.5px;">Сложные (<600)</div>
+                        <div style="font-size:20px;font-weight:700;color:#111827;line-height:1;">${data.complexity.complex_count}</div>
+                        <div style="font-size:10px;color:#9ca3af;margin-top:2px;">${complexPercent}%</div>
                     </div>
                 `;
                 html += '</div>';
                 
                 if (data.complexity.avg_complexity) {
-                    html += '<div style="font-size:12px;color:#6b7280;padding:10px;background:#fafafa;border-radius:4px;border:1px solid #e5e7eb;">';
-                    html += `<strong style="color:#374151;">Средняя сложность:</strong> ${parseFloat(data.complexity.avg_complexity).toFixed(1)} `;
-                    html += `<span style="color:#9ca3af;">(диапазон: ${data.complexity.min_complexity || 0} — ${data.complexity.max_complexity || 0})</span>`;
+                    html += '<div style="font-size:10px;color:#6b7280;padding:8px;background:#fafafa;border-radius:4px;border:1px solid #e5e7eb;text-align:center;">';
+                    html += `<strong style="color:#374151;">Средняя:</strong> ${parseFloat(data.complexity.avg_complexity).toFixed(1)} `;
+                    html += `<span style="color:#9ca3af;">(${data.complexity.min_complexity || 0}—${data.complexity.max_complexity || 0})</span>`;
                     html += '</div>';
                 }
                 html += '</div>';
@@ -665,13 +688,15 @@ try{
             
             // Период планирования
             if (data.dates && data.dates.start_date) {
-                html += '<div class="section-block">';
+                html += '<div class="section-block" style="margin-top:0;">';
                 html += '<div class="section-title">Период планирования</div>';
                 const startDate = new Date(data.dates.start_date).toLocaleDateString('ru-RU');
                 const endDate = new Date(data.dates.end_date).toLocaleDateString('ru-RU');
-                html += `<div style="font-size:14px;color:#374151;font-weight:500;">${startDate} — ${endDate}</div>`;
+                html += `<div style="font-size:13px;color:#374151;font-weight:500;text-align:center;padding:20px 10px;">${startDate}<br>—<br>${endDate}</div>`;
                 html += '</div>';
             }
+            
+            html += '</div>';
             
             body.innerHTML = html;
             
